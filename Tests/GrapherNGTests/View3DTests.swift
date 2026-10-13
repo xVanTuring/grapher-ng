@@ -190,6 +190,10 @@ final class View3DTests: XCTestCase {
 
     func testKindsAreSplitByDimension() {
         XCTAssertEqual(PlotKind.cases(for: .plane), [.explicit, .parametric, .polar, .implicit, .region])
-        XCTAssertEqual(PlotKind.cases(for: .space), [.surface, .parametricSurface, .spaceCurve, .implicitSurface])
+        XCTAssertEqual(PlotKind.cases(for: .space), [
+            .surface, .parametricSurface, .spaceCurve, .implicitSurface,
+            // 平面曲线也能放进立体图（画在 z = 0 上或延伸成竖直曲面），不等式区域不行。
+            .explicit, .parametric, .polar, .implicit,
+        ])
     }
 }

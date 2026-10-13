@@ -30,9 +30,21 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// 某种文档能用的图型，顺序即「新建」菜单与类型下拉框里的顺序。
+    /// 某种文档能用的图型，顺序即「新建」菜单与类型下拉框里的顺序。立体图里也能放平面曲线
+    /// （显函数、参数方程、极坐标、隐函数）：画在 z = 0 平面上，或沿 z 延伸成竖直的曲面（同 Desmos 3D）。
     public static func cases(for dimension: DocumentDimension) -> [PlotKind] {
-        allCases.filter { $0.dimension == dimension }
+        switch dimension {
+        case .plane: return allCases.filter { $0.dimension == .plane }
+        case .space: return allCases.filter { $0.dimension == .space } + allCases.filter(\.canExtrude)
+        }
+    }
+
+    /// 平面曲线：放进立体图时可以选「延伸到 3D」。不等式区域不进立体图。
+    public var canExtrude: Bool {
+        switch self {
+        case .explicit, .parametric, .polar, .implicit: return true
+        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface: return false
+        }
     }
 
     public var displayName: String {
@@ -231,6 +243,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var domain2Upper: Double
     /// When false the domain defaults to whatever the viewport currently shows.
     public var usesExplicitDomain: Bool
+    /// 平面曲线放在立体图里时：false 画成 z = 0 平面上的一条曲线，true 沿 z 延伸成竖直曲面。
+    public var extrudesInSpace: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -250,6 +264,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         domain2Lower: Double = 0,
         domain2Upper: Double = 2 * Double.pi,
         usesExplicitDomain: Bool = false,
+        extrudesInSpace: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -267,6 +282,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.domain2Lower = domain2Lower
         self.domain2Upper = domain2Upper
         self.usesExplicitDomain = usesExplicitDomain
+        self.extrudesInSpace = extrudesInSpace
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -274,11 +290,11 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
-        case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain
+        case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case lineStyle, fillStyle, extraLevels
     }
 
-    /// 只有 3D 才用到的字段（第三个公式、第二个定义域）在 2D 时代的文件里没有，读到缺省值。
+    /// 只有 3D 才用到的字段（第三个公式、第二个定义域、延伸到 3D）在 2D 时代的文件里没有，读到缺省值。
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -294,6 +310,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         domain2Lower = try container.decodeIfPresent(Double.self, forKey: .domain2Lower) ?? 0
         domain2Upper = try container.decodeIfPresent(Double.self, forKey: .domain2Upper) ?? 2 * Double.pi
         usesExplicitDomain = try container.decode(Bool.self, forKey: .usesExplicitDomain)
+        extrudesInSpace = try container.decodeIfPresent(Bool.self, forKey: .extrudesInSpace) ?? false
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)

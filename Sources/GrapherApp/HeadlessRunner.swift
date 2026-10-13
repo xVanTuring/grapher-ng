@@ -252,5 +252,25 @@ enum HeadlessRunner {
                 quality.displayName, Date().timeIntervalSince(started) * 1000 / Double(rounds)
             ))
         }
+
+        // 立体图示例文档（显式曲面、环面、螺旋线、隐式球面）整个重算一次。
+        let space = GrapherDocument.sample3D()
+        let spaceCompiled = LayerCompiler().compile(space)
+        for quality in [SampleQuality.interactive, .full] {
+            let request = SceneBuild3DRequest(
+                document: space, compiled: spaceCompiled, view: space.view3D, quality: quality, backingScale: 2
+            )
+            _ = SceneBuilder3D.build(request)
+            let started = Date()
+            let rounds = 5
+            var triangles = 0
+            for _ in 0..<rounds {
+                triangles = SceneBuilder3D.build(request).scene.meshes.reduce(0) { $0 + $1.triangleCount }
+            }
+            print(String(
+                format: "立体图重算（%@）%6.1f ms/次  %d 个三角形",
+                quality.displayName, Date().timeIntervalSince(started) * 1000 / Double(rounds), triangles
+            ))
+        }
     }
 }

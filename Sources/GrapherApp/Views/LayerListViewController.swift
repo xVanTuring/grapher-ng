@@ -14,6 +14,8 @@ final class LayerListViewController: NSViewController {
     private let scrollView = NSScrollView()
     private var observerID: UUID?
     private var isSyncingSelection = false
+    /// 拖放落下、正在改模型：这一次的文档变更由表格自己的 `moveRow` 动画体现，不整表重载。
+    private var isApplyingDrop = false
 
     private lazy var addButton = ControlFactory.symbolButton(
         symbol: "plus",
@@ -130,6 +132,8 @@ final class LayerListViewController: NSViewController {
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
         tableView.registerForDraggedTypes([layerRowDragType])
         tableView.setDraggingSourceOperationMask(.move, forLocal: true)
+        // 图层只在本表里排序，不许拖到别的 App 或访达里去。
+        tableView.setDraggingSourceOperationMask([], forLocal: false)
         tableView.draggingDestinationFeedbackStyle = .gap
         tableView.menuProvider = { [weak self] row in self?.contextMenu(for: row) }
         tableView.onDelete = { [weak self] in self?.removeSelectedLayer(nil) }
@@ -147,6 +151,7 @@ final class LayerListViewController: NSViewController {
     private func handle(_ change: AppState.Change) {
         switch change {
         case .document, .layers:
+            guard !isApplyingDrop else { return }
             reloadList()
         case .selection:
             syncSelection()
@@ -238,7 +243,11 @@ final class LayerListViewController: NSViewController {
     }
 }
 
-// MARK: - Table data source
+// MARK: - Table data source / 拖拽排序
+//
+// 拖板里放的是图层 id 而不是行号：拖动途中列表若因为别的改动重载过，行号就对不上了。
+// 落下时先改模型、再让表格用 `moveRow` 动画把那一行挪到位，期间不响应文档变更去整表
+// `reloadData`——让位（`.gap`）动画进行中整表重载，会出现丢行、重复行、被拖的那行不见了。
 
 extension LayerListViewController: NSTableViewDataSource {
 
@@ -247,8 +256,9 @@ extension LayerListViewController: NSTableViewDataSource {
     }
 
     func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> NSPasteboardWriting? {
+        guard row >= 0, row < state.document.layers.count else { return nil }
         let item = NSPasteboardItem()
-        item.setString(String(row), forType: layerRowDragType)
+        item.setString(state.document.layers[row].id.uuidString, forType: layerRowDragType)
         return item
     }
 
@@ -258,8 +268,11 @@ extension LayerListViewController: NSTableViewDataSource {
         proposedRow row: Int,
         proposedDropOperation dropOperation: NSTableView.DropOperation
     ) -> NSDragOperation {
-        guard let source = info.draggingSource as? NSTableView, source === tableView else { return [] }
-        guard dropOperation == .above else { return [] }
+        guard let source = draggedRow(info) else { return [] }
+        // 落在某一行「上」也按插到它前面处理，免得指针正好压在行中间时拒收。
+        if dropOperation == .on { tableView.setDropRow(row, dropOperation: .above) }
+        // 插回原位或原位下方都等于没动：不给接受标记，也不播让位动画。
+        guard row != source, row != source + 1 else { return [] }
         return .move
     }
 
@@ -269,15 +282,31 @@ extension LayerListViewController: NSTableViewDataSource {
         row: Int,
         dropOperation: NSTableView.DropOperation
     ) -> Bool {
-        guard let text = info.draggingPasteboard.pasteboardItems?.first?.string(forType: layerRowDragType),
-              let source = Int(text),
-              source >= 0,
-              source < state.document.layers.count,
-              row != source,
-              row != source + 1
-        else { return false }
+        guard let source = draggedRow(info), row != source, row != source + 1 else { return false }
+        let id = state.document.layers[source].id
+        // `row` 是「插到第 row 行之前」；往下挪时源行先被拿走，落点要减一。
+        let finalRow = row > source ? row - 1 : row
+
+        isApplyingDrop = true
         state.moveLayers(from: IndexSet(integer: source), to: row)
+        isApplyingDrop = false
+
+        tableView.beginUpdates()
+        tableView.moveRow(at: source, to: finalRow)
+        tableView.endUpdates()
+        // 拖哪一行，松手后就选中哪一行。
+        state.selection = id
+        syncSelection()
         return true
+    }
+
+    /// 拖的是本表里的哪一行；不是从本表拖来的（或那个图层已经不在了）返回 nil。
+    private func draggedRow(_ info: NSDraggingInfo) -> Int? {
+        guard let source = info.draggingSource as? NSTableView, source === tableView,
+              let text = info.draggingPasteboard.pasteboardItems?.first?.string(forType: layerRowDragType),
+              let id = UUID(uuidString: text)
+        else { return nil }
+        return state.document.layers.firstIndex { $0.id == id }
     }
 }
 

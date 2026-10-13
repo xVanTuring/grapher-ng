@@ -1,0 +1,133 @@
+name: GrapherNG
+options:
+  bundleIdPrefix: tech.xvanturing
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    # 版本号只在这里改，各 target 的 Info.plist 都引用这两个值。
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    DEVELOPMENT_TEAM: T8F5T6HKG8
+    DEAD_CODE_STRIPPING: YES
+    GENERATE_INFOPLIST_FILE: NO
+    SWIFT_STRICT_CONCURRENCY: minimal
+    # 本地开发用 ad-hoc 签名即可运行；发布时再走 Developer ID。
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+
+targets:
+  # ── 数学与采样层 ────────────────────────────────────────────────
+  # 框架形式而不是全部合进 App，是为了让编译器守住这条边界：这一层不允许 import
+  # AppKit。整套单元测试都跑在它上面，从来不碰界面代码。
+  GrapherKit:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/GrapherKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNG.GrapherKit
+        PRODUCT_NAME: GrapherKit
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+      configs:
+        # Debug 默认是 -Onone，对这一层是 27 倍的代价（实测网格求值 1.2M vs 32M
+        # 点/秒）：停手后重算要等 4 秒、拖动只有 5 帧，开发时没法用。
+        # 只给这一层开优化，GrapherApp 仍是 -Onone，界面代码照样能单步。
+        # 这一层有 58 项单元测试兜底，本来也很少需要单步进去。
+        Debug:
+          SWIFT_OPTIMIZATION_LEVEL: "-O"
+          SWIFT_COMPILATION_MODE: wholemodule
+
+  # ── Metal 渲染层 ───────────────────────────────────────────────
+  # 只依赖 GrapherKit 与系统框架。着色器是运行期从内嵌字符串编译的，所以没有
+  # .metal 编译阶段，这里不需要额外的 build phase。
+  GrapherRender:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/GrapherRender
+    dependencies:
+      - target: GrapherKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNG.GrapherRender
+        PRODUCT_NAME: GrapherRender
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+
+  # ── App ───────────────────────────────────────────────────────
+  GrapherNG:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/GrapherApp
+        excludes:
+          - "Resources/Info.plist"
+    dependencies:
+      - target: GrapherKit
+        embed: true
+      - target: GrapherRender
+        embed: true
+    settings:
+      base:
+        PRODUCT_NAME: GrapherNG
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNG
+        INFOPLIST_FILE: Sources/GrapherApp/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+    info:
+      path: Sources/GrapherApp/Resources/Info.plist
+      properties:
+        CFBundleName: GrapherNG
+        CFBundleDisplayName: Grapher NG
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundlePackageType: APPL
+        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleAllowMixedLocalizations: true
+        LSMinimumSystemVersion: "14.0"
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: "© 2026 xVanTuring"
+        NSPrincipalClass: NSApplication
+        NSHighResolutionCapable: true
+        CFBundleIconName: AppIcon
+
+  # ── 测试 ──────────────────────────────────────────────────────
+  # 以 App 为宿主运行（同 FreeMind / Perch）：App 检测到自己在测试宿主里就不开窗口，
+  # 所以测试期间不会弹窗打断正在用的实例。
+  GrapherNGTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/GrapherNGTests
+    dependencies:
+      - target: GrapherNG
+      - target: GrapherKit
+      - target: GrapherRender
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNGTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/GrapherNG.app/Contents/MacOS/GrapherNG
+        BUNDLE_LOADER: $(TEST_HOST)
+
+schemes:
+  GrapherNG:
+    build:
+      targets:
+        GrapherNG: all
+        GrapherNGTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - GrapherNGTests

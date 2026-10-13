@@ -1,0 +1,10 @@
+# Xcode / xcodegen
+build/
+DerivedData/
+GrapherNG.xcodeproj/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# SwiftPM（已不用，留一条以防残留）
+.build/

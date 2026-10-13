@@ -349,6 +349,11 @@ public enum SceneBuilder2D {
             collected = curve.segments
             appendCurve(curve.segments, color: layer.lineStyle.color, width: strokeWidth,
                         viewport: viewport, into: &scene)
+            if layer.usesExplicitDomain {
+                appendDomainEnds(f: f, range: range, color: layer.lineStyle.color,
+                                 strokeWidth: strokeWidth, backingScale: request.backingScale,
+                                 viewport: viewport, into: &scene)
+            }
 
         case .parametric:
             guard let primary = compiled.primary, let secondary = compiled.secondary else { return }
@@ -427,6 +432,29 @@ public enum SceneBuilder2D {
                 segments: collected
             ))
         }
+    }
+
+    /// 限定了定义域的显函数：两端各画一个实心点（闭区间），一眼看出曲线是在这里截止，
+    /// 不是没画完。函数在端点处没有定义（非有限值）的那一端就不画。
+    private static func appendDomainEnds(
+        f: (Double) -> Double,
+        range: ClosedRange<Double>,
+        color: RGBAColor,
+        strokeWidth: Double,
+        backingScale: Double,
+        viewport: Viewport2D,
+        into scene: inout Scene2D
+    ) {
+        var ends: [SIMD2<Double>] = []
+        for x in [range.lowerBound, range.upperBound] {
+            let y = f(x)
+            guard x.isFinite, y.isFinite else { continue }
+            ends.append(screenClamped(SIMD2(x, y), viewport: viewport))
+        }
+        if range.lowerBound == range.upperBound, ends.count == 2 { ends.removeLast() }
+        guard !ends.isEmpty else { return }
+        let radius = max(strokeWidth * 1.4, 3 * backingScale)
+        scene.append(.markers(MarkerPrimitiveBatch(positions: ends, radius: radius, color: color)))
     }
 
     private static func appendCurve(

@@ -85,6 +85,38 @@ final class SceneBuilderTests: XCTestCase {
         }
     }
 
+    /// 限定定义域的显函数两端各有一个实心点，落在 (a, f(a))、(b, f(b))；不限定义域就没有。
+    func testRestrictedDomainMarksBothEnds() {
+        var document = self.document()
+        document.layers = [Layer.makeDefault(kind: .explicit, index: 0)]
+        document.layers[0].formula = "2*x"
+        document.layers[0].usesExplicitDomain = true
+        document.layers[0].domainLower = -1
+        document.layers[0].domainUpper = 3
+
+        let built = build(document)
+        let markers = built.scene.commands.compactMap { command -> MarkerPrimitiveBatch? in
+            if case .markers(let batch) = command { return batch }
+            return nil
+        }
+        XCTAssertEqual(markers.count, 1)
+        let positions = markers.first?.positions ?? []
+        XCTAssertEqual(positions.count, 2)
+        let viewport = document.viewport
+        let expected = [viewport.toScreen(x: -1, y: -2), viewport.toScreen(x: 3, y: 6)]
+        for (position, target) in zip(positions, expected) {
+            XCTAssertEqual(position.x, target.x, accuracy: 1e-9)
+            XCTAssertEqual(position.y, target.y, accuracy: 1e-9)
+        }
+
+        document.layers[0].usesExplicitDomain = false
+        let unrestricted = build(document)
+        XCTAssertFalse(unrestricted.scene.commands.contains { command in
+            if case .markers = command { return true }
+            return false
+        }, "不限定义域就没有端点")
+    }
+
     func testAllGeometryStaysFiniteEvenWithPoles() {
         var document = self.document()
         document.layers = [Layer.makeDefault(kind: .explicit, index: 0)]

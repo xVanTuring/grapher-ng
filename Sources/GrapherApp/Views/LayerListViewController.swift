@@ -374,6 +374,12 @@ private final class LayerRowView: NSTableCellView {
     }
 
     private func formulaText(for layer: Layer) -> String {
+        if layer.kind == .explicit, layer.usesExplicitDomain {
+            // 限定了定义域就写出来：画布上曲线在这里截止，列表里也要看得出为什么。
+            let lower = min(layer.domainLower, layer.domainUpper)
+            let upper = max(layer.domainLower, layer.domainUpper)
+            return "\(layer.formula)   x ∈ [\(String(format: "%g", lower)), \(String(format: "%g", upper))]"
+        }
         guard layer.kind == .parametric, !layer.secondaryFormula.isEmpty else { return layer.formula }
         return "x = \(layer.formula)   y = \(layer.secondaryFormula)"
     }

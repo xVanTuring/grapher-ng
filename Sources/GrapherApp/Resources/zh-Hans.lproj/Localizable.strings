@@ -94,6 +94,9 @@
 "Layer" = "图层";
 "Type" = "类型";
 "Restrict domain" = "指定定义域";
+"Extend into 3D" = "延伸到 3D";
+"Off: a curve on the z = 0 plane. On: a vertical surface swept along z through the box." = "关：画在 z = 0 平面上的一条曲线。开：沿 z 方向延伸成贯穿坐标盒的竖直曲面。";
+"Surface" = "曲面";
 "Relation" = "关系";
 "Line" = "线条";
 "Fill" = "填充";

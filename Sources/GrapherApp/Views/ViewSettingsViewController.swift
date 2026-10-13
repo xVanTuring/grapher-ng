@@ -13,6 +13,7 @@ final class ViewSettingsViewController: NSViewController {
     private var themeCheckbox: NSButton?
     private var xRangeLabel: NSTextField?
     private var yRangeLabel: NSTextField?
+    private var zRangeLabel: NSTextField?
     private var observerID: UUID?
 
     init(state: AppState) {
@@ -62,11 +63,13 @@ final class ViewSettingsViewController: NSViewController {
 
         let xRange = ControlFactory.monospacedLabel("")
         let yRange = ControlFactory.monospacedLabel("")
+        let zRange = ControlFactory.monospacedLabel("")
         xRangeLabel = xRange
         yRangeLabel = yRange
+        zRangeLabel = zRange
 
         let switches = ControlFactory.stack([axes, grid, minorGrid, theme], spacing: ControlFactory.Metric.rowSpacing)
-        let ranges = ControlFactory.stack([xRange, yRange], spacing: 2)
+        let ranges = ControlFactory.stack([xRange, yRange, zRange], spacing: 2)
         add(ControlFactory.heading(L("View")))
         add(switches)
         add(ranges)
@@ -88,6 +91,18 @@ final class ViewSettingsViewController: NSViewController {
         minorGridCheckbox?.state = state.document.showMinorGrid ? .on : .off
         themeCheckbox?.state = state.document.theme.background.r < 0.5 ? .on : .off
 
+        if state.document.dimension == .space {
+            // 立体图：报坐标盒三个方向的范围；细分网格只有平面图有。
+            let view = state.document.view3D
+            minorGridCheckbox?.isHidden = true
+            xRangeLabel?.stringValue = rangeText("X", view.range(axis: 0))
+            yRangeLabel?.stringValue = rangeText("Y", view.range(axis: 1))
+            zRangeLabel?.stringValue = rangeText("Z", view.range(axis: 2))
+            zRangeLabel?.isHidden = false
+            return
+        }
+        minorGridCheckbox?.isHidden = false
+        zRangeLabel?.isHidden = true
         // 只报没被侧栏 / 工具栏盖住的那块：那才是用户眼前的范围。
         let viewport = state.viewport.unobscured
         xRangeLabel?.stringValue = rangeText("X", viewport.xRange)

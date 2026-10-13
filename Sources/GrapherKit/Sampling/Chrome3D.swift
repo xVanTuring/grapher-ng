@@ -31,8 +31,8 @@ public enum Chrome3D {
         public var labels: [AxisLabel3D]
     }
 
-    /// 刻度之间至少隔这么多像素。
-    static let minimumTickSpacing = 70.0
+    /// 刻度之间至少隔这么多**点**（乘上像素倍率再交给 `AxisTicks`，导出放大时刻度疏密不变）。
+    static let minimumTickSpacing = 36.0
     /// 刻度数字离开棱线多远（归一化单位）。
     static let labelOffset = 0.12
 
@@ -45,7 +45,7 @@ public enum Chrome3D {
         let near = SIMD3(eye.x >= 0 ? 1.0 : -1.0, eye.y >= 0 ? 1.0 : -1.0, eye.z >= 0 ? 1.0 : -1.0)
         let ticks = (0..<3).map { axis in
             AxisTicks.ticks(range: view.range(axis: axis), pixelsPerUnit: view.pixelsPerUnit,
-                            minimumPixelSpacing: minimumTickSpacing)
+                            minimumPixelSpacing: minimumTickSpacing * max(backingScale, 1))
         }
         func n(_ axis: Int, _ value: Double) -> Double { (value - view.center[axis]) / view.halfExtent }
         func segment(_ a: SIMD3<Double>, _ b: SIMD3<Double>, _ color: RGBAColor, _ widthPoints: Double) {

@@ -440,6 +440,9 @@ private final class LayerRowView: NSTableCellView {
             let upper = max(layer.domainLower, layer.domainUpper)
             return "\(layer.formula)   x ∈ [\(String(format: "%g", lower)), \(String(format: "%g", upper))]"
         }
+        if layer.kind.needsTertiaryFormula {
+            return "x = \(layer.formula)   y = \(layer.secondaryFormula)   z = \(layer.tertiaryFormula)"
+        }
         guard layer.kind == .parametric, !layer.secondaryFormula.isEmpty else { return layer.formula }
         return "x = \(layer.formula)   y = \(layer.secondaryFormula)"
     }

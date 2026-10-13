@@ -94,6 +94,9 @@
 "Layer" = "Layer";
 "Type" = "Type";
 "Restrict domain" = "Restrict domain";
+"Extend into 3D" = "Extend into 3D";
+"Off: a curve on the z = 0 plane. On: a vertical surface swept along z through the box." = "Off: a curve on the z = 0 plane. On: a vertical surface swept along z through the box.";
+"Surface" = "Surface";
 "Relation" = "Relation";
 "Line" = "Line";
 "Fill" = "Fill";

@@ -38,10 +38,14 @@ final class LayerEditorViewController: NSViewController {
     private var primaryField: FormulaFieldView?
     private var secondaryField: FormulaFieldView?
     private var tertiaryField: FormulaFieldView?
+    private var builtAsSurface: Bool?
     private var domainCheckbox: NSButton?
     private var domainGroup: NSStackView?
     private var domainLowerField: NSTextField?
     private var domainUpperField: NSTextField?
+    private var domain2LowerField: NSTextField?
+    private var domain2UpperField: NSTextField?
+    private var extrudeCheckbox: NSButton?
     private var relationPopUp: NSPopUpButton?
     private var lineColorWell: NSColorWell?
     private var lineWidthSlider: NSSlider?
@@ -99,16 +103,28 @@ final class LayerEditorViewController: NSViewController {
             replaceContents([ControlFactory.caption(L("Select a layer on the left to edit it, or click + to create one."))])
             return
         }
-        if layer.id == builtLayerID, layer.kind == builtKind {
+        // 换了图层、换了类型、或者「延伸到 3D」改变了画成线还是画成面，表单都要重排。
+        if layer.id == builtLayerID, layer.kind == builtKind, rendersAsSurface(layer) == builtAsSurface {
             refresh(layer)
         } else {
             build(layer)
         }
     }
 
+    /// 这个图层在画布上是一张面（只有颜色可调）还是一条线（颜色 + 线宽）。
+    private func rendersAsSurface(_ layer: Layer) -> Bool {
+        switch layer.kind {
+        case .surface, .parametricSurface, .implicitSurface: return true
+        case .explicit, .parametric, .polar, .implicit:
+            return state.document.dimension == .space && layer.extrudesInSpace
+        case .region, .spaceCurve: return false
+        }
+    }
+
     private func build(_ layer: Layer) {
         builtLayerID = layer.id
         builtKind = layer.kind
+        builtAsSurface = rendersAsSurface(layer)
         clearReferences()
 
         var rows: [NSView] = [ControlFactory.heading(L("Layer"))]
@@ -131,12 +147,26 @@ final class LayerEditorViewController: NSViewController {
         rows.append(contentsOf: formulaRows(layer))
 
         if layer.kind.usesDomain {
-            let checkbox = ControlFactory.checkbox(L("Restrict domain"), target: self, action: #selector(domainToggled(_:)))
-            domainCheckbox = checkbox
-            let group = domainGroup(layer)
+            // 只有显函数的定义域是可选的（不限定就跟着可见范围走）；参数方程、极坐标、空间曲线、
+            // 参数曲面的参数范围总是生效，不给一个勾了也白勾的开关。
+            if layer.kind == .explicit {
+                let checkbox = ControlFactory.checkbox(L("Restrict domain"), target: self, action: #selector(domainToggled(_:)))
+                domainCheckbox = checkbox
+                rows.append(checkbox)
+            }
+            let group = domainGroup(layer, second: false)
             domainGroup = group
-            rows.append(checkbox)
             rows.append(group)
+            if layer.kind.usesSecondDomain {
+                rows.append(domainGroup(layer, second: true))
+            }
+        }
+
+        if state.document.dimension == .space, layer.kind.canExtrude {
+            let checkbox = ControlFactory.checkbox(L("Extend into 3D"), target: self, action: #selector(extrudeToggled(_:)))
+            checkbox.toolTip = L("Off: a curve on the z = 0 plane. On: a vertical surface swept along z through the box.")
+            extrudeCheckbox = checkbox
+            rows.append(checkbox)
         }
 
         if layer.kind.usesRelation {
@@ -152,8 +182,14 @@ final class LayerEditorViewController: NSViewController {
         }
 
         rows.append(ControlFactory.separator())
-        rows.append(ControlFactory.sectionLabel(L("Line")))
-        rows.append(contentsOf: lineRows(layer))
+        if rendersAsSurface(layer) {
+            // 曲面只有颜色可调：线宽对它没有意义。
+            rows.append(ControlFactory.sectionLabel(L("Surface")))
+            rows.append(lineRows(layer)[0])
+        } else {
+            rows.append(ControlFactory.sectionLabel(L("Line")))
+            rows.append(contentsOf: lineRows(layer))
+        }
 
         if layer.kind == .region {
             rows.append(ControlFactory.sectionLabel(L("Fill")))
@@ -172,19 +208,22 @@ final class LayerEditorViewController: NSViewController {
             kindPopUp.selectItem(at: index)
         }
 
+        // 每一栏显示自己的错误，列号指向的就是这一栏里的位置。
+        let errors = state.formulaErrors[layer.id]
         primaryField?.text = layer.formula
-        primaryField?.error = state.expressionErrors[layer.id]
+        primaryField?.error = errors?.primary
         secondaryField?.text = layer.secondaryFormula
+        secondaryField?.error = errors?.secondary
         tertiaryField?.text = layer.tertiaryFormula
+        tertiaryField?.error = errors?.tertiary
 
         domainCheckbox?.state = layer.usesExplicitDomain ? .on : .off
-        domainGroup?.isHidden = !layer.usesExplicitDomain
-        if let domainLowerField, domainLowerField.currentEditor() == nil {
-            domainLowerField.stringValue = ControlFactory.format(layer.domainLower)
+        domainGroup?.isHidden = layer.kind == .explicit && !layer.usesExplicitDomain
+        for (field, value) in [(domainLowerField, layer.domainLower), (domainUpperField, layer.domainUpper),
+                               (domain2LowerField, layer.domain2Lower), (domain2UpperField, layer.domain2Upper)] {
+            if let field, field.currentEditor() == nil { field.stringValue = ControlFactory.format(value) }
         }
-        if let domainUpperField, domainUpperField.currentEditor() == nil {
-            domainUpperField.stringValue = ControlFactory.format(layer.domainUpper)
-        }
+        extrudeCheckbox?.state = layer.extrudesInSpace ? .on : .off
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -220,6 +259,9 @@ final class LayerEditorViewController: NSViewController {
         domainGroup = nil
         domainLowerField = nil
         domainUpperField = nil
+        domain2LowerField = nil
+        domain2UpperField = nil
+        extrudeCheckbox = nil
         relationPopUp = nil
         lineColorWell = nil
         lineWidthSlider = nil
@@ -304,21 +346,33 @@ final class LayerEditorViewController: NSViewController {
 
     // MARK: - Domain rows
 
-    private func domainGroup(_ layer: Layer) -> NSStackView {
-        let lower = ControlFactory.numberField(
-            layer.domainLower,
-            target: self,
-            action: #selector(domainEdited(_:))
-        )
-        let upper = ControlFactory.numberField(
-            layer.domainUpper,
-            target: self,
-            action: #selector(domainEdited(_:))
-        )
+    /// 参数范围的快捷按钮。按钮的 `tag` = 第几个范围 × 10 + 这个枚举的值。
+    private enum DomainPreset: Int {
+        case fullTurn = 0, halfTurn = 1, visible = 2
+
+        var title: String {
+            switch self {
+            case .fullTurn: return "0…2π"
+            case .halfTurn: return "0…π"
+            case .visible: return L("Visible Range")
+            }
+        }
+    }
+
+    /// 一个参数范围：「x [  ] 到 [  ]」加一排快捷按钮。`second` 是参数曲面的 v。
+    private func domainGroup(_ layer: Layer, second: Bool) -> NSStackView {
+        let action = second ? #selector(domain2Edited(_:)) : #selector(domainEdited(_:))
+        let lower = ControlFactory.numberField(second ? layer.domain2Lower : layer.domainLower, target: self, action: action)
+        let upper = ControlFactory.numberField(second ? layer.domain2Upper : layer.domainUpper, target: self, action: action)
         lower.setContentHuggingPriority(.defaultLow, for: .horizontal)
         upper.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        domainLowerField = lower
-        domainUpperField = upper
+        if second {
+            domain2LowerField = lower
+            domain2UpperField = upper
+        } else {
+            domainLowerField = lower
+            domainUpperField = upper
+        }
 
         let dash = ControlFactory.label(L("to"))
         dash.setContentHuggingPriority(.required, for: .horizontal)
@@ -331,26 +385,23 @@ final class LayerEditorViewController: NSViewController {
         )
         lower.widthAnchor.constraint(equalTo: upper.widthAnchor).isActive = true
 
-        let fullCircle = ControlFactory.pushButton(
-            "0…2π",
-            target: self,
-            action: #selector(domainFullCircle(_:))
-        )
-        let visible = ControlFactory.pushButton(
-            L("Visible Range"),
-            target: self,
-            action: #selector(domainFollowViewport(_:))
-        )
-        let shortcuts = ControlFactory.stack(
-            [fullCircle, visible],
-            orientation: .horizontal,
-            spacing: 6,
-            alignment: .centerY
-        )
+        let presets: [DomainPreset]
+        switch layer.kind {
+        case .explicit: presets = [.fullTurn, .visible]
+        case .parametricSurface: presets = second ? [.halfTurn, .fullTurn] : [.fullTurn]
+        default: presets = [.fullTurn]
+        }
+        let buttons = presets.map { preset -> NSButton in
+            let button = ControlFactory.pushButton(preset.title, target: self, action: #selector(domainPreset(_:)))
+            button.tag = (second ? 10 : 0) + preset.rawValue
+            return button
+        }
+        let shortcuts = ControlFactory.stack(buttons, orientation: .horizontal, spacing: 6, alignment: .centerY)
 
+        let symbol = second ? "v" : domainSymbol(layer.kind)
         return ControlFactory.stack(
             [
-                ControlFactory.formRow(domainSymbol(layer.kind), bounds),
+                ControlFactory.formRow(symbol, bounds),
                 ControlFactory.formRow("", shortcuts),
             ],
             spacing: ControlFactory.Metric.rowSpacing
@@ -462,12 +513,31 @@ final class LayerEditorViewController: NSViewController {
         setDomain(lower: lower, upper: upper)
     }
 
-    @objc private func domainFullCircle(_ sender: Any?) {
-        setDomain(lower: 0, upper: 2 * Double.pi)
+    @objc private func domain2Edited(_ sender: NSTextField) {
+        guard let layer = state.selectedLayer else { return }
+        let lower = ControlFactory.parse(domain2LowerField?.stringValue ?? "") ?? layer.domain2Lower
+        let upper = ControlFactory.parse(domain2UpperField?.stringValue ?? "") ?? layer.domain2Upper
+        setDomain(lower: lower, upper: upper, second: true)
     }
 
-    @objc private func domainFollowViewport(_ sender: Any?) {
-        setDomain(lower: state.viewport.unobscured.xRange.lowerBound, upper: state.viewport.unobscured.xRange.upperBound)
+    @objc private func domainPreset(_ sender: NSButton) {
+        guard let preset = DomainPreset(rawValue: sender.tag % 10) else { return }
+        let second = sender.tag >= 10
+        switch preset {
+        case .fullTurn: setDomain(lower: 0, upper: 2 * Double.pi, second: second)
+        case .halfTurn: setDomain(lower: 0, upper: Double.pi, second: second)
+        case .visible:
+            // 平面图取可见区的 x 范围，立体图取坐标盒的 x 范围。
+            let range = state.document.dimension == .space
+                ? state.document.view3D.range(axis: 0)
+                : state.viewport.unobscured.xRange
+            setDomain(lower: range.lowerBound, upper: range.upperBound, second: second)
+        }
+    }
+
+    @objc private func extrudeToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Extend into 3D")) { $0.extrudesInSpace = on }
     }
 
     @objc private func relationEdited(_ sender: NSPopUpButton) {
@@ -545,12 +615,17 @@ final class LayerEditorViewController: NSViewController {
         }
     }
 
-    private func setDomain(lower: Double, upper: Double) {
+    private func setDomain(lower: Double, upper: Double, second: Bool = false) {
         guard let id = state.selectedLayer?.id else { return }
         state.mutate(L("Change Domain")) { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
-            document.layers[index].domainLower = lower
-            document.layers[index].domainUpper = upper
+            if second {
+                document.layers[index].domain2Lower = lower
+                document.layers[index].domain2Upper = upper
+            } else {
+                document.layers[index].domainLower = lower
+                document.layers[index].domainUpper = upper
+            }
         }
     }
 }

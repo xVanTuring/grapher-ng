@@ -347,6 +347,18 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         inspectorItem?.animator().isCollapsed.toggle()
     }
 
+    // MARK: - Menu validation
+
+    /// 矢量 PDF 与采样点 CSV 只对平面图有意义，立体图先不给。
+    @objc func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(exportPDFAction(_:)), #selector(exportCSVAction(_:)):
+            return state.document.dimension == .plane
+        default:
+            return true
+        }
+    }
+
     // MARK: - Window delegate
 
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {

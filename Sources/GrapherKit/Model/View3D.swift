@@ -52,8 +52,8 @@ public struct View3D: Equatable, Sendable, Codable {
     static let boundingRadius = 3.0.squareRoot()
     static let nearPlane = cameraDistance - 2.2
     static let farPlane = cameraDistance + 2.2
-    /// 盒子外接球的直径占未遮挡区短边的比例。
-    static let fillFraction = 0.9
+    /// 盒子外接球的直径占未遮挡区短边的比例。留出一圈给盒子外侧的刻度数字与轴名。
+    static let fillFraction = 0.84
     public static let elevationLimit = 89.0 * Double.pi / 180
     public static let halfExtentRange: ClosedRange<Double> = 1e-4...1e6
     /// 拖动一个点转多少弧度。

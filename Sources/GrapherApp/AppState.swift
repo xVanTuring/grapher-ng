@@ -61,7 +61,16 @@ final class AppState {
     private(set) var built: BuiltScene?
     /// 立体图的最近一份几何。
     private(set) var built3D: BuiltScene3D?
+    /// 每个图层第一个出错的公式（图层列表的错误标记用）。
     private(set) var expressionErrors: [UUID: ExpressionError] = [:]
+    /// 每个图层各个公式栏自己的错误（检查器把错误显示在出错的那一栏下面）。
+    private(set) var formulaErrors: [UUID: FormulaErrors] = [:]
+
+    struct FormulaErrors: Equatable {
+        var primary: ExpressionError?
+        var secondary: ExpressionError?
+        var tertiary: ExpressionError?
+    }
     private(set) var isBuilding = false
     private(set) var backingScale: Double = 2
 
@@ -248,13 +257,22 @@ final class AppState {
     private func compileDocument() -> [LayerCompiler.CompiledLayer] {
         let compiled = compiler.compile(document)
         var errors: [UUID: ExpressionError] = [:]
+        var perField: [UUID: FormulaErrors] = [:]
         for layer in compiled {
-            if let error = layer.primaryError { errors[layer.layer.id] = error }
+            if let error = layer.firstError { errors[layer.layer.id] = error }
+            if layer.hasError {
+                perField[layer.layer.id] = FormulaErrors(
+                    primary: layer.primaryError,
+                    secondary: layer.secondaryError,
+                    tertiary: layer.tertiaryError
+                )
+            }
         }
         // 只在真变了时广播：图层列表与检查器收到 `.errors` 会整个刷新，拖动时每个事件都发一次
         // 就是白白的主线程开销。
-        if errors != expressionErrors {
+        if errors != expressionErrors || perField != formulaErrors {
             expressionErrors = errors
+            formulaErrors = perField
             notify(.errors)
         }
         return compiled
@@ -356,6 +374,30 @@ final class AppState {
     }
 
     var exportViewport: Viewport2D { document.viewport.unobscured }
+
+    /// 立体图导出用的视图：眼前没被遮住的那块，按 `scale` 放大像素尺寸，相机与坐标盒不变。
+    func exportView3D(scale: Double) -> View3D {
+        var view = document.view3D
+        let unobscured = document.viewport.unobscured
+        view.widthPixels = (unobscured.widthPixels * scale).rounded()
+        view.heightPixels = (unobscured.heightPixels * scale).rounded()
+        view.insetLeft = 0
+        view.insetTop = 0
+        view.insetRight = 0
+        view.insetBottom = 0
+        return view
+    }
+
+    /// 立体图按导出分辨率重新采样（精细画质），线宽按导出的像素倍率放大。
+    func buildForExport3D(view: View3D, pixelScale: Double) -> BuiltScene3D {
+        SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document,
+            compiled: compiler.compile(document),
+            view: view,
+            quality: .high,
+            backingScale: pixelScale
+        ))
+    }
 
     // MARK: - Document mutation
 

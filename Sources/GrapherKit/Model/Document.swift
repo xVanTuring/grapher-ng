@@ -14,9 +14,9 @@ public enum SampleQuality: String, Codable, CaseIterable, Identifiable, Sendable
 
     public var displayName: String {
         switch self {
-        case .interactive: return "流畅（拖动时）"
-        case .full: return "标准"
-        case .high: return "精细"
+        case .interactive: return L("Smooth (while dragging)")
+        case .full: return L("Standard")
+        case .high: return L("Fine")
         }
     }
 
@@ -92,13 +92,13 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         sine.domainUpper = 12
 
         var heart = Layer.makeDefault(kind: .parametric, index: 1)
-        heart.name = "心形线"
+        heart.name = L("Cardioid")
         heart.usesExplicitDomain = true
         heart.domainLower = 0
         heart.domainUpper = 2 * Double.pi
 
         var rose = Layer.makeDefault(kind: .polar, index: 2)
-        rose.name = "玫瑰线 r = cos(3θ)"
+        rose.name = L("Rose r = cos(3θ)")
         rose.formula = "cos(3*theta)"
         rose.usesExplicitDomain = true
         rose.domainLower = 0
@@ -106,7 +106,7 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
 
         let leaf = Layer(
             kind: .implicit,
-            name: "笛卡尔叶形线",
+            name: L("Folium of Descartes"),
             formula: "x^3 + y^3 - 3*x*y",
             lineStyle: LineStyle(color: RGBAColor.paletteColor(3), width: 1.8)
         )

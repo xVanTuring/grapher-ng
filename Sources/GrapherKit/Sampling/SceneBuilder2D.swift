@@ -68,7 +68,11 @@ public final class LayerCompiler {
         } catch let error as ExpressionError {
             entry = (nil, error)
         } catch {
-            entry = (nil, ExpressionError(message: "表达式无法解析：\(error)", column: 0, length: 1))
+            entry = (nil, ExpressionError(
+                message: String(format: L("Could not parse the expression: %@"), String(describing: error)),
+                column: 0,
+                length: 1
+            ))
         }
         if cache.count > 512 { cache.removeAll(keepingCapacity: true) }
         cache[key] = entry

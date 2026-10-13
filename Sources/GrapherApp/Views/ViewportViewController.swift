@@ -190,7 +190,11 @@ final class ViewportViewController: NSViewController {
             metalView.viewport = state.viewport
         }
         overlay.refresh()
-        zoomLabel.stringValue = String(format: "缩放 %.4g px/单位", state.document.viewport.scale)
+        zoomLabel.stringValue = zoomText
+    }
+
+    private var zoomText: String {
+        String(format: L("Zoom %.4g px/unit"), state.document.viewport.scale)
     }
 
     private func updateStatus() {
@@ -200,9 +204,9 @@ final class ViewportViewController: NSViewController {
             spinner.stopAnimation(nil)
         }
         statusLabel.stringValue = state.statusMessage.isEmpty
-            ? "拖动平移 · 滚轮/捏合缩放 · 移动鼠标读数 · F 适应内容 · R 重置"
+            ? L("Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset")
             : state.statusMessage
-        zoomLabel.stringValue = String(format: "缩放 %.4g px/单位", state.document.viewport.scale)
+        zoomLabel.stringValue = zoomText
     }
 
     // MARK: - Metrics

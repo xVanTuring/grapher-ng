@@ -1,4 +1,5 @@
 import Darwin
+import Foundation
 
 public struct ExpressionContext {
     public var variables: [String]
@@ -16,7 +17,7 @@ public struct ExpressionError: Error, Equatable, CustomStringConvertible {
     public let length: Int
 
     public var description: String {
-        "第 \(column + 1) 列: \(message)"
+        String(format: L("Column %ld: %@"), column + 1, message)
     }
 
     public init(message: String, column: Int, length: Int) {

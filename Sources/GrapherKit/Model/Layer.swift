@@ -11,21 +11,21 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .explicit: return "显函数 y=f(x)"
-        case .parametric: return "参数方程"
-        case .polar: return "极坐标 r=f(θ)"
-        case .implicit: return "隐函数 F(x,y)=0"
-        case .region: return "不等式区域"
+        case .explicit: return L("Explicit y=f(x)")
+        case .parametric: return L("Parametric")
+        case .polar: return L("Polar r=f(θ)")
+        case .implicit: return L("Implicit F(x,y)=0")
+        case .region: return L("Inequality region")
         }
     }
 
     public var shortName: String {
         switch self {
-        case .explicit: return "显函数"
-        case .parametric: return "参数方程"
-        case .polar: return "极坐标"
-        case .implicit: return "隐函数"
-        case .region: return "区域"
+        case .explicit: return L("Explicit")
+        case .parametric: return L("Parametric")
+        case .polar: return L("Polar")
+        case .implicit: return L("Implicit")
+        case .region: return L("Region")
         }
     }
 
@@ -192,7 +192,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         let color = RGBAColor.paletteColor(index)
         var formula = kind.primaryPlaceholder
         var secondary = kind.secondaryPlaceholder
-        var name = "\(kind.shortName) \(index + 1)"
+        let name = "\(kind.shortName) \(index + 1)"
         var lower = 0.0
         var upper = 2 * Double.pi
 
@@ -204,15 +204,12 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             // A heart-shaped curve reads well as a first impression.
             formula = "16*sin(t)^3"
             secondary = "13*cos(t) - 5*cos(2*t) - 2*cos(3*t) - cos(4*t)"
-            name = "参数方程 \(index + 1)"
         case .polar:
             formula = "1 + cos(theta)"
         case .implicit:
             formula = "x^2 + y^2 - 1"
-            name = "隐函数 \(index + 1)"
         case .region:
             formula = "x^2 + y^2 - 1"
-            name = "区域 \(index + 1)"
         }
 
         return Layer(

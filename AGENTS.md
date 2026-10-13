@@ -101,6 +101,20 @@ Tests/GrapherNGTests/   单元测试
 - 「适应内容」装进没被盖住的那块；导出、检查器里的 X/Y 范围、「视图范围」按钮都用 `Viewport2D.unobscured`。
 - 叠加层的文字、读数框、状态条都让开遮挡区；叠加层用视口里记的遮挡宽度，不读自己的 `safeAreaInsets`（原因见下一节）。
 
+## 多语言（en + zh-Hans）
+
+- 界面文字一律 `L("英文原文")`，不在界面代码里写中文字面量。带参数的用
+  `String(format: L("Opened %@"), name)`，整数用 `%ld`。
+- 两套表：App 的在 `Sources/GrapherApp/Resources/<语言>.lproj/Localizable.strings`；GrapherKit
+  自己的文字（图型名、公式错误提示、示例文档图层名）在 `Sources/GrapherKit/Resources/` 下，
+  Kit 里的 `L()` 查的是本 framework 的 bundle。新增文字两种语言都要补。
+- 开发语言是 en（`project.yml` 的 `developmentLanguage`），缺翻译时退回英文原文。
+- **测试固定用简体中文跑**（scheme 的 `test.language: zh-Hans`）：`ExprTests` 按中文原文断言错误提示。
+  `LocalizationTests` 核对两个 bundle 里 en / zh-Hans 的 key 一致、占位符个数一致。
+- `--render` / `--benchmark` 的命令行输出是调试用的，没有走本地化。
+- 想在英文系统上看中文界面：系统设置 → 通用 → 语言与地区 → 应用程序里给 Grapher NG 选简体中文，
+  或命令行加 `-AppleLanguages "(zh-Hans)"`。
+
 ## 已踩过的坑
 
 - **窗口要「三件齐备」才是现代侧栏**（Finder/Mail 那样侧栏一路顶到窗口最上沿、工具栏浮在它上面）：

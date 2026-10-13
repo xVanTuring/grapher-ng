@@ -1,0 +1,40 @@
+/* GrapherKit：图型名 */
+"Explicit y=f(x)" = "显函数 y=f(x)";
+"Parametric" = "参数方程";
+"Polar r=f(θ)" = "极坐标 r=f(θ)";
+"Implicit F(x,y)=0" = "隐函数 F(x,y)=0";
+"Inequality region" = "不等式区域";
+"Explicit" = "显函数";
+"Polar" = "极坐标";
+"Implicit" = "隐函数";
+"Region" = "区域";
+
+/* GrapherKit：画质 */
+"Smooth (while dragging)" = "流畅（拖动时）";
+"Standard" = "标准";
+"Fine" = "精细";
+
+/* GrapherKit：示例文档 */
+"Cardioid" = "心形线";
+"Rose r = cos(3θ)" = "玫瑰线 r = cos(3θ)";
+"Folium of Descartes" = "笛卡尔叶形线";
+
+/* GrapherKit：公式错误 */
+"Unrecognized number \"%@\"" = "无法识别的数字 \"%@\"";
+"A single = is not allowed; write the formula as F(x,y)" = "公式里不能出现单个 =，请把式子写成 F(x,y) 的形式";
+"Unrecognized character \"%@\"" = "无法识别的字符 \"%@\"";
+"The expression is empty" = "表达式为空";
+"Unmatched closing parenthesis" = "多了一个右括号";
+"Unexpected trailing input \"%@\"" = "多余的内容 \"%@\"";
+"Ternary operator is missing \":\"" = "三元运算符缺少 \":\"";
+"Missing closing parenthesis" = "缺少右括号";
+"The expression is incomplete" = "表达式不完整";
+"Unexpected token \"%@\"" = "意外的符号 \"%@\"";
+"Unknown symbol \"%@\"" = "未知的符号 \"%@\"";
+"Unknown function \"%@\"" = "未知的函数 \"%@\"";
+"Function %@ takes %ld argument(s), got %ld" = "函数 %@ 需要 %ld 个参数，给了 %ld 个";
+"Column %ld: %@" = "第 %ld 列: %@";
+"Could not parse the expression: %@" = "表达式无法解析：%@";
+
+/* GrapherKit：导出 */
+"Could not create the PDF file" = "无法创建 PDF 文件";

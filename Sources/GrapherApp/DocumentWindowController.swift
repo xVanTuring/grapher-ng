@@ -206,16 +206,16 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
             return toolbarButton(
                 identifier,
                 symbol: "arrow.up.left.and.arrow.down.right",
-                label: "适应内容",
-                tooltip: "缩放到刚好装下所有曲线（F）",
+                label: L("Fit Content"),
+                tooltip: L("Zoom to fit every curve (F)"),
                 action: #selector(fitToContent(_:))
             )
         case .resetView:
             return toolbarButton(
                 identifier,
                 symbol: "scope",
-                label: "重置",
-                tooltip: "回到原点、默认缩放（R）",
+                label: L("Reset"),
+                tooltip: L("Back to the origin at the default zoom (R)"),
                 action: #selector(resetView(_:))
             )
         case .zoomGroup:
@@ -224,31 +224,31 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
             let group = NSToolbarItemGroup(itemIdentifier: identifier)
             group.controlRepresentation = .expanded
             group.selectionMode = .momentary
-            group.label = "缩放"
-            group.paletteLabel = "缩放"
+            group.label = L("Zoom")
+            group.paletteLabel = L("Zoom")
             group.subitems = [
                 toolbarButton(
                     .zoomOut,
                     symbol: "minus.magnifyingglass",
-                    label: "缩小",
-                    tooltip: "缩小（⌘-）",
+                    label: L("Zoom Out"),
+                    tooltip: L("Zoom out (⌘-)"),
                     action: #selector(zoomOut(_:))
                 ),
                 toolbarButton(
                     .zoomIn,
                     symbol: "plus.magnifyingglass",
-                    label: "放大",
-                    tooltip: "放大（⌘=）",
+                    label: L("Zoom In"),
+                    tooltip: L("Zoom in (⌘=)"),
                     action: #selector(zoomIn(_:))
                 ),
             ]
             return group
         case .export:
             let item = NSMenuToolbarItem(itemIdentifier: identifier)
-            item.image = symbolImage("square.and.arrow.up", "导出")
-            item.label = "导出"
-            item.paletteLabel = "导出"
-            item.toolTip = "导出 PNG / 矢量 PDF / 采样点 CSV"
+            item.image = symbolImage("square.and.arrow.up", L("Export"))
+            item.label = L("Export")
+            item.paletteLabel = L("Export")
+            item.toolTip = L("Export PNG / vector PDF / sample points CSV")
             item.showsIndicator = false
             item.isBordered = true
             item.menu = exportMenu()
@@ -257,8 +257,8 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
             let item = toolbarButton(
                 identifier,
                 symbol: "sidebar.right",
-                label: "检查器",
-                tooltip: "显示/隐藏检查器（⌥⌘I）",
+                label: L("Inspector"),
+                tooltip: L("Show/hide the inspector (⌥⌘I)"),
                 action: #selector(toggleInspector(_:))
             )
             return item
@@ -273,8 +273,8 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         menu.addItem(withTitle: "PNG 2×", action: #selector(exportPNG2x(_:)), keyEquivalent: "").target = self
         menu.addItem(withTitle: "PNG 4×", action: #selector(exportPNG4x(_:)), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "矢量 PDF…", action: #selector(exportPDFAction(_:)), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "采样点 CSV…", action: #selector(exportCSVAction(_:)), keyEquivalent: "").target = self
+        menu.addItem(withTitle: L("Vector PDF…"), action: #selector(exportPDFAction(_:)), keyEquivalent: "").target = self
+        menu.addItem(withTitle: L("Sample Points CSV…"), action: #selector(exportCSVAction(_:)), keyEquivalent: "").target = self
         return menu
     }
 
@@ -288,7 +288,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
-        panel.title = "打开图形文档"
+        panel.title = L("Open Graph Document")
         present(panel) { [weak self] url in
             self?.state.open(url: url)
         }
@@ -307,7 +307,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
         panel.nameFieldStringValue = (state.documentURL?.lastPathComponent) ?? "graph.grapher.json"
-        panel.title = "保存图形文档"
+        panel.title = L("Save Graph Document")
         present(panel) { [weak self] url in
             self?.state.save(to: url)
             self?.updateTitle()

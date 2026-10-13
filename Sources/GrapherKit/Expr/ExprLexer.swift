@@ -1,4 +1,5 @@
 import Darwin
+import Foundation
 
 enum ExprOperator: UInt8 {
     case plus, minus, star, slash, percent, caret
@@ -78,7 +79,7 @@ enum ExprLexer {
             var literal = raw
             if literal.hasSuffix(".") { literal += "0" }
             guard let value = Double(literal) else {
-                throw ExpressionError(message: "无法识别的数字 \"\(raw)\"", column: start, length: p - start)
+                throw ExpressionError(message: String(format: L("Unrecognized number \"%@\""), raw), column: start, length: p - start)
             }
             return ExprToken(kind: .number(value), column: start, length: p - start, raw: raw)
         }
@@ -100,13 +101,13 @@ enum ExprLexer {
             }
             if c == "=" {
                 throw ExpressionError(
-                    message: "公式里不能出现单个 =，请把式子写成 F(x,y) 的形式",
+                    message: L("A single = is not allowed; write the formula as F(x,y)"),
                     column: start,
                     length: 1
                 )
             }
             guard let op = Self.singleOperators[c] else {
-                throw ExpressionError(message: "无法识别的字符 \"\(c)\"", column: start, length: 1)
+                throw ExpressionError(message: String(format: L("Unrecognized character \"%@\""), String(c)), column: start, length: 1)
             }
             pos = start + 1
             return ExprToken(kind: .op(op), column: start, length: 1, raw: String(c))

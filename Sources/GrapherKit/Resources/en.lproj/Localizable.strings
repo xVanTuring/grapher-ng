@@ -1,0 +1,40 @@
+/* GrapherKit: plot kinds */
+"Explicit y=f(x)" = "Explicit y=f(x)";
+"Parametric" = "Parametric";
+"Polar r=f(θ)" = "Polar r=f(θ)";
+"Implicit F(x,y)=0" = "Implicit F(x,y)=0";
+"Inequality region" = "Inequality region";
+"Explicit" = "Explicit";
+"Polar" = "Polar";
+"Implicit" = "Implicit";
+"Region" = "Region";
+
+/* GrapherKit: sampling quality */
+"Smooth (while dragging)" = "Smooth (while dragging)";
+"Standard" = "Standard";
+"Fine" = "Fine";
+
+/* GrapherKit: sample document */
+"Cardioid" = "Cardioid";
+"Rose r = cos(3θ)" = "Rose r = cos(3θ)";
+"Folium of Descartes" = "Folium of Descartes";
+
+/* GrapherKit: formula errors */
+"Unrecognized number \"%@\"" = "Unrecognized number \"%@\"";
+"A single = is not allowed; write the formula as F(x,y)" = "A single = is not allowed; write the formula as F(x,y)";
+"Unrecognized character \"%@\"" = "Unrecognized character \"%@\"";
+"The expression is empty" = "The expression is empty";
+"Unmatched closing parenthesis" = "Unmatched closing parenthesis";
+"Unexpected trailing input \"%@\"" = "Unexpected trailing input \"%@\"";
+"Ternary operator is missing \":\"" = "Ternary operator is missing \":\"";
+"Missing closing parenthesis" = "Missing closing parenthesis";
+"The expression is incomplete" = "The expression is incomplete";
+"Unexpected token \"%@\"" = "Unexpected token \"%@\"";
+"Unknown symbol \"%@\"" = "Unknown symbol \"%@\"";
+"Unknown function \"%@\"" = "Unknown function \"%@\"";
+"Function %@ takes %ld argument(s), got %ld" = "Function %@ takes %ld argument(s), got %ld";
+"Column %ld: %@" = "Column %ld: %@";
+"Could not parse the expression: %@" = "Could not parse the expression: %@";
+
+/* GrapherKit: export */
+"Could not create the PDF file" = "Could not create the PDF file";

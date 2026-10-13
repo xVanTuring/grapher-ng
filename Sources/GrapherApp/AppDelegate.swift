@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
-        panel.title = "打开图形文档"
+        panel.title = L("Open Graph Document")
         panel.beginSheetModal(for: controller.window!) { response in
             guard response == .OK, let url = panel.url else { return }
             controller.state.open(url: url)

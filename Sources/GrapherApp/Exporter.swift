@@ -13,7 +13,7 @@ enum Exporter {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
         panel.nameFieldStringValue = "graph@\(Int(scale))x.png"
-        panel.title = "导出 PNG"
+        panel.title = L("Export PNG")
         present(panel, in: window) { url in
             let scene = state.buildForExport(scale: scale).scene
             let width = Int(state.exportViewport.widthPixels * scale)
@@ -27,14 +27,14 @@ enum Exporter {
                     supersample: 1
                   )
             else {
-                state.presentError("导出失败", "无法初始化渲染器")
+                state.presentError(L("Export failed"), L("Could not initialize the renderer"))
                 return
             }
             do {
                 try renderer.writePNG(scene, to: url)
-                state.statusMessage = "已导出 \(url.lastPathComponent)（\(width)×\(height)）"
+                state.statusMessage = String(format: L("Exported %@ (%ld×%ld)"), url.lastPathComponent, width, height)
             } catch {
-                state.presentError("导出失败", error.localizedDescription)
+                state.presentError(L("Export failed"), error.localizedDescription)
             }
         }
     }
@@ -43,7 +43,7 @@ enum Exporter {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.pdf]
         panel.nameFieldStringValue = "graph.pdf"
-        panel.title = "导出矢量 PDF"
+        panel.title = L("Export Vector PDF")
         present(panel, in: window) { url in
             let scene = state.buildForExport(scale: 1).scene
             let pointsPerPixel = max(state.backingScale, 1)
@@ -57,9 +57,9 @@ enum Exporter {
                     heightPoints: heightPoints,
                     pixelsPerPoint: pointsPerPixel
                 )
-                state.statusMessage = "已导出矢量 \(url.lastPathComponent)"
+                state.statusMessage = String(format: L("Exported vector %@"), url.lastPathComponent)
             } catch {
-                state.presentError("导出失败", error.localizedDescription)
+                state.presentError(L("Export failed"), error.localizedDescription)
             }
         }
     }
@@ -68,13 +68,13 @@ enum Exporter {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
         panel.nameFieldStringValue = "points.csv"
-        panel.title = "导出采样点"
+        panel.title = L("Export Sample Points")
         present(panel, in: window) { url in
             do {
                 try CSVExport.write(curves: state.buildForExport(scale: 1).probeCurves, to: url)
-                state.statusMessage = "已导出采样点 \(url.lastPathComponent)"
+                state.statusMessage = String(format: L("Exported sample points %@"), url.lastPathComponent)
             } catch {
-                state.presentError("导出失败", error.localizedDescription)
+                state.presentError(L("Export failed"), error.localizedDescription)
             }
         }
     }

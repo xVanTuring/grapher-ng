@@ -21,16 +21,16 @@ final class LayerListViewController: NSViewController {
         symbol: "plus",
         target: self,
         action: #selector(showAddMenu(_:)),
-        tooltip: "新建图层",
-        accessibility: "新建图层"
+        tooltip: L("New Layer"),
+        accessibility: L("New Layer")
     )
 
     private lazy var removeButton = ControlFactory.symbolButton(
         symbol: "minus",
         target: self,
         action: #selector(removeSelectedLayer(_:)),
-        tooltip: "删除所选图层",
-        accessibility: "删除所选图层"
+        tooltip: L("Delete Selected Layer"),
+        accessibility: L("Delete Selected Layer")
     )
 
     /// 「＋」点开的图型菜单。
@@ -63,7 +63,7 @@ final class LayerListViewController: NSViewController {
         let root = FlippedView()
         root.translatesAutoresizingMaskIntoConstraints = false
 
-        let title = ControlFactory.sectionLabel("图层")
+        let title = ControlFactory.sectionLabel(L("Layers"))
         let spacer = NSView()
         spacer.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .horizontal)
         let header = ControlFactory.stack(
@@ -196,7 +196,7 @@ final class LayerListViewController: NSViewController {
 
     private func toggleVisibility(of id: UUID) {
         let isVisible = state.layer(with: id)?.isVisible ?? false
-        state.mutateLayers(isVisible ? "隐藏图层" : "显示图层") { document in
+        state.mutateLayers(isVisible ? L("Hide Layer") : L("Show Layer")) { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
             document.layers[index].isVisible.toggle()
         }
@@ -206,13 +206,13 @@ final class LayerListViewController: NSViewController {
         guard row >= 0, row < state.document.layers.count else { return nil }
         let menu = NSMenu()
         let duplicate = menu.addItem(
-            withTitle: "复制图层",
+            withTitle: L("Duplicate Layer"),
             action: #selector(duplicateSelectedLayer(_:)),
             keyEquivalent: ""
         )
         duplicate.target = self
         let remove = menu.addItem(
-            withTitle: "删除",
+            withTitle: L("Delete"),
             action: #selector(removeSelectedLayer(_:)),
             keyEquivalent: ""
         )
@@ -373,8 +373,8 @@ private final class LayerRowView: NSTableCellView {
         symbol: "eye",
         target: nil,
         action: #selector(toggleVisibility(_:)),
-        tooltip: "显示/隐藏",
-        accessibility: "显示/隐藏"
+        tooltip: L("Show/Hide"),
+        accessibility: L("Show/Hide")
     )
     private let swatch = LayerSwatchView(frame: .zero)
     private let warningView = NSImageView()
@@ -419,7 +419,7 @@ private final class LayerRowView: NSTableCellView {
         swatch.color = ControlFactory.nsColor(layer.lineStyle.color)
 
         let symbol = layer.isVisible ? "eye" : "eye.slash"
-        visibilityButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "显示/隐藏")
+        visibilityButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: L("Show/Hide"))
         visibilityButton.contentTintColor = layer.isVisible ? .secondaryLabelColor : .tertiaryLabelColor
         setHasError(hasError)
         applyColors()
@@ -460,10 +460,10 @@ private final class LayerRowView: NSTableCellView {
 
         warningView.image = NSImage(
             systemSymbolName: "exclamationmark.triangle.fill",
-            accessibilityDescription: "公式有语法错误"
+            accessibilityDescription: L("The formula has a syntax error")
         )
         warningView.contentTintColor = .systemOrange
-        warningView.toolTip = "公式有语法错误"
+        warningView.toolTip = L("The formula has a syntax error")
         warningView.imageScaling = .scaleProportionallyUpOrDown
         warningView.isHidden = true
 

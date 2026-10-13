@@ -9,7 +9,7 @@ public enum PDFExport {
 
         public var errorDescription: String? {
             switch self {
-            case .contextCreationFailed: return "无法创建 PDF 文件"
+            case .contextCreationFailed: return L("Could not create the PDF file")
             }
         }
     }

@@ -1,3 +1,5 @@
+import Foundation
+
 final class ExprCompiler {
     private let tokens: [ExprToken]
     private let context: ExpressionContext
@@ -25,7 +27,7 @@ final class ExprCompiler {
 
     func compile() throws -> ExprProgram {
         if case .end = peek().kind {
-            throw ExpressionError(message: "表达式为空", column: 0, length: 1)
+            throw ExpressionError(message: L("The expression is empty"), column: 0, length: 1)
         }
         try parseTernary()
 
@@ -34,10 +36,10 @@ final class ExprCompiler {
         case .end:
             break
         case .op(.rightParen):
-            throw ExpressionError(message: "多了一个右括号", column: trailing.column, length: 1)
+            throw ExpressionError(message: L("Unmatched closing parenthesis"), column: trailing.column, length: 1)
         default:
             throw ExpressionError(
-                message: "多余的内容 \"\(trailing.raw)\"",
+                message: String(format: L("Unexpected trailing input \"%@\""), trailing.raw),
                 column: trailing.column,
                 length: max(1, trailing.length)
             )
@@ -144,7 +146,7 @@ final class ExprCompiler {
             try parseTernary()
             guard case .op(.colon) = peek().kind else {
                 let t = peek()
-                throw ExpressionError(message: "三元运算符缺少 \":\"", column: t.column, length: max(1, t.length))
+                throw ExpressionError(message: L("Ternary operator is missing \":\""), column: t.column, length: max(1, t.length))
             }
             advance()
             let jumpEnd = emitJump(.jump)
@@ -320,14 +322,14 @@ final class ExprCompiler {
             advance()
             try parseTernary()
             guard isRightParen(peek()) else {
-                throw ExpressionError(message: "缺少右括号", column: token.column, length: 1)
+                throw ExpressionError(message: L("Missing closing parenthesis"), column: token.column, length: 1)
             }
             advance()
         case .end:
-            throw ExpressionError(message: "表达式不完整", column: token.column, length: 1)
+            throw ExpressionError(message: L("The expression is incomplete"), column: token.column, length: 1)
         default:
             throw ExpressionError(
-                message: "意外的符号 \"\(token.raw)\"",
+                message: String(format: L("Unexpected token \"%@\""), token.raw),
                 column: token.column,
                 length: max(1, token.length)
             )
@@ -363,7 +365,7 @@ final class ExprCompiler {
             emitPart(parts[0])
             return
         }
-        throw ExpressionError(message: "未知的符号 \"\(name)\"", column: token.column, length: token.length)
+        throw ExpressionError(message: String(format: L("Unknown symbol \"%@\""), name), column: token.column, length: token.length)
     }
 
     private func splitParts(_ chars: [Character]) -> [NamePart]? {
@@ -394,7 +396,7 @@ final class ExprCompiler {
 
     private func parseCall(name: String, token: ExprToken) throws {
         guard let fn = ExprBuiltin.byName[name] else {
-            throw ExpressionError(message: "未知的函数 \"\(name)\"", column: token.column, length: token.length)
+            throw ExpressionError(message: String(format: L("Unknown function \"%@\""), name), column: token.column, length: token.length)
         }
         advance()
         let open = advance()
@@ -410,13 +412,13 @@ final class ExprCompiler {
             }
         }
         guard isRightParen(peek()) else {
-            throw ExpressionError(message: "缺少右括号", column: open.column, length: 1)
+            throw ExpressionError(message: L("Missing closing parenthesis"), column: open.column, length: 1)
         }
         advance()
 
         guard argc == fn.arity else {
             throw ExpressionError(
-                message: "函数 \(name) 需要 \(fn.arity) 个参数，给了 \(argc) 个",
+                message: String(format: L("Function %@ takes %ld argument(s), got %ld"), name, fn.arity, argc),
                 column: token.column,
                 length: token.length
             )

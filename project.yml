@@ -5,6 +5,8 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
   groupSortPosition: top
+  # 界面文字的 key 用英文原文（`L("…")`），缺翻译时退回英文；中文在 zh-Hans.lproj。
+  developmentLanguage: en
 
 settings:
   base:
@@ -91,7 +93,7 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         CFBundlePackageType: APPL
-        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleDevelopmentRegion: en
         CFBundleAllowMixedLocalizations: true
         LSMinimumSystemVersion: "14.0"
         LSApplicationCategoryType: public.app-category.productivity
@@ -129,5 +131,7 @@ schemes:
       config: Debug
     test:
       config: Debug
+      # 公式错误提示等测试按中文原文断言，测试固定用简体中文跑，不随本机系统语言变。
+      language: zh-Hans
       targets:
         - GrapherNGTests

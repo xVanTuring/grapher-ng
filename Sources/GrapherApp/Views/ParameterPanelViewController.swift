@@ -14,8 +14,8 @@ final class ParameterPanelViewController: NSViewController {
         symbol: "plus",
         target: self,
         action: #selector(addParameter(_:)),
-        tooltip: "新建参数",
-        accessibility: "新建参数"
+        tooltip: L("New Parameter"),
+        accessibility: L("New Parameter")
     )
 
     init(state: AppState) {
@@ -36,7 +36,7 @@ final class ParameterPanelViewController: NSViewController {
         let root = FlippedView()
         root.translatesAutoresizingMaskIntoConstraints = false
 
-        let title = ControlFactory.sectionLabel("参数")
+        let title = ControlFactory.sectionLabel(L("Parameters"))
         let spacer = NSView()
         spacer.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .horizontal)
         let header = ControlFactory.stack(
@@ -94,7 +94,7 @@ final class ParameterPanelViewController: NSViewController {
         }
         guard !parameters.isEmpty else {
             rows.addArrangedSubview(ControlFactory.caption(
-                "还没有参数。新建后可以在公式里写 a*sin(x)，拖动滑块看图形实时变化。"
+                L("No parameters yet. Add one, write a*sin(x) in a formula, and drag the slider to watch the graph change live.")
             ))
             return
         }
@@ -112,7 +112,7 @@ final class ParameterPanelViewController: NSViewController {
         row.onRemove = { [weak self] in self?.state.removeParameter(id: parameter.id) }
         row.onDragBegin = { [weak self] in self?.state.beginLiveEdit() }
         row.onValueChange = { [weak self] value in self?.state.updateParameter(id: parameter.id, value: value) }
-        row.onDragEnd = { [weak self] in self?.state.commitLiveEdit("修改参数") }
+        row.onDragEnd = { [weak self] in self?.state.commitLiveEdit(L("Change Parameter")) }
         return row
     }
 
@@ -138,15 +138,15 @@ private final class ParameterRowView: NSView {
         symbol: "trash",
         target: nil,
         action: #selector(removeClicked(_:)),
-        tooltip: "删除参数",
-        accessibility: "删除参数"
+        tooltip: L("Delete Parameter"),
+        accessibility: L("Delete Parameter")
     )
     private var isDragging = false
     private var currentName: String
 
     init(parameter: ParameterDefinition) {
         currentName = parameter.name
-        nameField = ControlFactory.textField(parameter.name, placeholder: "名称", monospaced: true)
+        nameField = ControlFactory.textField(parameter.name, placeholder: L("Name"), monospaced: true)
         let lower = min(parameter.lowerBound, parameter.upperBound)
         let upper = max(parameter.lowerBound, parameter.upperBound)
         slider = ControlFactory.slider(

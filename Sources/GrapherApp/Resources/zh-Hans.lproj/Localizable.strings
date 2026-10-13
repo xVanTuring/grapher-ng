@@ -1,0 +1,131 @@
+/* 菜单 */
+"About Grapher NG" = "关于 Grapher NG";
+"Hide Grapher NG" = "隐藏 Grapher NG";
+"Hide Others" = "隐藏其他";
+"Show All" = "全部显示";
+"Quit Grapher NG" = "退出 Grapher NG";
+"File" = "文件";
+"New" = "新建";
+"Open…" = "打开…";
+"Save" = "保存";
+"Save As…" = "另存为…";
+"Export PNG 1×" = "导出 PNG 1×";
+"Export PNG 2×" = "导出 PNG 2×";
+"Export PNG 4×" = "导出 PNG 4×";
+"Export Vector PDF…" = "导出矢量 PDF…";
+"Export Sample Points as CSV…" = "导出采样点 CSV…";
+"Close Window" = "关闭窗口";
+"Edit" = "编辑";
+"Undo" = "撤销";
+"Redo" = "重做";
+"Cut" = "剪切";
+"Copy" = "拷贝";
+"Paste" = "粘贴";
+"Select All" = "全选";
+"View" = "视图";
+"Fit Content" = "适应内容";
+"Reset View" = "重置视图";
+"Zoom In" = "放大";
+"Zoom Out" = "缩小";
+"Show/Hide Sidebar" = "显示/隐藏侧栏";
+"Show/Hide Inspector" = "显示/隐藏检查器";
+"Window" = "窗口";
+"Minimize" = "最小化";
+"Zoom" = "缩放";
+"Bring All to Front" = "前置全部窗口";
+
+/* 工具栏 */
+"Zoom to fit every curve (F)" = "缩放到刚好装下所有曲线（F）";
+"Reset" = "重置";
+"Back to the origin at the default zoom (R)" = "回到原点、默认缩放（R）";
+"Zoom out (⌘-)" = "缩小（⌘-）";
+"Zoom in (⌘=)" = "放大（⌘=）";
+"Export" = "导出";
+"Export PNG / vector PDF / sample points CSV" = "导出 PNG / 矢量 PDF / 采样点 CSV";
+"Vector PDF…" = "矢量 PDF…";
+"Sample Points CSV…" = "采样点 CSV…";
+"Inspector" = "检查器";
+"Show/hide the inspector (⌥⌘I)" = "显示/隐藏检查器（⌥⌘I）";
+
+/* 文件与导出 */
+"Open Graph Document" = "打开图形文档";
+"Save Graph Document" = "保存图形文档";
+"Export PNG" = "导出 PNG";
+"Export Vector PDF" = "导出矢量 PDF";
+"Export Sample Points" = "导出采样点";
+"Export failed" = "导出失败";
+"Could not initialize the renderer" = "无法初始化渲染器";
+"Exported %@ (%ld×%ld)" = "已导出 %@（%ld×%ld）";
+"Exported vector %@" = "已导出矢量 %@";
+"Exported sample points %@" = "已导出采样点 %@";
+"Created a blank document" = "已新建空白文档";
+"Opened %@" = "已打开 %@";
+"Could not open the file" = "打开失败";
+"Saved to %@" = "已保存到 %@";
+"Could not save the file" = "保存失败";
+"%@: %@" = "%@：%@";
+"OK" = "好";
+
+/* 画布 */
+"Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset" = "拖动或滚动平移 · ⌘+滚轮或捏合缩放 · 移动鼠标读数 · F 适应内容 · R 重置";
+"Zoom %.4g px/unit" = "缩放 %.4g px/单位";
+
+/* 侧栏：图层 */
+"Layers" = "图层";
+"New Layer" = "新建图层";
+"Delete Selected Layer" = "删除所选图层";
+"Duplicate Layer" = "复制图层";
+"Delete" = "删除";
+"Show/Hide" = "显示/隐藏";
+"The formula has a syntax error" = "公式有语法错误";
+
+/* 侧栏：参数 */
+"Parameters" = "参数";
+"New Parameter" = "新建参数";
+"Delete Parameter" = "删除参数";
+"Name" = "名称";
+"No parameters yet. Add one, write a*sin(x) in a formula, and drag the slider to watch the graph change live." = "还没有参数。新建后可以在公式里写 a*sin(x)，拖动滑块看图形实时变化。";
+
+/* 检查器 */
+"Select a layer on the left to edit it, or click + to create one." = "在左侧选一个图层来编辑，或者点「＋」新建一个。";
+"Layer" = "图层";
+"Type" = "类型";
+"Restrict domain" = "指定定义域";
+"Relation" = "关系";
+"Line" = "线条";
+"Fill" = "填充";
+"Formula y = f(x)" = "公式 y = f(x)";
+"F(x, y) = 0 — enter F here" = "F(x, y) = 0，即 F 填在这里";
+"F(x, y) compared with 0" = "F(x, y) 与 0 比较";
+"to" = "到";
+"Visible Range" = "视图范围";
+"Color" = "颜色";
+"Width" = "线宽";
+"Fill region" = "填充区域";
+"Opacity" = "不透明度";
+"Axes" = "坐标轴";
+"Grid" = "网格";
+"Minor grid" = "细分网格";
+"Dark theme" = "暗色主题";
+
+/* 撤销操作名 */
+"New %@" = "新建%@";
+"Delete Layer" = "删除图层";
+"Reorder Layers" = "调整顺序";
+"%@ Copy" = "%@ 副本";
+"Hide Layer" = "隐藏图层";
+"Show Layer" = "显示图层";
+"Change Parameter" = "修改参数";
+"Edit Formula" = "修改公式";
+"Rename" = "重命名";
+"Change Type" = "修改类型";
+"Change Domain" = "修改定义域";
+"Change Relation" = "修改关系";
+"Change Color" = "修改颜色";
+"Change Line Width" = "修改线宽";
+"Change Fill" = "修改填充";
+"Change Fill Color" = "修改填充颜色";
+"Show Axes" = "显示坐标轴";
+"Show Grid" = "显示网格";
+"Show Minor Grid" = "显示细分网格";
+"Change Theme" = "切换主题";

@@ -378,28 +378,28 @@ final class AppState {
         var created = Layer.makeDefault(kind: kind, index: document.layers.count)
         created.usesExplicitDomain = kind == .parametric || kind == .polar
         let id = created.id
-        mutate("新建\(kind.shortName)") { $0.layers.append(created) }
+        mutate(String(format: L("New %@"), kind.shortName)) { $0.layers.append(created) }
         selection = id
     }
 
     func removeLayer(id: UUID) {
-        mutate("删除图层") { document in
+        mutate(L("Delete Layer")) { document in
             document.layers.removeAll { $0.id == id }
         }
         repairSelection()
     }
 
     func moveLayers(from source: IndexSet, to destination: Int) {
-        mutate("调整顺序") { $0.layers.moveElements(fromOffsets: source, toOffset: destination) }
+        mutate(L("Reorder Layers")) { $0.layers.moveElements(fromOffsets: source, toOffset: destination) }
     }
 
     func duplicateLayer(id: UUID) {
         guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
         var copy = document.layers[index]
         copy.id = UUID()
-        copy.name += " 副本"
+        copy.name = String(format: L("%@ Copy"), copy.name)
         let newID = copy.id
-        mutate("复制图层") { $0.layers.insert(copy, at: index + 1) }
+        mutate(L("Duplicate Layer")) { $0.layers.insert(copy, at: index + 1) }
         selection = newID
     }
 
@@ -446,11 +446,11 @@ final class AppState {
         var parameter = ParameterDefinition(name: name)
         parameter.lowerBound = -5
         parameter.upperBound = 5
-        mutate("新建参数") { $0.parameters.append(parameter) }
+        mutate(L("New Parameter")) { $0.parameters.append(parameter) }
     }
 
     func removeParameter(id: UUID) {
-        mutate("删除参数") { document in
+        mutate(L("Delete Parameter")) { document in
             document.parameters.removeAll { $0.id == id }
         }
     }
@@ -510,7 +510,7 @@ final class AppState {
         selection = nil
         documentURL = nil
         markSaved()
-        statusMessage = "已新建空白文档"
+        statusMessage = L("Created a blank document")
         requestRebuild(interactive: false)
         notify(.document)
         notify(.layers)
@@ -525,13 +525,13 @@ final class AppState {
             selection = loaded.layers.first?.id
             documentURL = url
             markSaved()
-            statusMessage = "已打开 \(url.lastPathComponent)"
+            statusMessage = String(format: L("Opened %@"), url.lastPathComponent)
             requestRebuild(interactive: false)
             notify(.document)
             notify(.layers)
             notify(.parameters)
         } catch {
-            presentError("打开失败", error.localizedDescription)
+            presentError(L("Could not open the file"), error.localizedDescription)
         }
     }
 
@@ -541,19 +541,19 @@ final class AppState {
             try DocumentStore.save(document, to: url)
             documentURL = url
             markSaved()
-            statusMessage = "已保存到 \(url.lastPathComponent)"
+            statusMessage = String(format: L("Saved to %@"), url.lastPathComponent)
         } catch {
-            presentError("保存失败", error.localizedDescription)
+            presentError(L("Could not save the file"), error.localizedDescription)
         }
     }
 
     func presentError(_ title: String, _ message: String) {
-        statusMessage = "\(title)：\(message)"
+        statusMessage = String(format: L("%@: %@"), title, message)
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = title
         alert.informativeText = message
-        alert.addButton(withTitle: "好")
+        alert.addButton(withTitle: L("OK"))
         alert.runModal()
     }
 }

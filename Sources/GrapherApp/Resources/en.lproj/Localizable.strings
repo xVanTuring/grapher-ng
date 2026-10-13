@@ -1,0 +1,131 @@
+/* Menus */
+"About Grapher NG" = "About Grapher NG";
+"Hide Grapher NG" = "Hide Grapher NG";
+"Hide Others" = "Hide Others";
+"Show All" = "Show All";
+"Quit Grapher NG" = "Quit Grapher NG";
+"File" = "File";
+"New" = "New";
+"Open…" = "Open…";
+"Save" = "Save";
+"Save As…" = "Save As…";
+"Export PNG 1×" = "Export PNG 1×";
+"Export PNG 2×" = "Export PNG 2×";
+"Export PNG 4×" = "Export PNG 4×";
+"Export Vector PDF…" = "Export Vector PDF…";
+"Export Sample Points as CSV…" = "Export Sample Points as CSV…";
+"Close Window" = "Close Window";
+"Edit" = "Edit";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"Cut" = "Cut";
+"Copy" = "Copy";
+"Paste" = "Paste";
+"Select All" = "Select All";
+"View" = "View";
+"Fit Content" = "Fit Content";
+"Reset View" = "Reset View";
+"Zoom In" = "Zoom In";
+"Zoom Out" = "Zoom Out";
+"Show/Hide Sidebar" = "Show/Hide Sidebar";
+"Show/Hide Inspector" = "Show/Hide Inspector";
+"Window" = "Window";
+"Minimize" = "Minimize";
+"Zoom" = "Zoom";
+"Bring All to Front" = "Bring All to Front";
+
+/* Toolbar */
+"Zoom to fit every curve (F)" = "Zoom to fit every curve (F)";
+"Reset" = "Reset";
+"Back to the origin at the default zoom (R)" = "Back to the origin at the default zoom (R)";
+"Zoom out (⌘-)" = "Zoom out (⌘-)";
+"Zoom in (⌘=)" = "Zoom in (⌘=)";
+"Export" = "Export";
+"Export PNG / vector PDF / sample points CSV" = "Export PNG / vector PDF / sample points CSV";
+"Vector PDF…" = "Vector PDF…";
+"Sample Points CSV…" = "Sample Points CSV…";
+"Inspector" = "Inspector";
+"Show/hide the inspector (⌥⌘I)" = "Show/hide the inspector (⌥⌘I)";
+
+/* Files and export */
+"Open Graph Document" = "Open Graph Document";
+"Save Graph Document" = "Save Graph Document";
+"Export PNG" = "Export PNG";
+"Export Vector PDF" = "Export Vector PDF";
+"Export Sample Points" = "Export Sample Points";
+"Export failed" = "Export failed";
+"Could not initialize the renderer" = "Could not initialize the renderer";
+"Exported %@ (%ld×%ld)" = "Exported %@ (%ld×%ld)";
+"Exported vector %@" = "Exported vector %@";
+"Exported sample points %@" = "Exported sample points %@";
+"Created a blank document" = "Created a blank document";
+"Opened %@" = "Opened %@";
+"Could not open the file" = "Could not open the file";
+"Saved to %@" = "Saved to %@";
+"Could not save the file" = "Could not save the file";
+"%@: %@" = "%@: %@";
+"OK" = "OK";
+
+/* Canvas */
+"Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset" = "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset";
+"Zoom %.4g px/unit" = "Zoom %.4g px/unit";
+
+/* Sidebar: layers */
+"Layers" = "Layers";
+"New Layer" = "New Layer";
+"Delete Selected Layer" = "Delete Selected Layer";
+"Duplicate Layer" = "Duplicate Layer";
+"Delete" = "Delete";
+"Show/Hide" = "Show/Hide";
+"The formula has a syntax error" = "The formula has a syntax error";
+
+/* Sidebar: parameters */
+"Parameters" = "Parameters";
+"New Parameter" = "New Parameter";
+"Delete Parameter" = "Delete Parameter";
+"Name" = "Name";
+"No parameters yet. Add one, write a*sin(x) in a formula, and drag the slider to watch the graph change live." = "No parameters yet. Add one, write a*sin(x) in a formula, and drag the slider to watch the graph change live.";
+
+/* Inspector */
+"Select a layer on the left to edit it, or click + to create one." = "Select a layer on the left to edit it, or click + to create one.";
+"Layer" = "Layer";
+"Type" = "Type";
+"Restrict domain" = "Restrict domain";
+"Relation" = "Relation";
+"Line" = "Line";
+"Fill" = "Fill";
+"Formula y = f(x)" = "Formula y = f(x)";
+"F(x, y) = 0 — enter F here" = "F(x, y) = 0 — enter F here";
+"F(x, y) compared with 0" = "F(x, y) compared with 0";
+"to" = "to";
+"Visible Range" = "Visible Range";
+"Color" = "Color";
+"Width" = "Width";
+"Fill region" = "Fill region";
+"Opacity" = "Opacity";
+"Axes" = "Axes";
+"Grid" = "Grid";
+"Minor grid" = "Minor grid";
+"Dark theme" = "Dark theme";
+
+/* Undo action names */
+"New %@" = "New %@";
+"Delete Layer" = "Delete Layer";
+"Reorder Layers" = "Reorder Layers";
+"%@ Copy" = "%@ Copy";
+"Hide Layer" = "Hide Layer";
+"Show Layer" = "Show Layer";
+"Change Parameter" = "Change Parameter";
+"Edit Formula" = "Edit Formula";
+"Rename" = "Rename";
+"Change Type" = "Change Type";
+"Change Domain" = "Change Domain";
+"Change Relation" = "Change Relation";
+"Change Color" = "Change Color";
+"Change Line Width" = "Change Line Width";
+"Change Fill" = "Change Fill";
+"Change Fill Color" = "Change Fill Color";
+"Show Axes" = "Show Axes";
+"Show Grid" = "Show Grid";
+"Show Minor Grid" = "Show Minor Grid";
+"Change Theme" = "Change Theme";

@@ -95,7 +95,7 @@ final class LayerEditorViewController: NSViewController {
             builtLayerID = nil
             builtKind = nil
             clearReferences()
-            replaceContents([ControlFactory.caption("在左侧选一个图层来编辑，或者点「添加」新建一个。")])
+            replaceContents([ControlFactory.caption(L("Select a layer on the left to edit it, or click + to create one."))])
             return
         }
         if layer.id == builtLayerID, layer.kind == builtKind {
@@ -110,12 +110,12 @@ final class LayerEditorViewController: NSViewController {
         builtKind = layer.kind
         clearReferences()
 
-        var rows: [NSView] = [ControlFactory.heading("图层")]
+        var rows: [NSView] = [ControlFactory.heading(L("Layer"))]
 
         let name = ControlFactory.textField(layer.name, target: self, action: #selector(nameEdited(_:)))
         name.cell?.sendsActionOnEndEditing = true
         nameField = name
-        rows.append(ControlFactory.formRow("名称", name))
+        rows.append(ControlFactory.formRow(L("Name"), name))
 
         let kinds = PlotKind.allCases
         let kindPopUp = ControlFactory.popUp(
@@ -125,12 +125,12 @@ final class LayerEditorViewController: NSViewController {
         )
         if let index = kinds.firstIndex(of: layer.kind) { kindPopUp.selectItem(at: index) }
         self.kindPopUp = kindPopUp
-        rows.append(ControlFactory.formRow("类型", kindPopUp))
+        rows.append(ControlFactory.formRow(L("Type"), kindPopUp))
 
         rows.append(contentsOf: formulaRows(layer))
 
         if layer.kind.usesDomain {
-            let checkbox = ControlFactory.checkbox("指定定义域", target: self, action: #selector(domainToggled(_:)))
+            let checkbox = ControlFactory.checkbox(L("Restrict domain"), target: self, action: #selector(domainToggled(_:)))
             domainCheckbox = checkbox
             let group = domainGroup(layer)
             domainGroup = group
@@ -147,15 +147,15 @@ final class LayerEditorViewController: NSViewController {
             )
             if let index = relations.firstIndex(of: layer.relation) { popUp.selectItem(at: index) }
             relationPopUp = popUp
-            rows.append(ControlFactory.formRow("关系", popUp))
+            rows.append(ControlFactory.formRow(L("Relation"), popUp))
         }
 
         rows.append(ControlFactory.separator())
-        rows.append(ControlFactory.sectionLabel("线条"))
+        rows.append(ControlFactory.sectionLabel(L("Line")))
         rows.append(contentsOf: lineRows(layer))
 
         if layer.kind == .region {
-            rows.append(ControlFactory.sectionLabel("填充"))
+            rows.append(ControlFactory.sectionLabel(L("Fill")))
             rows.append(contentsOf: fillRows(layer))
         }
 
@@ -233,7 +233,7 @@ final class LayerEditorViewController: NSViewController {
         switch layer.kind {
         case .explicit:
             let field = makeFormulaField(
-                title: "公式 y = f(x)",
+                title: L("Formula y = f(x)"),
                 placeholder: PlotKind.explicit.primaryPlaceholder,
                 layerID: layer.id,
                 isPrimary: true
@@ -267,7 +267,7 @@ final class LayerEditorViewController: NSViewController {
             return [field]
         case .implicit:
             let field = makeFormulaField(
-                title: "F(x, y) = 0，即 F 填在这里",
+                title: L("F(x, y) = 0 — enter F here"),
                 placeholder: PlotKind.implicit.primaryPlaceholder,
                 layerID: layer.id,
                 isPrimary: true
@@ -276,7 +276,7 @@ final class LayerEditorViewController: NSViewController {
             return [field]
         case .region:
             let field = makeFormulaField(
-                title: "F(x, y) 与 0 比较",
+                title: L("F(x, y) compared with 0"),
                 placeholder: PlotKind.region.primaryPlaceholder,
                 layerID: layer.id,
                 isPrimary: true
@@ -305,7 +305,7 @@ final class LayerEditorViewController: NSViewController {
             self.state.updateLayerLive(id: layerID) { layer in
                 if isPrimary { layer.formula = text } else { layer.secondaryFormula = text }
             }
-            self.state.commitLiveEdit("修改公式")
+            self.state.commitLiveEdit(L("Edit Formula"))
         }
         return field
     }
@@ -328,7 +328,7 @@ final class LayerEditorViewController: NSViewController {
         domainLowerField = lower
         domainUpperField = upper
 
-        let dash = ControlFactory.label("到")
+        let dash = ControlFactory.label(L("to"))
         dash.setContentHuggingPriority(.required, for: .horizontal)
         dash.setContentCompressionResistancePriority(.required, for: .horizontal)
         let bounds = ControlFactory.stack(
@@ -345,7 +345,7 @@ final class LayerEditorViewController: NSViewController {
             action: #selector(domainFullCircle(_:))
         )
         let visible = ControlFactory.pushButton(
-            "视图范围",
+            L("Visible Range"),
             target: self,
             action: #selector(domainFollowViewport(_:))
         )
@@ -402,11 +402,11 @@ final class LayerEditorViewController: NSViewController {
             spacing: 6,
             alignment: .centerY
         )
-        return [ControlFactory.formRow("颜色", well), ControlFactory.formRow("线宽", width)]
+        return [ControlFactory.formRow(L("Color"), well), ControlFactory.formRow(L("Width"), width)]
     }
 
     private func fillRows(_ layer: Layer) -> [NSView] {
-        let checkbox = ControlFactory.checkbox("填充区域", target: self, action: #selector(fillToggled(_:)))
+        let checkbox = ControlFactory.checkbox(L("Fill region"), target: self, action: #selector(fillToggled(_:)))
         fillCheckbox = checkbox
 
         let well = ControlFactory.colorWell(
@@ -437,8 +437,8 @@ final class LayerEditorViewController: NSViewController {
         )
         return [
             checkbox,
-            ControlFactory.formRow("颜色", well),
-            ControlFactory.formRow("不透明度", opacity),
+            ControlFactory.formRow(L("Color"), well),
+            ControlFactory.formRow(L("Opacity"), opacity),
         ]
     }
 
@@ -446,19 +446,19 @@ final class LayerEditorViewController: NSViewController {
 
     @objc private func nameEdited(_ sender: NSTextField) {
         let name = sender.stringValue
-        editLayerList("重命名") { $0.name = name }
+        editLayerList(L("Rename")) { $0.name = name }
     }
 
     @objc private func kindEdited(_ sender: NSPopUpButton) {
         let index = sender.indexOfSelectedItem
         guard index >= 0, index < PlotKind.allCases.count else { return }
         let kind = PlotKind.allCases[index]
-        editLayer("修改类型") { $0.kind = kind }
+        editLayer(L("Change Type")) { $0.kind = kind }
     }
 
     @objc private func domainToggled(_ sender: NSButton) {
         let on = sender.state == .on
-        editLayer("修改定义域") { $0.usesExplicitDomain = on }
+        editLayer(L("Change Domain")) { $0.usesExplicitDomain = on }
     }
 
     @objc private func domainEdited(_ sender: NSTextField) {
@@ -480,33 +480,33 @@ final class LayerEditorViewController: NSViewController {
         let index = sender.indexOfSelectedItem
         guard index >= 0, index < RegionRelation.allCases.count else { return }
         let relation = RegionRelation.allCases[index]
-        editLayer("修改关系") { $0.relation = relation }
+        editLayer(L("Change Relation")) { $0.relation = relation }
     }
 
     @objc private func lineColorEdited(_ sender: NSColorWell) {
         let color = ControlFactory.rgbaColor(sender.color)
-        editLayer("修改颜色") { $0.lineStyle.color = color }
+        editLayer(L("Change Color")) { $0.lineStyle.color = color }
     }
 
     @objc private func lineWidthEdited(_ sender: NSSlider) {
         let width = sender.doubleValue
-        liveEdit("修改线宽") { $0.lineStyle.width = width }
+        liveEdit(L("Change Line Width")) { $0.lineStyle.width = width }
         lineWidthLabel?.stringValue = ControlFactory.format(width)
     }
 
     @objc private func fillToggled(_ sender: NSButton) {
         let on = sender.state == .on
-        editLayer("修改填充") { $0.fillStyle.isFilled = on }
+        editLayer(L("Change Fill")) { $0.fillStyle.isFilled = on }
     }
 
     @objc private func fillColorEdited(_ sender: NSColorWell) {
         let color = ControlFactory.rgbaColor(sender.color)
-        editLayer("修改填充颜色") { $0.fillStyle.color = color }
+        editLayer(L("Change Fill Color")) { $0.fillStyle.color = color }
     }
 
     @objc private func fillOpacityEdited(_ sender: NSSlider) {
         let opacity = sender.doubleValue
-        liveEdit("修改填充") { $0.fillStyle.opacity = opacity }
+        liveEdit(L("Change Fill")) { $0.fillStyle.opacity = opacity }
         fillOpacityLabel?.stringValue = ControlFactory.format(opacity)
     }
 
@@ -553,7 +553,7 @@ final class LayerEditorViewController: NSViewController {
 
     private func setDomain(lower: Double, upper: Double) {
         guard let id = state.selectedLayer?.id else { return }
-        state.mutate("修改定义域") { document in
+        state.mutate(L("Change Domain")) { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
             document.layers[index].domainLower = lower
             document.layers[index].domainUpper = upper

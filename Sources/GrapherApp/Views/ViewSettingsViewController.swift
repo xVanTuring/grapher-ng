@@ -51,10 +51,10 @@ final class ViewSettingsViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        let axes = ControlFactory.checkbox("坐标轴", target: self, action: #selector(axesToggled(_:)))
-        let grid = ControlFactory.checkbox("网格", target: self, action: #selector(gridToggled(_:)))
-        let minorGrid = ControlFactory.checkbox("细分网格", target: self, action: #selector(minorGridToggled(_:)))
-        let theme = ControlFactory.checkbox("暗色主题", target: self, action: #selector(themeToggled(_:)))
+        let axes = ControlFactory.checkbox(L("Axes"), target: self, action: #selector(axesToggled(_:)))
+        let grid = ControlFactory.checkbox(L("Grid"), target: self, action: #selector(gridToggled(_:)))
+        let minorGrid = ControlFactory.checkbox(L("Minor grid"), target: self, action: #selector(minorGridToggled(_:)))
+        let theme = ControlFactory.checkbox(L("Dark theme"), target: self, action: #selector(themeToggled(_:)))
         axesCheckbox = axes
         gridCheckbox = grid
         minorGridCheckbox = minorGrid
@@ -67,7 +67,7 @@ final class ViewSettingsViewController: NSViewController {
 
         let switches = ControlFactory.stack([axes, grid, minorGrid, theme], spacing: ControlFactory.Metric.rowSpacing)
         let ranges = ControlFactory.stack([xRange, yRange], spacing: 2)
-        add(ControlFactory.heading("视图"))
+        add(ControlFactory.heading(L("View")))
         add(switches)
         add(ranges)
 
@@ -102,21 +102,21 @@ final class ViewSettingsViewController: NSViewController {
 
     @objc private func axesToggled(_ sender: NSButton) {
         let on = sender.state == .on
-        state.mutate("显示坐标轴") { $0.showAxes = on }
+        state.mutate(L("Show Axes")) { $0.showAxes = on }
     }
 
     @objc private func gridToggled(_ sender: NSButton) {
         let on = sender.state == .on
-        state.mutate("显示网格") { $0.showGrid = on }
+        state.mutate(L("Show Grid")) { $0.showGrid = on }
     }
 
     @objc private func minorGridToggled(_ sender: NSButton) {
         let on = sender.state == .on
-        state.mutate("显示细分网格") { $0.showMinorGrid = on }
+        state.mutate(L("Show Minor Grid")) { $0.showMinorGrid = on }
     }
 
     @objc private func themeToggled(_ sender: NSButton) {
         let isDark = sender.state == .on
-        state.mutate("切换主题") { $0.theme = isDark ? .dark : .light }
+        state.mutate(L("Change Theme")) { $0.theme = isDark ? .dark : .light }
     }
 }

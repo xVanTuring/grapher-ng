@@ -17,7 +17,7 @@ public final class MetalContext {
         self.device = device
         self.queue = queue
         do {
-            self.library = try device.makeLibrary(source: ShaderSource.all, options: nil)
+            self.library = try device.makeLibrary(source: ShaderSource.all + ShaderSource3D.all, options: nil)
         } catch {
             NSLog("GrapherNG: Metal shader compilation failed: \(error)")
             return nil

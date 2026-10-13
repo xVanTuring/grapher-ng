@@ -203,7 +203,8 @@ public final class OffscreenRenderer2D {
 
     /// `bgra8Unorm` lands in memory as B, G, R, A; declaring the same order on
     /// the image keeps the channels from being swapped on the way out.
-    private static func makeCGImage(
+    /// （3D 的离屏渲染也用它。）
+    static func makeCGImage(
         bgra: [UInt8],
         width: Int,
         height: Int,

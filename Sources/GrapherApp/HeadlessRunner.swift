@@ -52,7 +52,12 @@ enum HeadlessRunner {
                 exit(1)
             }
         } else {
-            document = .sample()
+            document = arguments.contains("--space") ? .sample3D() : .sample()
+        }
+
+        if document.dimension == .space {
+            runRender3D(path: path, document: document, quality: quality, arguments: arguments)
+            return
         }
 
         // Flags override the document's own canvas, so rendering the same
@@ -126,6 +131,44 @@ enum HeadlessRunner {
           折线      \(polylineCount) 条，\(pointCount) 个点
           填充矩形  \(rectCount) 个
           曲线      \(built.probeCurves.count) 条
+        """)
+    }
+
+    /// 立体图：`--azimuth` / `--elevation`（弧度）可以换个角度看。
+    private static func runRender3D(path: String, document: GrapherDocument, quality: SampleQuality, arguments: [String]) {
+        var view = document.view3D
+        view.widthPixels = optionalNumber("--width", arguments) ?? 1600
+        view.heightPixels = optionalNumber("--height", arguments) ?? 1200
+        if let azimuth = optionalNumber("--azimuth", arguments) { view.azimuth = azimuth }
+        if let elevation = optionalNumber("--elevation", arguments) { view.elevation = elevation }
+
+        let started = Date()
+        let built = SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document, compiled: LayerCompiler().compile(document),
+            view: view, quality: quality, backingScale: 2))
+        let elapsed = Date().timeIntervalSince(started)
+        let chrome = Chrome3D.make(view: view, document: document, backingScale: 2)
+
+        guard let context = MetalContext.shared,
+              let renderer = OffscreenRenderer3D(context: context, pixelWidth: Int(view.widthPixels), pixelHeight: Int(view.heightPixels))
+        else {
+            FileHandle.standardError.write(Data("无法初始化 Metal 渲染器\n".utf8))
+            exit(1)
+        }
+        do {
+            try renderer.writePNG(content: built.scene, contentView: built.view, chrome: chrome.scene,
+                                  view: view, background: document.theme.background, to: URL(fileURLWithPath: path))
+        } catch {
+            FileHandle.standardError.write(Data("写入 PNG 失败: \(error)\n".utf8))
+            exit(1)
+        }
+        let triangles = built.scene.meshes.reduce(0) { $0 + $1.triangleCount }
+        print("""
+        已渲染 \(path)（立体图）
+          画布      \(Int(view.widthPixels))×\(Int(view.heightPixels)) 像素，坐标盒 ±\(view.halfExtent)
+          采样耗时  \(String(format: "%.1f", elapsed * 1000)) ms（\(quality.rawValue)）
+          曲面      \(built.scene.meshes.count) 张，\(triangles) 个三角形
+          曲线      \(built.scene.polylines.count) 条
         """)
     }
 

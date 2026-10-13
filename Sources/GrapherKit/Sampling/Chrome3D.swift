@@ -100,7 +100,8 @@ public enum Chrome3D {
         if document.showTickLabels {
             let floor = -1.0
             func place(axis: Int, edge: SIMD3<Double>, outward: SIMD3<Double>) {
-                for tick in ticks[axis].major {
+                // 正好落在盒角上的刻度不标：两条棱的端点刻度会挤在同一个角上。
+                for tick in ticks[axis].major where abs(n(axis, tick)) < 0.98 {
                     var p = edge
                     p[axis] = n(axis, tick)
                     labels.append(AxisLabel3D(

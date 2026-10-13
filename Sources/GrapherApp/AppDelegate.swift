@@ -1,4 +1,5 @@
 import AppKit
+import GrapherKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -45,8 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Documents
 
     @discardableResult
-    private func newWindow() -> DocumentWindowController {
-        let controller = DocumentWindowController()
+    private func newWindow(dimension: DocumentDimension = .plane) -> DocumentWindowController {
+        let controller = DocumentWindowController(state: AppState(dimension: dimension))
         controller.onClose = { [weak self] closed in
             self?.windowControllers.removeAll { $0 === closed }
         }
@@ -80,5 +81,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func newDocumentFromMenu(_ sender: Any?) {
         newWindow()
+    }
+
+    /// 新建立体图：开一扇新窗口，装着立体图的示例文档。
+    @objc func newSpaceDocumentFromMenu(_ sender: Any?) {
+        newWindow(dimension: .space)
     }
 }

@@ -59,6 +59,8 @@ final class AppState {
 
     private(set) var document: GrapherDocument
     private(set) var built: BuiltScene?
+    /// 立体图的最近一份几何。
+    private(set) var built3D: BuiltScene3D?
     private(set) var expressionErrors: [UUID: ExpressionError] = [:]
     private(set) var isBuilding = false
     private(set) var backingScale: Double = 2
@@ -99,12 +101,14 @@ final class AppState {
     private var settleTask: Task<Void, Never>?
     private var liveEditSnapshot: GrapherDocument?
     private var chromeCache: (key: ChromeKey, scene: Scene2D, layout: ChromeLayout)?
+    private var chrome3DCache: (key: Chrome3DKey, result: Chrome3D.Result)?
 
-    init(document: GrapherDocument? = nil) {
+    /// 不给文档时按 `dimension` 开一份示例：平面图或立体图。
+    init(document: GrapherDocument? = nil, dimension: DocumentDimension = .plane) {
         if let document {
             self.document = document
         } else {
-            var sample = GrapherDocument.sample()
+            var sample = dimension == .space ? GrapherDocument.sample3D() : GrapherDocument.sample()
             // First impressions matter: follow whatever appearance the machine
             // is in rather than assuming a white sheet.
             if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
@@ -138,26 +142,44 @@ final class AppState {
         viewport.insetTop = Double(insets.top) * scale
         viewport.insetRight = Double(insets.right) * scale
         viewport.insetBottom = Double(insets.bottom) * scale
-        guard viewport != document.viewport || scaleChanged else { return }
+        // 立体图共用同一块画布的尺寸与遮挡。
+        var view3D = document.view3D
+        view3D.widthPixels = viewport.widthPixels
+        view3D.heightPixels = viewport.heightPixels
+        view3D.insetLeft = viewport.insetLeft
+        view3D.insetTop = viewport.insetTop
+        view3D.insetRight = viewport.insetRight
+        view3D.insetBottom = viewport.insetBottom
+        guard viewport != document.viewport || view3D != document.view3D || scaleChanged else { return }
         document.viewport = viewport
+        document.view3D = view3D
         notify(.viewport)
-        requestInteractiveRebuild()
+        // 立体图换画布尺寸只改投影，坐标盒没变，不用重采（线宽随倍率变时才要）。
+        if document.dimension == .plane || scaleChanged {
+            requestInteractiveRebuild()
+        }
     }
 
     /// 换文档 / 撤销时沿用当前画布的尺寸与遮挡：那是窗口的状态，不是文档的。
-    private func adoptCanvasMetrics(_ viewport: inout Viewport2D) {
+    private func adoptCanvasMetrics(_ target: inout GrapherDocument) {
         let current = document.viewport
-        viewport.widthPixels = current.widthPixels
-        viewport.heightPixels = current.heightPixels
-        viewport.insetLeft = current.insetLeft
-        viewport.insetTop = current.insetTop
-        viewport.insetRight = current.insetRight
-        viewport.insetBottom = current.insetBottom
+        target.viewport.widthPixels = current.widthPixels
+        target.viewport.heightPixels = current.heightPixels
+        target.viewport.insetLeft = current.insetLeft
+        target.viewport.insetTop = current.insetTop
+        target.viewport.insetRight = current.insetRight
+        target.viewport.insetBottom = current.insetBottom
+        target.view3D.widthPixels = current.widthPixels
+        target.view3D.heightPixels = current.heightPixels
+        target.view3D.insetLeft = current.insetLeft
+        target.view3D.insetTop = current.insetTop
+        target.view3D.insetRight = current.insetRight
+        target.view3D.insetBottom = current.insetBottom
     }
 
     private func restore(_ snapshot: GrapherDocument) {
         var restored = snapshot
-        adoptCanvasMetrics(&restored.viewport)
+        adoptCanvasMetrics(&restored)
         document = restored
     }
 
@@ -186,6 +208,31 @@ final class AppState {
         if let cached = chromeCache, cached.key == key { return (cached.scene, cached.layout) }
         let made = SceneBuilder2D.chromeScene(document: document, viewport: document.viewport, backingScale: backingScale)
         chromeCache = (key, made.scene, made.layout)
+        return made
+    }
+
+    private struct Chrome3DKey: Equatable {
+        var view: View3D
+        var theme: Theme
+        var showGrid: Bool
+        var showAxes: Bool
+        var showTickLabels: Bool
+        var backingScale: Double
+    }
+
+    /// 立体图的坐标盒线框与刻度位置：随相机转动换墙、换标刻度的棱，每帧按当前视图现算。
+    func chrome3D() -> Chrome3D.Result {
+        let key = Chrome3DKey(
+            view: document.view3D,
+            theme: document.theme,
+            showGrid: document.showGrid,
+            showAxes: document.showAxes,
+            showTickLabels: document.showTickLabels,
+            backingScale: backingScale
+        )
+        if let cached = chrome3DCache, cached.key == key { return cached.result }
+        let made = Chrome3D.make(view: document.view3D, document: document, backingScale: backingScale)
+        chrome3DCache = (key, made)
         return made
     }
 
@@ -218,6 +265,15 @@ final class AppState {
         pendingQuality = nil
         buildInFlight = true
 
+        if !isBuilding {
+            isBuilding = true
+            notify(.status)
+        }
+        if document.dimension == .space {
+            startBuild3D(quality: quality)
+            return
+        }
+
         let request = SceneBuildRequest(
             document: document,
             compiled: compileDocument(),
@@ -227,25 +283,41 @@ final class AppState {
             overscan: Self.overscan,
             includesChrome: false
         )
-        if !isBuilding {
-            isBuilding = true
-            notify(.status)
-        }
         Task.detached(priority: .userInitiated) { [weak self] in
             let result = SceneBuilder2D.build(request)
             await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.buildInFlight = false
                 // 这份是按开工那一刻的视口算的，视口此后又动过也照收：画布会按两者的差把它
                 // 摆到当前位置，总比继续显示更旧的那份强。
-                self.built = result
-                self.notify(.scene)
-                self.startNextBuild()
-                if !self.buildInFlight {
-                    self.isBuilding = false
-                    self.notify(.status)
-                }
+                self?.built = result
+                self?.finishBuild()
             }
+        }
+    }
+
+    private func startBuild3D(quality: SampleQuality) {
+        let request = SceneBuild3DRequest(
+            document: document,
+            compiled: compileDocument(),
+            view: document.view3D,
+            quality: quality,
+            backingScale: backingScale
+        )
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = SceneBuilder3D.build(request)
+            await MainActor.run { [weak self] in
+                self?.built3D = result
+                self?.finishBuild()
+            }
+        }
+    }
+
+    private func finishBuild() {
+        buildInFlight = false
+        notify(.scene)
+        startNextBuild()
+        if !buildInFlight {
+            isBuilding = false
+            notify(.status)
         }
     }
 
@@ -327,6 +399,16 @@ final class AppState {
         var viewport = document.viewport
         body(&viewport)
         document.viewport = ViewportBounds.clamp(viewport, content: built?.contentBounds)
+        notify(.viewport)
+    }
+
+    /// 立体图的视角改动（旋转、平移、缩放、复位都走这里）。只转相机时画布当帧换投影就够了；
+    /// 坐标盒变了（平移、缩放）才需要重采，由调用方决定交互画质还是精细画质。
+    func mutateView3D(_ body: (inout View3D) -> Void) {
+        var view = document.view3D
+        body(&view)
+        guard view != document.view3D else { return }
+        document.view3D = view
         notify(.viewport)
     }
 
@@ -469,6 +551,15 @@ final class AppState {
     /// 「适应内容」：把所有曲线的包围盒装进视口；内容为空则回原点。和 UniReader 的
     /// `ScratchBounds.fit` 是同一条规则。
     func fitToContent() {
+        if document.dimension == .space {
+            guard let bounds = built3D?.fitBounds else {
+                resetView()
+                return
+            }
+            mutateView3D { $0.fit(min: bounds.min, max: bounds.max) }
+            requestRebuild(interactive: false)
+            return
+        }
         guard let bounds = built?.fitBounds else {
             resetView()
             return
@@ -479,8 +570,19 @@ final class AppState {
         requestRebuild(interactive: false)
     }
 
-    /// 「回原点」：中心归零、回到默认倍率。
+    /// 「回原点」：中心归零、回到默认倍率；立体图还回到默认视角。
     func resetView() {
+        if document.dimension == .space {
+            mutateView3D { view in
+                let standard = View3D.standard
+                view.center = standard.center
+                view.halfExtent = standard.halfExtent
+                view.azimuth = standard.azimuth
+                view.elevation = standard.elevation
+            }
+            requestRebuild(interactive: false)
+            return
+        }
         mutateViewport { viewport in
             viewport.centerX = 0
             viewport.centerY = 0
@@ -493,6 +595,11 @@ final class AppState {
     /// 一处，别在这里再抄一遍（UniReader 那边 ⌘0 / 1:1 / 捏合 / ⌘滚轮四个入口共用一个
     /// `applyZoom`，就是这个道理）。
     func zoom(by factor: Double) {
+        if document.dimension == .space {
+            mutateView3D { $0.zoom(by: factor) }
+            requestRebuild(interactive: false)
+            return
+        }
         mutateViewport { viewport in
             viewport.zoom(
                 by: factor,
@@ -506,7 +613,7 @@ final class AppState {
 
     func newDocument() {
         var fresh = GrapherDocument()
-        adoptCanvasMetrics(&fresh.viewport)
+        adoptCanvasMetrics(&fresh)
         document = fresh
         selection = nil
         documentURL = nil
@@ -521,7 +628,7 @@ final class AppState {
     func open(url: URL) {
         do {
             var loaded = try DocumentStore.load(from: url)
-            adoptCanvasMetrics(&loaded.viewport)
+            adoptCanvasMetrics(&loaded)
             document = loaded
             selection = loaded.layers.first?.id
             documentURL = url

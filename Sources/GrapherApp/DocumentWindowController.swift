@@ -23,7 +23,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
     private let undo = UndoManager()
     private let splitViewController = NSSplitViewController()
     private let sidebarViewController: SidebarViewController
-    private let viewportViewController: ViewportViewController
+    private let canvasViewController: CanvasContainerViewController
     private let inspectorViewController: InspectorViewController
     private var inspectorItem: NSSplitViewItem?
 
@@ -31,7 +31,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         let state = state ?? AppState()
         self.state = state
         self.sidebarViewController = SidebarViewController(state: state)
-        self.viewportViewController = ViewportViewController(state: state)
+        self.canvasViewController = CanvasContainerViewController(state: state)
         self.inspectorViewController = InspectorViewController(state: state)
 
         let window = NSWindow(
@@ -91,7 +91,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         sidebarItem.maximumThickness = 380
         sidebarItem.canCollapse = true
 
-        let canvasItem = NSSplitViewItem(viewController: viewportViewController)
+        let canvasItem = NSSplitViewItem(viewController: canvasViewController)
         canvasItem.minimumThickness = 360
         // 沉浸式画布（UniReader 阅读区同款）：画布这一格伸到左侧毛玻璃侧栏底下，透过侧栏
         // 能看到曲线；被盖住的宽度以 `safeAreaInsets` 交给画布，视口中心落在没被盖住那块的

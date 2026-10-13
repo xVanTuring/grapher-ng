@@ -18,7 +18,7 @@ public struct MeshVertex3D: Equatable, Sendable {
 }
 
 /// 一张曲面：索引三角形。
-public struct Mesh3D: Sendable {
+public struct Mesh3D: Equatable, Sendable {
     public var vertices: [MeshVertex3D]
     /// 每三个一组，一个三角形。
     public var indices: [UInt32]
@@ -34,7 +34,7 @@ public struct Mesh3D: Sendable {
 }
 
 /// 一条空间折线，线宽是屏幕像素（与 2D 描边同一个口径）。
-public struct Polyline3D: Sendable {
+public struct Polyline3D: Equatable, Sendable {
     public var points: [SIMD3<Float>]
     public var color: RGBAColor
     /// 线宽，后备像素。
@@ -47,7 +47,7 @@ public struct Polyline3D: Sendable {
     }
 }
 
-public struct Scene3D: Sendable {
+public struct Scene3D: Equatable, Sendable {
     public var meshes: [Mesh3D]
     public var polylines: [Polyline3D]
 

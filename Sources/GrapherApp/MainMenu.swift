@@ -53,7 +53,9 @@ enum MainMenu {
 
     private static func fileMenu() -> NSMenuItem {
         submenu(L("File")) { menu in
-            menu.addItem(item(L("New"), #selector(DocumentWindowController.newDocument(_:)), key: "n"))
+            menu.addItem(item(L("New 2D Graph"), #selector(DocumentWindowController.newDocument(_:)), key: "n"))
+            menu.addItem(item(L("New 3D Graph"), #selector(AppDelegate.newSpaceDocumentFromMenu(_:)), key: "n",
+                              modifiers: [.command, .shift]))
             menu.addItem(item(L("Open…"), #selector(DocumentWindowController.openDocumentAction(_:)), key: "o"))
             menu.addItem(.separator())
             menu.addItem(item(L("Save"), #selector(DocumentWindowController.saveDocumentAction(_:)), key: "s"))

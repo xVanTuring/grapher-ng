@@ -5,7 +5,8 @@
 "Show All" = "Show All";
 "Quit Grapher NG" = "Quit Grapher NG";
 "File" = "File";
-"New" = "New";
+"New 2D Graph" = "New 2D Graph";
+"New 3D Graph" = "New 3D Graph";
 "Open…" = "Open…";
 "Save" = "Save";
 "Save As…" = "Save As…";
@@ -69,6 +70,8 @@
 /* Canvas */
 "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset" = "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset";
 "Zoom %.4g px/unit" = "Zoom %.4g px/unit";
+"Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · F fit · R reset" = "Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · F fit · R reset";
+"Box ±%.4g" = "Box ±%.4g";
 
 /* Sidebar: layers */
 "Layers" = "Layers";

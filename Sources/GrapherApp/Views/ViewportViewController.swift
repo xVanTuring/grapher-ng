@@ -10,9 +10,7 @@ final class ViewportViewController: NSViewController {
     private let host = ViewportHostView()
     private let overlay = CanvasOverlayView()
     private let safeAreaProbe = SafeAreaProbeView()
-    private let statusLabel = NSTextField(labelWithString: "")
-    private let zoomLabel = NSTextField(labelWithString: "")
-    private let spinner = NSProgressIndicator()
+    private let statusBar = CanvasStatusBar()
 
     private var metalView: MetalView2D?
     private var trackingArea: NSTrackingArea?
@@ -50,7 +48,7 @@ final class ViewportViewController: NSViewController {
         safeAreaProbe.onChange = { [weak self] in self?.scheduleMetricsSync() }
         host.addSubview(safeAreaProbe)
 
-        let status = makeStatusBar()
+        let status = statusBar
         root.addSubview(status)
 
         NSLayoutConstraint.activate([
@@ -99,51 +97,6 @@ final class ViewportViewController: NSViewController {
         updateStatus()
     }
 
-    private func makeStatusBar() -> NSView {
-        let bar = FlippedView()
-        bar.translatesAutoresizingMaskIntoConstraints = false
-
-        let separator = NSBox()
-        separator.boxType = .separator
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        bar.addSubview(separator)
-
-        spinner.style = .spinning
-        spinner.controlSize = .small
-        spinner.isDisplayedWhenStopped = false
-        spinner.translatesAutoresizingMaskIntoConstraints = false
-        bar.addSubview(spinner)
-
-        statusLabel.font = .systemFont(ofSize: 11)
-        statusLabel.textColor = .secondaryLabelColor
-        statusLabel.lineBreakMode = .byTruncatingTail
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        bar.addSubview(statusLabel)
-
-        zoomLabel.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        zoomLabel.textColor = .tertiaryLabelColor
-        zoomLabel.translatesAutoresizingMaskIntoConstraints = false
-        bar.addSubview(zoomLabel)
-
-        NSLayoutConstraint.activate([
-            separator.topAnchor.constraint(equalTo: bar.topAnchor),
-            separator.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
-            separator.trailingAnchor.constraint(equalTo: bar.trailingAnchor),
-
-            // 整个窗格伸到毛玻璃侧栏底下，状态条的文字得让开侧栏：钉安全区，不钉边。
-            spinner.leadingAnchor.constraint(equalTo: bar.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            spinner.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-
-            statusLabel.leadingAnchor.constraint(equalTo: spinner.trailingAnchor, constant: 6),
-            statusLabel.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-            statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: zoomLabel.leadingAnchor, constant: -10),
-
-            zoomLabel.trailingAnchor.constraint(equalTo: bar.safeAreaLayoutGuide.trailingAnchor, constant: -12),
-            zoomLabel.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
-        ])
-        return bar
-    }
-
     private func installMetalView() {
         guard metalView == nil, let context = MetalContext.shared else { return }
         guard let view = MetalView2D(frame: host.bounds, context: context) else { return }
@@ -190,7 +143,7 @@ final class ViewportViewController: NSViewController {
             metalView.viewport = state.viewport
         }
         overlay.refresh()
-        zoomLabel.stringValue = zoomText
+        statusBar.zoomText = zoomText
     }
 
     private var zoomText: String {
@@ -198,15 +151,13 @@ final class ViewportViewController: NSViewController {
     }
 
     private func updateStatus() {
-        if state.isBuilding {
-            spinner.startAnimation(nil)
-        } else {
-            spinner.stopAnimation(nil)
-        }
-        statusLabel.stringValue = state.statusMessage.isEmpty
-            ? L("Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset")
-            : state.statusMessage
-        zoomLabel.stringValue = zoomText
+        statusBar.update(
+            isBuilding: state.isBuilding,
+            message: state.statusMessage.isEmpty
+                ? L("Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset")
+                : state.statusMessage
+        )
+        statusBar.zoomText = zoomText
     }
 
     // MARK: - Metrics

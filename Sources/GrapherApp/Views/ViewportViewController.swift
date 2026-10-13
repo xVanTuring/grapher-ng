@@ -86,13 +86,10 @@ final class ViewportViewController: NSViewController {
             switch change {
             case .scene:
                 self.pushContent()
-            case .viewport, .document:
-                // 视口一变：网格重画、曲线按新旧视口之差挪过去、刻度数字跟上——都在这一帧里，
-                // 不等后台采样（UniReader 画板 `viewportChanged` 同一个思路）。
-                self.refreshCanvas()
-                self.overlay.needsDisplay = true
-            case .probe:
-                self.overlay.needsDisplay = true
+            case .viewport, .document, .probe:
+                // 视口一变：网格重画、曲线按新旧视口之差挪过去、刻度数字跟上——都在下一次屏幕
+                // 刷新里一起做（`frameWillDraw`），不等后台采样，也不按事件次数重复画。
+                self.requestFrame()
             case .status:
                 self.updateStatus()
             default:
@@ -158,34 +155,41 @@ final class ViewportViewController: NSViewController {
             view.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
+        view.onFrame = { [weak self] in self?.frameWillDraw() }
         metalView = view
-        refreshCanvas()
         pushContent()
+        requestFrame()
     }
 
-    /// 后台新算好一份曲线：上传一次显存，按它与当前视口之差摆好。
+    /// 后台新算好一份曲线：交给画布上传显存，它带着自己的视口，画的时候按与当前视口之差摆好。
     private func pushContent() {
         guard let metalView else { return }
         guard let built = state.built else {
-            metalView.setContent(nil, size: .zero, transform: .identity)
+            metalView.setContent(nil, viewport: state.viewport)
             return
         }
-        metalView.setContent(
-            built.scene,
-            size: SIMD2(built.viewport.widthPixels, built.viewport.heightPixels),
-            transform: state.viewport.screenTransform(from: built.viewport)
-        )
+        metalView.setContent(built.scene, viewport: built.viewport)
     }
 
-    /// 视口或显示设置变了：网格与坐标轴按当前视口重画，曲线层只改变换。
-    private func refreshCanvas() {
-        guard let metalView else { return }
-        let chrome = state.chrome().scene
-        metalView.background = state.document.theme.background
-        if metalView.chrome != chrome { metalView.chrome = chrome }
-        if let built = state.built {
-            metalView.contentTransform = state.viewport.screenTransform(from: built.viewport)
+    /// 有东西要变：排到下一次屏幕刷新。没有 Metal 的机器上直接更新叠加层。
+    private func requestFrame() {
+        if let metalView {
+            metalView.requestFrame()
+        } else {
+            frameWillDraw()
         }
+    }
+
+    /// 每次屏幕刷新、Metal 画这一帧之前：网格与坐标轴按当前视口重画，曲线层换视口，
+    /// 叠加层的刻度与读数挪到位。三者同一个事务上屏，彼此不会错开一帧。
+    private func frameWillDraw() {
+        if let metalView {
+            let chrome = state.chrome().scene
+            metalView.background = state.document.theme.background
+            if metalView.chrome != chrome { metalView.chrome = chrome }
+            metalView.viewport = state.viewport
+        }
+        overlay.refresh()
         zoomLabel.stringValue = String(format: "缩放 %.4g px/单位", state.document.viewport.scale)
     }
 

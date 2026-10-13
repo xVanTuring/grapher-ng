@@ -71,6 +71,14 @@ Tests/GrapherNGTests/   单元测试
 - **网格与坐标轴**不进后台场景，每次视口变化按当前视口现画（`SceneBuilder2D.chromeScene`，
   `AppState.chrome()` 带缓存）；叠加层的刻度数字也用这一份，所以数字和网格线永远对得上。
   读数圈按 `ProbeHit.dataPoint` 和当前视口现算位置，拖动时跟着曲线走。
+- **重绘跟屏幕刷新走，不跟事件走**：状态一变只调 `MetalView2D.requestFrame()`，真正的更新
+  （网格、曲线视口、叠加层）在显示链接回调 `onFrame` 里做，每次刷新最多一帧。按事件画的话，
+  鼠标事件比屏幕刷新快（120Hz 鼠标配 60Hz 外接屏）时多出的帧在显示队列里排队，画面落后光标两三帧。
+  `presentsWithTransaction = true`：Metal 这一帧与叠加层图层同一个事务上屏，数字与网格线不会错开一帧。
+- **叠加层是一堆小图层**（`CanvasOverlayView`）：每串文字只渲染一次存成位图，之后只挪位置。
+  不要改回整块 `draw(_:)`——那是每帧一张整窗大小的透明位图，WindowServer 每帧都得重新上传合成。
+- 新曲线几何的显存上传在后台队列做（`MetalView2D.setContent`），换上之前继续画旧的那份——
+  每份几何带着自己的视口，照样摆得对。
 - **外扩采样**：交互画布四周各多采 `AppState.overscan = 0.25` 个视口，拖动、缩小时露出来的边上已经有图。
   外扩量取整像素，停稳时变换只差整数平移，区域填充的逐像素矩形不会被插值糊掉。
   导出、离屏渲染保持 `overscan = 0` 且带网格（`SceneBuildRequest` 的默认值）。

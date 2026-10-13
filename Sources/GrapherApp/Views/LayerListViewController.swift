@@ -33,17 +33,17 @@ final class LayerListViewController: NSViewController {
         accessibility: L("Delete Selected Layer")
     )
 
-    /// 「＋」点开的图型菜单。
-    private lazy var addMenu: NSMenu = {
+    /// 「＋」点开的图型菜单：只列当前文档（平面图 / 立体图）能用的图型，每次点开现建。
+    private func makeAddMenu() -> NSMenu {
         let menu = NSMenu()
-        for kind in PlotKind.allCases {
+        for kind in PlotKind.cases(for: state.document.dimension) {
             let item = NSMenuItem(title: kind.displayName, action: #selector(addLayerItem(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = kind.rawValue
             menu.addItem(item)
         }
         return menu
-    }()
+    }
 
     init(state: AppState) {
         self.state = state
@@ -224,7 +224,7 @@ final class LayerListViewController: NSViewController {
 
     @objc private func showAddMenu(_ sender: NSButton) {
         // 菜单从按钮正下方弹出。
-        addMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
+        makeAddMenu().popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
     }
 
     @objc private func addLayerItem(_ sender: NSMenuItem) {

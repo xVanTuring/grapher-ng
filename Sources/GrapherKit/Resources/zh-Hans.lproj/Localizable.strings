@@ -8,6 +8,12 @@
 "Polar" = "极坐标";
 "Implicit" = "隐函数";
 "Region" = "区域";
+"Surface z=f(x,y)" = "显式曲面 z=f(x,y)";
+"Parametric surface" = "参数曲面";
+"Space curve" = "空间曲线";
+"Implicit surface F(x,y,z)=0" = "隐式曲面 F(x,y,z)=0";
+"Surface" = "曲面";
+"Implicit surface" = "隐式曲面";
 
 /* GrapherKit：画质 */
 "Smooth (while dragging)" = "流畅（拖动时）";
@@ -18,6 +24,9 @@
 "Cardioid" = "心形线";
 "Rose r = cos(3θ)" = "玫瑰线 r = cos(3θ)";
 "Folium of Descartes" = "笛卡尔叶形线";
+"Torus" = "环面";
+"Helix" = "螺旋线";
+"Sphere" = "球面";
 
 /* GrapherKit：公式错误 */
 "Unrecognized number \"%@\"" = "无法识别的数字 \"%@\"";

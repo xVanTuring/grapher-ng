@@ -8,6 +8,12 @@
 "Polar" = "Polar";
 "Implicit" = "Implicit";
 "Region" = "Region";
+"Surface z=f(x,y)" = "Surface z=f(x,y)";
+"Parametric surface" = "Parametric surface";
+"Space curve" = "Space curve";
+"Implicit surface F(x,y,z)=0" = "Implicit surface F(x,y,z)=0";
+"Surface" = "Surface";
+"Implicit surface" = "Implicit surface";
 
 /* GrapherKit: sampling quality */
 "Smooth (while dragging)" = "Smooth (while dragging)";
@@ -18,6 +24,9 @@
 "Cardioid" = "Cardioid";
 "Rose r = cos(3θ)" = "Rose r = cos(3θ)";
 "Folium of Descartes" = "Folium of Descartes";
+"Torus" = "Torus";
+"Helix" = "Helix";
+"Sphere" = "Sphere";
 
 /* GrapherKit: formula errors */
 "Unrecognized number \"%@\"" = "Unrecognized number \"%@\"";

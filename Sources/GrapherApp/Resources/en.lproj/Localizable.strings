@@ -97,6 +97,8 @@
 "Formula y = f(x)" = "Formula y = f(x)";
 "F(x, y) = 0 — enter F here" = "F(x, y) = 0 — enter F here";
 "F(x, y) compared with 0" = "F(x, y) compared with 0";
+"Formula z = f(x, y)" = "Formula z = f(x, y)";
+"F(x, y, z) = 0 — enter F here" = "F(x, y, z) = 0 — enter F here";
 "to" = "to";
 "Visible Range" = "Visible Range";
 "Color" = "Color";

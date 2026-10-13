@@ -34,9 +34,13 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
     public static let currentFormatVersion = 1
 
     public var formatVersion: Int
+    /// 平面图还是立体图：新建时定下，之后不变。
+    public var dimension: DocumentDimension
     public var layers: [Layer]
     public var parameters: [ParameterDefinition]
     public var viewport: Viewport2D
+    /// 立体图的视角与坐标盒；平面图不用它。
+    public var view3D: View3D
     public var theme: Theme
     public var showGrid: Bool
     public var showMinorGrid: Bool
@@ -45,9 +49,11 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
 
     public init(
         formatVersion: Int = GrapherDocument.currentFormatVersion,
+        dimension: DocumentDimension = .plane,
         layers: [Layer] = [],
         parameters: [ParameterDefinition] = [],
         viewport: Viewport2D = Viewport2D(),
+        view3D: View3D = .standard,
         theme: Theme = .light,
         showGrid: Bool = true,
         showMinorGrid: Bool = false,
@@ -55,14 +61,37 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         showTickLabels: Bool = true
     ) {
         self.formatVersion = formatVersion
+        self.dimension = dimension
         self.layers = layers
         self.parameters = parameters
         self.viewport = viewport
+        self.view3D = view3D
         self.theme = theme
         self.showGrid = showGrid
         self.showMinorGrid = showMinorGrid
         self.showAxes = showAxes
         self.showTickLabels = showTickLabels
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, dimension, layers, parameters, viewport, view3D
+        case theme, showGrid, showMinorGrid, showAxes, showTickLabels
+    }
+
+    /// 2D 时代的文件没有 `dimension` 与 `view3D`：读成平面图、默认视角。
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+        dimension = try container.decodeIfPresent(DocumentDimension.self, forKey: .dimension) ?? .plane
+        layers = try container.decode([Layer].self, forKey: .layers)
+        parameters = try container.decode([ParameterDefinition].self, forKey: .parameters)
+        viewport = try container.decode(Viewport2D.self, forKey: .viewport)
+        view3D = try container.decodeIfPresent(View3D.self, forKey: .view3D) ?? .standard
+        theme = try container.decode(Theme.self, forKey: .theme)
+        showGrid = try container.decode(Bool.self, forKey: .showGrid)
+        showMinorGrid = try container.decode(Bool.self, forKey: .showMinorGrid)
+        showAxes = try container.decode(Bool.self, forKey: .showAxes)
+        showTickLabels = try container.decode(Bool.self, forKey: .showTickLabels)
     }
 
     public var parameterValues: [String: Double] {
@@ -116,6 +145,41 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         document.viewport.centerY = 0
         // Wide enough that the heart curve is not cut off on first launch.
         document.viewport.scale = 28
+        return document
+    }
+
+    /// 新建立体图时的示例：四种 3D 图型各一个，错开摆在默认坐标盒（±4）里。
+    public static func sample3D() -> GrapherDocument {
+        var document = GrapherDocument(dimension: .space)
+        document.parameters = [
+            ParameterDefinition(name: "a", value: 1.5, lowerBound: 0, upperBound: 3)
+        ]
+
+        var surface = Layer.makeDefault(kind: .surface, index: 0)
+        surface.name = "z = a·sin(x)·cos(y)"
+        surface.formula = "a*sin(x)*cos(y)"
+
+        var torus = Layer.makeDefault(kind: .parametricSurface, index: 1)
+        torus.name = L("Torus")
+        torus.formula = "(2.4 + 0.7*cos(v))*cos(u)"
+        torus.secondaryFormula = "(2.4 + 0.7*cos(v))*sin(u)"
+        torus.tertiaryFormula = "2.6 + 0.7*sin(v)"
+        torus.usesExplicitDomain = true
+
+        var helix = Layer.makeDefault(kind: .spaceCurve, index: 2)
+        helix.name = L("Helix")
+        helix.formula = "3.3*cos(t)"
+        helix.secondaryFormula = "3.3*sin(t)"
+        helix.tertiaryFormula = "t/4"
+        helix.domainLower = -4 * Double.pi
+        helix.domainUpper = 4 * Double.pi
+        helix.usesExplicitDomain = true
+
+        var sphere = Layer.makeDefault(kind: .implicitSurface, index: 3)
+        sphere.name = L("Sphere")
+        sphere.formula = "x^2 + y^2 + (z + 2.6)^2 - 1.2"
+
+        document.layers = [surface, torus, helix, sphere]
         return document
     }
 }

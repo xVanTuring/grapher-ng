@@ -1,13 +1,39 @@
 import Foundation
 
+/// 文档是平面图还是立体图。新建时定下，之后不变；两种文档各有各的图型和画布。
+public enum DocumentDimension: String, Codable, CaseIterable, Sendable {
+    case plane
+    case space
+}
+
 public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case explicit
     case parametric
     case polar
     case implicit
     case region
+    /// z = f(x, y)
+    case surface
+    /// (x, y, z) = F(u, v)
+    case parametricSurface
+    /// (x, y, z) = F(t)
+    case spaceCurve
+    /// F(x, y, z) = 0
+    case implicitSurface
 
     public var id: String { rawValue }
+
+    public var dimension: DocumentDimension {
+        switch self {
+        case .explicit, .parametric, .polar, .implicit, .region: return .plane
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface: return .space
+        }
+    }
+
+    /// 某种文档能用的图型，顺序即「新建」菜单与类型下拉框里的顺序。
+    public static func cases(for dimension: DocumentDimension) -> [PlotKind] {
+        allCases.filter { $0.dimension == dimension }
+    }
 
     public var displayName: String {
         switch self {
@@ -16,6 +42,10 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .polar: return L("Polar r=f(θ)")
         case .implicit: return L("Implicit F(x,y)=0")
         case .region: return L("Inequality region")
+        case .surface: return L("Surface z=f(x,y)")
+        case .parametricSurface: return L("Parametric surface")
+        case .spaceCurve: return L("Space curve")
+        case .implicitSurface: return L("Implicit surface F(x,y,z)=0")
         }
     }
 
@@ -26,6 +56,10 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .polar: return L("Polar")
         case .implicit: return L("Implicit")
         case .region: return L("Region")
+        case .surface: return L("Surface")
+        case .parametricSurface: return L("Parametric surface")
+        case .spaceCurve: return L("Space curve")
+        case .implicitSurface: return L("Implicit surface")
         }
     }
 
@@ -34,9 +68,11 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var primaryVariables: [String] {
         switch self {
         case .explicit: return ["x"]
-        case .parametric: return ["t"]
+        case .parametric, .spaceCurve: return ["t"]
         case .polar: return ["theta", "t"]
-        case .implicit, .region: return ["x", "y"]
+        case .implicit, .region, .surface: return ["x", "y"]
+        case .parametricSurface: return ["u", "v"]
+        case .implicitSurface: return ["x", "y", "z"]
         }
     }
 
@@ -49,7 +85,17 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     /// Variables the secondary formula is compiled against.
     public var secondaryVariables: [String] {
         switch self {
-        case .parametric: return ["t"]
+        case .parametric, .spaceCurve: return ["t"]
+        case .parametricSurface: return ["u", "v"]
+        default: return []
+        }
+    }
+
+    /// 第三个公式（z 分量）的变量：参数曲面与空间曲线才有。
+    public var tertiaryVariables: [String] {
+        switch self {
+        case .spaceCurve: return ["t"]
+        case .parametricSurface: return ["u", "v"]
         default: return []
         }
     }
@@ -61,18 +107,46 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .polar: return "1 + cos(theta)"
         case .implicit: return "x^2 + y^2 - 1"
         case .region: return "x^2 + y^2 - 1"
+        case .surface: return "sin(x)*cos(y)"
+        case .parametricSurface: return "(2 + cos(v))*cos(u)"
+        case .spaceCurve: return "2*cos(t)"
+        case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
         }
     }
 
     public var secondaryPlaceholder: String {
         switch self {
         case .parametric: return "sin(t)"
+        case .parametricSurface: return "(2 + cos(v))*sin(u)"
+        case .spaceCurve: return "2*sin(t)"
         default: return ""
         }
     }
 
-    public var needsSecondaryFormula: Bool { self == .parametric }
-    public var usesDomain: Bool { self != .region && self != .implicit }
+    public var tertiaryPlaceholder: String {
+        switch self {
+        case .parametricSurface: return "sin(v)"
+        case .spaceCurve: return "t/3"
+        default: return ""
+        }
+    }
+
+    public var needsSecondaryFormula: Bool {
+        self == .parametric || self == .parametricSurface || self == .spaceCurve
+    }
+
+    public var needsTertiaryFormula: Bool { self == .parametricSurface || self == .spaceCurve }
+
+    /// 用到参数范围（定义域）的图型。显式曲面与隐式曲面的范围就是坐标盒，不另设。
+    public var usesDomain: Bool {
+        switch self {
+        case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
+        case .implicit, .region, .surface, .implicitSurface: return false
+        }
+    }
+
+    /// 参数曲面还有第二个参数 v 的范围。
+    public var usesSecondDomain: Bool { self == .parametricSurface }
     public var usesRelation: Bool { self == .region }
 }
 
@@ -147,9 +221,14 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var isVisible: Bool
     public var formula: String
     public var secondaryFormula: String
+    /// 第三个公式：参数曲面、空间曲线的 z 分量。
+    public var tertiaryFormula: String
     public var relation: RegionRelation
     public var domainLower: Double
     public var domainUpper: Double
+    /// 第二个参数的范围：参数曲面的 v。
+    public var domain2Lower: Double
+    public var domain2Upper: Double
     /// When false the domain defaults to whatever the viewport currently shows.
     public var usesExplicitDomain: Bool
     public var lineStyle: LineStyle
@@ -164,9 +243,12 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         isVisible: Bool = true,
         formula: String,
         secondaryFormula: String = "",
+        tertiaryFormula: String = "",
         relation: RegionRelation = .lessOrEqual,
         domainLower: Double = 0,
         domainUpper: Double = 2 * Double.pi,
+        domain2Lower: Double = 0,
+        domain2Upper: Double = 2 * Double.pi,
         usesExplicitDomain: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
@@ -178,13 +260,43 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.isVisible = isVisible
         self.formula = formula
         self.secondaryFormula = secondaryFormula
+        self.tertiaryFormula = tertiaryFormula
         self.relation = relation
         self.domainLower = domainLower
         self.domainUpper = domainUpper
+        self.domain2Lower = domain2Lower
+        self.domain2Upper = domain2Upper
         self.usesExplicitDomain = usesExplicitDomain
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
+        case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain
+        case lineStyle, fillStyle, extraLevels
+    }
+
+    /// 只有 3D 才用到的字段（第三个公式、第二个定义域）在 2D 时代的文件里没有，读到缺省值。
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        kind = try container.decode(PlotKind.self, forKey: .kind)
+        name = try container.decode(String.self, forKey: .name)
+        isVisible = try container.decode(Bool.self, forKey: .isVisible)
+        formula = try container.decode(String.self, forKey: .formula)
+        secondaryFormula = try container.decode(String.self, forKey: .secondaryFormula)
+        tertiaryFormula = try container.decodeIfPresent(String.self, forKey: .tertiaryFormula) ?? ""
+        relation = try container.decode(RegionRelation.self, forKey: .relation)
+        domainLower = try container.decode(Double.self, forKey: .domainLower)
+        domainUpper = try container.decode(Double.self, forKey: .domainUpper)
+        domain2Lower = try container.decodeIfPresent(Double.self, forKey: .domain2Lower) ?? 0
+        domain2Upper = try container.decodeIfPresent(Double.self, forKey: .domain2Upper) ?? 2 * Double.pi
+        usesExplicitDomain = try container.decode(Bool.self, forKey: .usesExplicitDomain)
+        lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
+        fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
+        extraLevels = try container.decode([Double].self, forKey: .extraLevels)
     }
 
     /// A ready-to-edit layer for the given plot kind, styled with the palette entry.
@@ -210,6 +322,12 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             formula = "x^2 + y^2 - 1"
         case .region:
             formula = "x^2 + y^2 - 1"
+        case .spaceCurve:
+            // 螺旋线：t 走两圈。
+            lower = -2 * Double.pi
+            upper = 2 * Double.pi
+        case .surface, .parametricSurface, .implicitSurface:
+            break
         }
 
         return Layer(
@@ -217,8 +335,11 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             name: name,
             formula: formula,
             secondaryFormula: secondary,
+            tertiaryFormula: kind.tertiaryPlaceholder,
             domainLower: lower,
             domainUpper: upper,
+            domain2Lower: 0,
+            domain2Upper: 2 * Double.pi,
             usesExplicitDomain: false,
             lineStyle: LineStyle(color: color, width: 1.8),
             fillStyle: FillStyle(color: color.withAlpha(0.22))

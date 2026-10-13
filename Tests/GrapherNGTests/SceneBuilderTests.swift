@@ -141,7 +141,8 @@ final class SceneBuilderTests: XCTestCase {
         document.viewport.widthPixels = 400
         document.viewport.heightPixels = 300
         document.viewport.scale = 40
-        document.layers = PlotKind.allCases.enumerated().map { index, kind in
+        let planeKinds = PlotKind.cases(for: .plane)
+        document.layers = planeKinds.enumerated().map { index, kind in
             Layer.makeDefault(kind: kind, index: index)
         }
         for index in document.layers.indices {
@@ -151,7 +152,7 @@ final class SceneBuilderTests: XCTestCase {
         }
 
         let built = build(document)
-        XCTAssertEqual(built.probeCurves.count, PlotKind.allCases.count)
+        XCTAssertEqual(built.probeCurves.count, planeKinds.count)
         for curve in built.probeCurves {
             XCTAssertFalse(curve.segments.isEmpty, "\(curve.layerName) produced no geometry")
         }

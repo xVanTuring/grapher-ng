@@ -97,6 +97,8 @@
 "Formula y = f(x)" = "公式 y = f(x)";
 "F(x, y) = 0 — enter F here" = "F(x, y) = 0，即 F 填在这里";
 "F(x, y) compared with 0" = "F(x, y) 与 0 比较";
+"Formula z = f(x, y)" = "公式 z = f(x, y)";
+"F(x, y, z) = 0 — enter F here" = "F(x, y, z) = 0，即 F 填在这里";
 "to" = "到";
 "Visible Range" = "视图范围";
 "Color" = "颜色";

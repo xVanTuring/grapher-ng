@@ -8,10 +8,15 @@ public final class LayerCompiler {
         public var layer: Layer
         public var primary: CompiledExpression?
         public var secondary: CompiledExpression?
+        public var tertiary: CompiledExpression?
         public var primaryError: ExpressionError?
         public var secondaryError: ExpressionError?
+        public var tertiaryError: ExpressionError?
 
-        public var hasError: Bool { primaryError != nil || secondaryError != nil }
+        public var hasError: Bool { primaryError != nil || secondaryError != nil || tertiaryError != nil }
+
+        /// 三个公式里第一个出错的那个，界面上的错误标记用它。
+        public var firstError: ExpressionError? { primaryError ?? secondaryError ?? tertiaryError }
     }
 
     private struct Key: Hashable {
@@ -47,6 +52,16 @@ public final class LayerCompiler {
                 )
                 compiled.secondary = secondaryOutcome.0
                 compiled.secondaryError = secondaryOutcome.1
+            }
+
+            if layer.kind.needsTertiaryFormula {
+                let tertiaryOutcome = compileOne(
+                    source: layer.tertiaryFormula,
+                    variables: layer.kind.tertiaryVariables,
+                    parameters: parameters
+                )
+                compiled.tertiary = tertiaryOutcome.0
+                compiled.tertiaryError = tertiaryOutcome.1
             }
             result.append(compiled)
         }
@@ -220,6 +235,7 @@ public enum SceneBuilder2D {
         case .explicit: return layer.usesExplicitDomain
         case .parametric, .polar: return true
         case .implicit, .region: return false
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface: return false
         }
     }
 
@@ -425,6 +441,10 @@ public enum SceneBuilder2D {
                 appendCurve(collected, color: layer.lineStyle.color, width: strokeWidth,
                             viewport: viewport, into: &scene)
             }
+
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface:
+            // 立体图型只在 3D 画布上画（`SceneBuilder3D`）。
+            return
         }
 
         if !collected.isEmpty {

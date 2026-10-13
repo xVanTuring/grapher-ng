@@ -37,6 +37,7 @@ final class LayerEditorViewController: NSViewController {
     private var kindPopUp: NSPopUpButton?
     private var primaryField: FormulaFieldView?
     private var secondaryField: FormulaFieldView?
+    private var tertiaryField: FormulaFieldView?
     private var domainCheckbox: NSButton?
     private var domainGroup: NSStackView?
     private var domainLowerField: NSTextField?
@@ -117,7 +118,7 @@ final class LayerEditorViewController: NSViewController {
         nameField = name
         rows.append(ControlFactory.formRow(L("Name"), name))
 
-        let kinds = PlotKind.allCases
+        let kinds = availableKinds
         let kindPopUp = ControlFactory.popUp(
             items: kinds.map(\.shortName),
             target: self,
@@ -167,13 +168,14 @@ final class LayerEditorViewController: NSViewController {
         if let nameField, nameField.currentEditor() == nil {
             nameField.stringValue = layer.name
         }
-        if let kindPopUp, let index = PlotKind.allCases.firstIndex(of: layer.kind) {
+        if let kindPopUp, let index = availableKinds.firstIndex(of: layer.kind) {
             kindPopUp.selectItem(at: index)
         }
 
         primaryField?.text = layer.formula
         primaryField?.error = state.expressionErrors[layer.id]
         secondaryField?.text = layer.secondaryFormula
+        tertiaryField?.text = layer.tertiaryFormula
 
         domainCheckbox?.state = layer.usesExplicitDomain ? .on : .off
         domainGroup?.isHidden = !layer.usesExplicitDomain
@@ -213,6 +215,7 @@ final class LayerEditorViewController: NSViewController {
         kindPopUp = nil
         primaryField = nil
         secondaryField = nil
+        tertiaryField = nil
         domainCheckbox = nil
         domainGroup = nil
         domainLowerField = nil
@@ -227,62 +230,55 @@ final class LayerEditorViewController: NSViewController {
         fillOpacityLabel = nil
     }
 
+    /// 当前文档能用的图型：平面图只有 2D 的五种，立体图只有 3D 的四种。
+    private var availableKinds: [PlotKind] { PlotKind.cases(for: state.document.dimension) }
+
     // MARK: - Formula rows
 
+    /// 一个图层最多三个公式：主公式、第二个（参数方程的 y）、第三个（立体图型的 z）。
+    private enum FormulaSlot {
+        case primary, secondary, tertiary
+
+        func write(_ text: String, into layer: inout Layer) {
+            switch self {
+            case .primary: layer.formula = text
+            case .secondary: layer.secondaryFormula = text
+            case .tertiary: layer.tertiaryFormula = text
+            }
+        }
+    }
+
+    /// 每种图型的公式栏：标题与所在槽位。
+    private func formulaTitles(_ kind: PlotKind) -> [(title: String, slot: FormulaSlot)] {
+        switch kind {
+        case .explicit: return [(L("Formula y = f(x)"), .primary)]
+        case .parametric: return [("x(t) =", .primary), ("y(t) =", .secondary)]
+        case .polar: return [("r(θ) =", .primary)]
+        case .implicit: return [(L("F(x, y) = 0 — enter F here"), .primary)]
+        case .region: return [(L("F(x, y) compared with 0"), .primary)]
+        case .surface: return [(L("Formula z = f(x, y)"), .primary)]
+        case .parametricSurface:
+            return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
+        case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
+        case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
+        }
+    }
+
     private func formulaRows(_ layer: Layer) -> [NSView] {
-        switch layer.kind {
-        case .explicit:
-            let field = makeFormulaField(
-                title: L("Formula y = f(x)"),
-                placeholder: PlotKind.explicit.primaryPlaceholder,
-                layerID: layer.id,
-                isPrimary: true
-            )
-            primaryField = field
-            return [field]
-        case .parametric:
-            let xField = makeFormulaField(
-                title: "x(t) =",
-                placeholder: PlotKind.parametric.primaryPlaceholder,
-                layerID: layer.id,
-                isPrimary: true
-            )
-            let yField = makeFormulaField(
-                title: "y(t) =",
-                placeholder: PlotKind.parametric.secondaryPlaceholder,
-                layerID: layer.id,
-                isPrimary: false
-            )
-            primaryField = xField
-            secondaryField = yField
-            return [xField, yField]
-        case .polar:
-            let field = makeFormulaField(
-                title: "r(θ) =",
-                placeholder: PlotKind.polar.primaryPlaceholder,
-                layerID: layer.id,
-                isPrimary: true
-            )
-            primaryField = field
-            return [field]
-        case .implicit:
-            let field = makeFormulaField(
-                title: L("F(x, y) = 0 — enter F here"),
-                placeholder: PlotKind.implicit.primaryPlaceholder,
-                layerID: layer.id,
-                isPrimary: true
-            )
-            primaryField = field
-            return [field]
-        case .region:
-            let field = makeFormulaField(
-                title: L("F(x, y) compared with 0"),
-                placeholder: PlotKind.region.primaryPlaceholder,
-                layerID: layer.id,
-                isPrimary: true
-            )
-            primaryField = field
-            return [field]
+        formulaTitles(layer.kind).map { title, slot in
+            let placeholder: String
+            switch slot {
+            case .primary: placeholder = layer.kind.primaryPlaceholder
+            case .secondary: placeholder = layer.kind.secondaryPlaceholder
+            case .tertiary: placeholder = layer.kind.tertiaryPlaceholder
+            }
+            let field = makeFormulaField(title: title, placeholder: placeholder, layerID: layer.id, slot: slot)
+            switch slot {
+            case .primary: primaryField = field
+            case .secondary: secondaryField = field
+            case .tertiary: tertiaryField = field
+            }
+            return field
         }
     }
 
@@ -290,21 +286,17 @@ final class LayerEditorViewController: NSViewController {
         title: String,
         placeholder: String,
         layerID: UUID,
-        isPrimary: Bool
+        slot: FormulaSlot
     ) -> FormulaFieldView {
         let field = FormulaFieldView(title: title, placeholder: placeholder)
         field.onLiveChange = { [weak self] text in
             guard let self else { return }
             self.state.beginLiveEdit()
-            self.state.updateLayerLive(id: layerID) { layer in
-                if isPrimary { layer.formula = text } else { layer.secondaryFormula = text }
-            }
+            self.state.updateLayerLive(id: layerID) { layer in slot.write(text, into: &layer) }
         }
         field.onCommit = { [weak self] text in
             guard let self else { return }
-            self.state.updateLayerLive(id: layerID) { layer in
-                if isPrimary { layer.formula = text } else { layer.secondaryFormula = text }
-            }
+            self.state.updateLayerLive(id: layerID) { layer in slot.write(text, into: &layer) }
             self.state.commitLiveEdit(L("Edit Formula"))
         }
         return field
@@ -368,7 +360,8 @@ final class LayerEditorViewController: NSViewController {
     private func domainSymbol(_ kind: PlotKind) -> String {
         switch kind {
         case .polar: return "θ"
-        case .parametric: return "t"
+        case .parametric, .spaceCurve: return "t"
+        case .parametricSurface: return "u"
         default: return "x"
         }
     }
@@ -451,8 +444,9 @@ final class LayerEditorViewController: NSViewController {
 
     @objc private func kindEdited(_ sender: NSPopUpButton) {
         let index = sender.indexOfSelectedItem
-        guard index >= 0, index < PlotKind.allCases.count else { return }
-        let kind = PlotKind.allCases[index]
+        let kinds = availableKinds
+        guard index >= 0, index < kinds.count else { return }
+        let kind = kinds[index]
         editLayer(L("Change Type")) { $0.kind = kind }
     }
 

@@ -376,7 +376,8 @@ final class AppState {
 
     func addLayer(_ kind: PlotKind) {
         var created = Layer.makeDefault(kind: kind, index: document.layers.count)
-        created.usesExplicitDomain = kind == .parametric || kind == .polar
+        // 参数方程、极坐标、空间曲线、参数曲面的参数范围总是生效。
+        created.usesExplicitDomain = kind.usesDomain && kind != .explicit
         let id = created.id
         mutate(String(format: L("New %@"), kind.shortName)) { $0.layers.append(created) }
         selection = id

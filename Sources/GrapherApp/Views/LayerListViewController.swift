@@ -4,8 +4,8 @@ import GrapherKit
 private let layerRowDragType = NSPasteboard.PasteboardType("com.grapherng.layer-row")
 private let layerRowViewIdentifier = NSUserInterfaceItemIdentifier("GrapherNG.layerRow")
 
-/// The left column's upper half: one row per layer, reorderable by dragging,
-/// with the add/remove footer underneath.
+/// The left column's upper half: one row per layer, reorderable by dragging.
+/// 新建 / 删除放在「图层」标题行右侧，与下方「参数 ＋」同一个样式。
 final class LayerListViewController: NSViewController {
 
     let state: AppState
@@ -15,28 +15,33 @@ final class LayerListViewController: NSViewController {
     private var observerID: UUID?
     private var isSyncingSelection = false
 
-    private lazy var addButton: NSPopUpButton = {
-        let button = ControlFactory.popUp(
-            items: [],
-            target: nil,
-            action: #selector(addLayerItem(_:))
-        )
-        button.pullsDown = true
-        button.addItem(withTitle: "+ 添加")
+    private lazy var addButton = ControlFactory.symbolButton(
+        symbol: "plus",
+        target: self,
+        action: #selector(showAddMenu(_:)),
+        tooltip: "新建图层",
+        accessibility: "新建图层"
+    )
+
+    private lazy var removeButton = ControlFactory.symbolButton(
+        symbol: "minus",
+        target: self,
+        action: #selector(removeSelectedLayer(_:)),
+        tooltip: "删除所选图层",
+        accessibility: "删除所选图层"
+    )
+
+    /// 「＋」点开的图型菜单。
+    private lazy var addMenu: NSMenu = {
+        let menu = NSMenu()
         for kind in PlotKind.allCases {
             let item = NSMenuItem(title: kind.displayName, action: #selector(addLayerItem(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = kind.rawValue
-            button.menu?.addItem(item)
+            menu.addItem(item)
         }
-        return button
+        return menu
     }()
-
-    private lazy var removeButton = ControlFactory.pushButton(
-        "−",
-        target: self,
-        action: #selector(removeSelectedLayer(_:))
-    )
 
     init(state: AppState) {
         self.state = state
@@ -56,15 +61,27 @@ final class LayerListViewController: NSViewController {
         let root = FlippedView()
         root.translatesAutoresizingMaskIntoConstraints = false
 
-        let header = ControlFactory.sectionLabel("图层")
-        header.translatesAutoresizingMaskIntoConstraints = false
+        let title = ControlFactory.sectionLabel("图层")
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(NSLayoutConstraint.Priority(1), for: .horizontal)
+        let header = ControlFactory.stack(
+            [title, spacer, addButton, removeButton],
+            orientation: .horizontal,
+            spacing: 8,
+            alignment: .centerY
+        )
         root.addSubview(header)
+        // 图标按钮按图标本身的尺寸会被压成扁条（"minus" 只有 3 点高），固定一个方形点击区。
+        for button in [addButton, removeButton] {
+            button.imageScaling = .scaleNone
+            NSLayoutConstraint.activate([
+                button.widthAnchor.constraint(equalToConstant: 22),
+                button.heightAnchor.constraint(equalToConstant: 20),
+            ])
+        }
 
         configureTable()
         root.addSubview(scrollView)
-
-        let footer = ControlFactory.stack([addButton, removeButton], orientation: .horizontal, spacing: 6)
-        root.addSubview(footer)
 
         let gutter = ControlFactory.Metric.gutter
         // The split view sizes this pane to its fitting height, so the list
@@ -75,16 +92,12 @@ final class LayerListViewController: NSViewController {
         NSLayoutConstraint.activate([
             header.topAnchor.constraint(equalTo: root.topAnchor, constant: 10),
             header.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: gutter),
-            header.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -gutter),
+            header.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -gutter),
 
-            scrollView.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 8),
+            scrollView.topAnchor.constraint(equalTo: header.bottomAnchor, constant: ControlFactory.Metric.rowSpacing),
             scrollView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-
-            footer.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 8),
-            footer.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: gutter),
-            footer.trailingAnchor.constraint(lessThanOrEqualTo: root.trailingAnchor, constant: -gutter),
-            footer.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -10),
+            scrollView.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -6),
         ])
 
         view = root
@@ -108,7 +121,8 @@ final class LayerListViewController: NSViewController {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.rowHeight = ControlFactory.Metric.layerRowHeight
-        tableView.style = .fullWidth
+        // 侧栏列表用系统侧栏样式：选中行是圆角内缩高亮，与 Finder / 邮件一致。
+        tableView.style = .sourceList
         tableView.allowsMultipleSelection = false
         tableView.allowsEmptySelection = true
         tableView.usesAlternatingRowBackgroundColors = false
@@ -118,6 +132,7 @@ final class LayerListViewController: NSViewController {
         tableView.setDraggingSourceOperationMask(.move, forLocal: true)
         tableView.draggingDestinationFeedbackStyle = .gap
         tableView.menuProvider = { [weak self] row in self?.contextMenu(for: row) }
+        tableView.onDelete = { [weak self] in self?.removeSelectedLayer(nil) }
 
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
@@ -201,6 +216,11 @@ final class LayerListViewController: NSViewController {
     }
 
     // MARK: - Actions
+
+    @objc private func showAddMenu(_ sender: NSButton) {
+        // 菜单从按钮正下方弹出。
+        addMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
+    }
 
     @objc private func addLayerItem(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let kind = PlotKind(rawValue: raw) else { return }
@@ -294,12 +314,23 @@ extension LayerListViewController: NSTableViewDelegate {
 private final class LayerTableView: NSTableView {
 
     var menuProvider: ((Int) -> NSMenu?)?
+    /// ⌫ / ⌦ 删除所选图层。
+    var onDelete: (() -> Void)?
 
     override func menu(for event: NSEvent) -> NSMenu? {
         let row = self.row(at: convert(event.locationInWindow, from: nil))
         guard row >= 0 else { return nil }
         selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         return menuProvider?(row)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        let deleteKeys: Set<UInt16> = [51, 117]   // delete（退格）、forward delete
+        if deleteKeys.contains(event.keyCode), selectedRow >= 0, event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty {
+            onDelete?()
+            return
+        }
+        super.keyDown(with: event)
     }
 }
 

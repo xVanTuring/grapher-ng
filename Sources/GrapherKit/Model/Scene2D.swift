@@ -65,6 +65,26 @@ public struct MarkerPrimitiveBatch: Equatable, Sendable {
     }
 }
 
+/// 屏幕像素到屏幕像素的等比变换：`p' = p × scale + translation`。
+///
+/// 后台采样跟不上手势时，渲染器拿上一份几何套这个变换画到当前视口上；线宽、标记半径
+/// 不跟着缩放（它们本来就是屏幕像素口径）。
+public struct ScreenTransform2D: Equatable, Sendable {
+    public var scale: Double
+    public var translation: SIMD2<Double>
+
+    public init(scale: Double, translation: SIMD2<Double>) {
+        self.scale = scale
+        self.translation = translation
+    }
+
+    public static let identity = ScreenTransform2D(scale: 1, translation: .zero)
+
+    public func apply(_ point: SIMD2<Double>) -> SIMD2<Double> {
+        point * scale + translation
+    }
+}
+
 public struct Scene2D: Equatable, Sendable {
     public var background: RGBAColor
     public var commands: [Draw2D]

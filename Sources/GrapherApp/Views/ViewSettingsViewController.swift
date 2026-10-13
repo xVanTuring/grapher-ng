@@ -88,7 +88,8 @@ final class ViewSettingsViewController: NSViewController {
         minorGridCheckbox?.state = state.document.showMinorGrid ? .on : .off
         themeCheckbox?.state = state.document.theme.background.r < 0.5 ? .on : .off
 
-        let viewport = state.viewport
+        // 只报没被侧栏 / 工具栏盖住的那块：那才是用户眼前的范围。
+        let viewport = state.viewport.unobscured
         xRangeLabel?.stringValue = rangeText("X", viewport.xRange)
         yRangeLabel?.stringValue = rangeText("Y", viewport.yRange)
     }

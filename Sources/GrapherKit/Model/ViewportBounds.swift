@@ -30,6 +30,18 @@ public struct DataBounds: Equatable, Sendable {
         )
     }
 
+    /// 两个矩形的交；不相交时为 nil（只在一条边上相切也算相交，退化成一条线）。
+    public func intersection(_ other: DataBounds) -> DataBounds? {
+        let result = DataBounds(
+            minX: Swift.max(minX, other.minX),
+            maxX: Swift.min(maxX, other.maxX),
+            minY: Swift.max(minY, other.minY),
+            maxY: Swift.min(maxY, other.maxY)
+        )
+        guard result.minX <= result.maxX, result.minY <= result.maxY else { return nil }
+        return result
+    }
+
     /// 收集一批折线（数据坐标）的包围盒。
     public static func enclosing(_ segments: [[SIMD2<Double>]]) -> DataBounds? {
         var minX = Double.infinity

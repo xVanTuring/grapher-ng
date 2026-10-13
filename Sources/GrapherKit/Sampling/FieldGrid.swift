@@ -78,6 +78,9 @@ public enum FieldEvaluator {
 
     /// Evaluates `expr` over the grid. The expression must be compiled against
     /// variables that include `"x"` and `"y"`.
+    ///
+    /// 分块摊到所有核上并行求值：`evaluateBatch` 可重入、无共享可变状态，每块只写自己那段
+    /// 输出，互不重叠。全精度一屏几百万个点，单线程要上百毫秒，是重算里最大的一笔。
     public static func fill(_ grid: inout FieldGrid, expr: CompiledExpression) {
         guard let xSlot = expr.variables.firstIndex(of: "x"),
               let ySlot = expr.variables.firstIndex(of: "y")
@@ -88,37 +91,37 @@ public enum FieldEvaluator {
 
         let slotCount = expr.variables.count
         let total = grid.pointCount
-        if grid.values.count != total {
-            grid.values = [Double](repeating: .nan, count: total)
-        }
+        let cols = grid.cols
+        let originX = grid.originX
+        let originY = grid.originY
+        let stepX = grid.stepX
+        let stepY = grid.stepY
+        let chunkCount = (total + chunkPoints - 1) / chunkPoints
 
-        var input = [Double](repeating: 0, count: chunkPoints * slotCount)
-        var output = [Double](repeating: 0, count: chunkPoints)
-
-        var start = 0
-        while start < total {
-            let count = min(chunkPoints, total - start)
-            for k in 0..<count {
-                let index = start + k
-                let i = index % grid.cols
-                let j = index / grid.cols
-                let base = k * slotCount
-                for slot in 0..<slotCount { input[base + slot] = 0 }
-                input[base + xSlot] = grid.dataX(i)
-                input[base + ySlot] = grid.dataY(j)
-            }
-            input.withUnsafeBufferPointer { inBuffer in
-                output.withUnsafeMutableBufferPointer { outBuffer in
+        var values = [Double](repeating: .nan, count: total)
+        values.withUnsafeMutableBufferPointer { output in
+            guard let outputBase = output.baseAddress else { return }
+            DispatchQueue.concurrentPerform(iterations: chunkCount) { chunk in
+                let start = chunk * chunkPoints
+                let count = min(chunkPoints, total - start)
+                withUnsafeTemporaryAllocation(of: Double.self, capacity: count * slotCount) { input in
+                    guard let inputBase = input.baseAddress else { return }
+                    inputBase.initialize(repeating: 0, count: count * slotCount)
+                    for k in 0..<count {
+                        let index = start + k
+                        let base = k * slotCount
+                        inputBase[base + xSlot] = originX + stepX * Double(index % cols)
+                        inputBase[base + ySlot] = originY + stepY * Double(index / cols)
+                    }
                     expr.evaluateBatch(
-                        UnsafeBufferPointer(rebasing: inBuffer[0..<(count * slotCount)]),
+                        UnsafeBufferPointer(input),
                         count: count,
-                        into: UnsafeMutableBufferPointer(rebasing: outBuffer[0..<count])
+                        into: UnsafeMutableBufferPointer(start: outputBase + start, count: count)
                     )
                 }
             }
-            for k in 0..<count { grid.values[start + k] = output[k] }
-            start += count
         }
+        grid.values = values
     }
 }
 

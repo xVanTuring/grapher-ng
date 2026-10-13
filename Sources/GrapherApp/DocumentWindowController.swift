@@ -93,6 +93,13 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
 
         let canvasItem = NSSplitViewItem(viewController: viewportViewController)
         canvasItem.minimumThickness = 360
+        // 沉浸式画布（UniReader 阅读区同款）：画布这一格伸到左侧毛玻璃侧栏底下，透过侧栏
+        // 能看到曲线；被盖住的宽度以 `safeAreaInsets` 交给画布，视口中心落在没被盖住那块的
+        // 中心，所以侧栏一开内容被推开、一收又回来。没有这一行，画布从侧栏右边才开始，
+        // 侧栏底下只有窗口底色。检查器是普通分栏项，不受影响，仍然真的占宽度。
+        if #available(macOS 26.0, *) {
+            canvasItem.automaticallyAdjustsSafeAreaInsets = true
+        }
 
         let inspectorItem = NSSplitViewItem(viewController: inspectorViewController)
         inspectorItem.minimumThickness = 286

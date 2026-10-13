@@ -9,6 +9,7 @@ final class ViewportViewController: NSViewController {
     private let state: AppState
     private let host = ViewportHostView()
     private let overlay = CanvasOverlayView()
+    private let safeAreaProbe = SafeAreaProbeView()
     private let statusLabel = NSTextField(labelWithString: "")
     private let zoomLabel = NSTextField(labelWithString: "")
     private let spinner = NSProgressIndicator()
@@ -45,6 +46,10 @@ final class ViewportViewController: NSViewController {
         overlay.state = state
         host.addSubview(overlay)
 
+        safeAreaProbe.translatesAutoresizingMaskIntoConstraints = false
+        safeAreaProbe.onChange = { [weak self] in self?.scheduleMetricsSync() }
+        host.addSubview(safeAreaProbe)
+
         let status = makeStatusBar()
         root.addSubview(status)
 
@@ -59,6 +64,11 @@ final class ViewportViewController: NSViewController {
             overlay.trailingAnchor.constraint(equalTo: host.trailingAnchor),
             overlay.bottomAnchor.constraint(equalTo: host.bottomAnchor),
 
+            safeAreaProbe.topAnchor.constraint(equalTo: host.safeAreaLayoutGuide.topAnchor),
+            safeAreaProbe.leadingAnchor.constraint(equalTo: host.safeAreaLayoutGuide.leadingAnchor),
+            safeAreaProbe.trailingAnchor.constraint(equalTo: host.safeAreaLayoutGuide.trailingAnchor),
+            safeAreaProbe.bottomAnchor.constraint(equalTo: host.safeAreaLayoutGuide.bottomAnchor),
+
             status.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             status.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             status.bottomAnchor.constraint(equalTo: root.bottomAnchor),
@@ -71,13 +81,17 @@ final class ViewportViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         installMetalView()
-        observerID = state.observe([.scene, .status, .probe, .viewport]) { [weak self] change in
+        observerID = state.observe([.scene, .status, .probe, .viewport, .document]) { [weak self] change in
             guard let self else { return }
             switch change {
             case .scene:
-                self.pushScene()
+                self.pushContent()
+            case .viewport, .document:
+                // 视口一变：网格重画、曲线按新旧视口之差挪过去、刻度数字跟上——都在这一帧里，
+                // 不等后台采样（UniReader 画板 `viewportChanged` 同一个思路）。
+                self.refreshCanvas()
                 self.overlay.needsDisplay = true
-            case .probe, .viewport:
+            case .probe:
                 self.overlay.needsDisplay = true
             case .status:
                 self.updateStatus()
@@ -119,14 +133,15 @@ final class ViewportViewController: NSViewController {
             separator.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: bar.trailingAnchor),
 
-            spinner.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: 10),
+            // 整个窗格伸到毛玻璃侧栏底下，状态条的文字得让开侧栏：钉安全区，不钉边。
+            spinner.leadingAnchor.constraint(equalTo: bar.safeAreaLayoutGuide.leadingAnchor, constant: 10),
             spinner.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
 
             statusLabel.leadingAnchor.constraint(equalTo: spinner.trailingAnchor, constant: 6),
             statusLabel.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
             statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: zoomLabel.leadingAnchor, constant: -10),
 
-            zoomLabel.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -12),
+            zoomLabel.trailingAnchor.constraint(equalTo: bar.safeAreaLayoutGuide.trailingAnchor, constant: -12),
             zoomLabel.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
         ])
         return bar
@@ -144,13 +159,34 @@ final class ViewportViewController: NSViewController {
             view.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
         metalView = view
-        pushScene()
+        refreshCanvas()
+        pushContent()
     }
 
-    private func pushScene() {
+    /// 后台新算好一份曲线：上传一次显存，按它与当前视口之差摆好。
+    private func pushContent() {
         guard let metalView else { return }
-        let scene = state.built?.scene
-        if metalView.scene != scene { metalView.scene = scene }
+        guard let built = state.built else {
+            metalView.setContent(nil, size: .zero, transform: .identity)
+            return
+        }
+        metalView.setContent(
+            built.scene,
+            size: SIMD2(built.viewport.widthPixels, built.viewport.heightPixels),
+            transform: state.viewport.screenTransform(from: built.viewport)
+        )
+    }
+
+    /// 视口或显示设置变了：网格与坐标轴按当前视口重画，曲线层只改变换。
+    private func refreshCanvas() {
+        guard let metalView else { return }
+        let chrome = state.chrome().scene
+        metalView.background = state.document.theme.background
+        if metalView.chrome != chrome { metalView.chrome = chrome }
+        if let built = state.built {
+            metalView.contentTransform = state.viewport.screenTransform(from: built.viewport)
+        }
+        zoomLabel.stringValue = String(format: "缩放 %.4g px/单位", state.document.viewport.scale)
     }
 
     private func updateStatus() {
@@ -199,8 +235,27 @@ final class ViewportViewController: NSViewController {
         state.setViewportMetrics(
             pixelWidth: Double(drawable.width),
             pixelHeight: Double(drawable.height),
+            insets: obscuredInsets,
             backingScale: scale
         )
+    }
+
+    /// 宿主被浮层盖住的四边（点）。按安全区探测视图的 frame 量，不读 `safeAreaInsets`——
+    /// 原因见 `SafeAreaProbeView`。
+    private var obscuredInsets: NSEdgeInsets {
+        let probe = safeAreaProbe.frame
+        let bounds = host.bounds
+        guard probe.width > 0, probe.height > 0 else { return host.safeAreaInsets }
+        return NSEdgeInsets(
+            top: max(probe.minY, 0),
+            left: max(probe.minX, 0),
+            bottom: max(bounds.height - probe.maxY, 0),
+            right: max(bounds.width - probe.maxX, 0)
+        )
+    }
+
+    fileprivate func hostDidLayout() {
+        scheduleMetricsSync()
     }
 
     // MARK: - Input
@@ -294,6 +349,8 @@ final class ViewportViewController: NSViewController {
         guard dx != 0 || dy != 0 else { return }
         state.mutateViewport { $0.pan(byPixels: SIMD2(dx, dy)) }
         state.requestInteractiveRebuild()
+        // 指针没动、曲线在它底下滑过去：读数换成指针下面那条。
+        updateProbe(at: pixelPoint(from: event))
     }
 
     fileprivate func handleMagnify(_ event: NSEvent) {
@@ -314,6 +371,28 @@ final class ViewportViewController: NSViewController {
     }
 }
 
+/// 钉在宿主安全区参考线上的透明视图，只用来量「画布被侧栏 / 工具栏盖住了多少」。
+///
+/// 不直接读 `safeAreaInsets`：侧栏**收起**的动画里它一直停在原值、动画结束才一下跳到 0
+/// （展开时倒是逐帧变的，实测），内容就会等侧栏收完再猛地一跳；而按参考线约束出来的
+/// frame 两个方向都逐帧跟着侧栏走，frame 一变就去对一次视口。
+final class SafeAreaProbeView: NSView {
+    var onChange: (() -> Void)?
+
+    override var isFlipped: Bool { true }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func setFrameOrigin(_ newOrigin: NSPoint) {
+        super.setFrameOrigin(newOrigin)
+        onChange?()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        onChange?()
+    }
+}
+
 /// Transparent to the responder chain for everything except the handful of
 /// events the canvas cares about.
 final class ViewportHostView: NSView {
@@ -326,6 +405,11 @@ final class ViewportHostView: NSView {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         controller?.updateTrackingAreas()
+    }
+
+    override func layout() {
+        super.layout()
+        controller?.hostDidLayout()
     }
 
     override func mouseMoved(with event: NSEvent) { controller?.handleMouseMoved(event) }

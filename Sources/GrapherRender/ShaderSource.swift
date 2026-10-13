@@ -3,8 +3,8 @@ import Foundation
 /// Metal Shading Language source, embedded so the app never has to locate a
 /// resource bundle. Compiled once at startup via `device.makeLibrary(source:)`.
 ///
-/// The Swift `Instance` / `FillVertex` / `Uniforms` structs in `Renderer2D.swift`
-/// must stay layout-compatible with the declarations here.
+/// The Swift `LineInstance` / `RectInstance` / `Uniforms` structs in
+/// `Renderer2D.swift` must stay layout-compatible with the declarations here.
 enum ShaderSource {
     static let all = common + stroke + fill
 
@@ -12,9 +12,19 @@ enum ShaderSource {
     #include <metal_stdlib>
     using namespace metal;
 
+    /// `scale` / `translation` place a prepared scene on screen
+    /// (`p' = p * scale + translation`, see `ScreenTransform2D`). Stroke widths
+    /// and marker radii are screen pixels and are deliberately left unscaled.
     struct Uniforms {
         float2 viewportSize;
+        float2 translation;
+        float  scale;
+        float  pad;
     };
+
+    inline float2 placed(float2 p, constant Uniforms &uni) {
+        return p * uni.scale + uni.translation;
+    }
 
     inline float2 pixelToNDC(float2 p, float2 viewport) {
         return float2(p.x / viewport.x * 2.0 - 1.0,
@@ -49,6 +59,10 @@ enum ShaderSource {
                                    constant Uniforms &uni [[buffer(1)]])
     {
         Instance inst = instances[iid];
+        // A uniform positive scale keeps the tangent's direction, so it can be
+        // reused as is after placing the end points.
+        float2 a = placed(inst.a, uni);
+        float2 b = placed(inst.b, uni);
         float2 tangent = inst.tangent;
         float2 normal = float2(-tangent.y, tangent.x);
         // The coverage ramp spans one pixel either side of the true edge.
@@ -56,15 +70,15 @@ enum ShaderSource {
 
         bool atEnd = (vid & 1) != 0;
         bool above = (vid & 2) != 0;
-        float2 anchor = atEnd ? inst.b : inst.a;
+        float2 anchor = atEnd ? b : a;
         float2 p = anchor + tangent * (atEnd ? extend : -extend)
                           + normal * (above ? extend : -extend);
 
         StrokeOut out;
         out.position = float4(pixelToNDC(p, uni.viewportSize), 0.0, 1.0);
         out.color = inst.color;
-        out.a = inst.a;
-        out.b = inst.b;
+        out.a = a;
+        out.b = b;
         out.halfWidth = inst.halfWidth;
         return out;
     }
@@ -82,12 +96,12 @@ enum ShaderSource {
     }
     """#
 
-    /// Region fills. The sub-pixel area has already been resolved into
-    /// `color.a` on the CPU, so no coverage ramp is applied here.
+    /// Region fills, one instance per rectangle. The sub-pixel area has already
+    /// been resolved into `color.a` on the CPU, so no coverage ramp is applied here.
     private static let fill = #"""
 
-    struct FillVertex {
-        float2 position;
+    struct RectInstance {
+        float4 rect;   // x0, x1, y0, y1 in pixels
         float4 color;
     };
 
@@ -97,13 +111,16 @@ enum ShaderSource {
     };
 
     vertex FillOut fill_vertex(uint vid [[vertex_id]],
-                               const device FillVertex *verts [[buffer(0)]],
+                               uint iid [[instance_id]],
+                               const device RectInstance *rects [[buffer(0)]],
                                constant Uniforms &uni [[buffer(1)]])
     {
-        FillVertex v = verts[vid];
+        RectInstance r = rects[iid];
+        float2 corner = float2((vid & 1) != 0 ? r.rect.y : r.rect.x,
+                               (vid & 2) != 0 ? r.rect.w : r.rect.z);
         FillOut out;
-        out.position = float4(pixelToNDC(v.position, uni.viewportSize), 0.0, 1.0);
-        out.color = v.color;
+        out.position = float4(pixelToNDC(placed(corner, uni), uni.viewportSize), 0.0, 1.0);
+        out.color = r.color;
         return out;
     }
 

@@ -473,7 +473,7 @@ final class LayerEditorViewController: NSViewController {
     }
 
     @objc private func domainFollowViewport(_ sender: Any?) {
-        setDomain(lower: state.viewport.xRange.lowerBound, upper: state.viewport.xRange.upperBound)
+        setDomain(lower: state.viewport.unobscured.xRange.lowerBound, upper: state.viewport.unobscured.xRange.upperBound)
     }
 
     @objc private func relationEdited(_ sender: NSPopUpButton) {

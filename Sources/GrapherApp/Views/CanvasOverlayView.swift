@@ -21,20 +21,27 @@ final class CanvasOverlayView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        guard let state, let built = state.built else { return }
+        guard let state else { return }
         let scale = state.backingScale
         guard scale > 0 else { return }
 
+        // 刻度与网格线必须出自同一个视口：都取**当前**视口现算的那份（`AppState.chrome`），
+        // 不用后台场景里带回来的——那份是开工那一刻的视口，拖动中早就过时了。
         let viewport = state.document.viewport
         let theme = state.document.theme
-        let chrome = built.chrome
+        let chrome = state.chrome().layout
         let bounds = self.bounds
 
-        // The canvas runs edge to edge under the translucent toolbar, but text
-        // must not: a tick label drawn up there is unreadable. Labels are held
-        // below the toolbar (and above the window's bottom edge) instead.
-        let labelTop = safeAreaInsets.top + 2
-        let labelBottom = bounds.height - safeAreaInsets.bottom - 2
+        // The canvas runs edge to edge under the translucent toolbar and the
+        // glass sidebar, but text must not: a tick label drawn up there is
+        // unreadable. Labels are held inside the unobscured area instead —
+        // 用视口里记的遮挡宽度，不读 `safeAreaInsets`：前者侧栏开合时逐帧更新，
+        // 后者收起时要等动画完才变（见 `SafeAreaProbeView`）。
+        let insets = obscuredInsets(scale: scale)
+        let labelTop = insets.top + 2
+        let labelBottom = bounds.height - insets.bottom - 2
+        let labelLeft = insets.left
+        let labelRight = bounds.width - insets.right
 
         let tickAttributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .regular),
@@ -43,7 +50,8 @@ final class CanvasOverlayView: NSView {
 
         let axisX = chrome.originPixel.x / scale
         let axisY = chrome.originPixel.y / scale
-        let showsVertical = chrome.showsVerticalAxis
+        // 竖轴压在侧栏毛玻璃底下时照样画线，但数字按「不在屏上」处理，钉到安全区左缘。
+        let showsVertical = chrome.showsVerticalAxis && axisX >= labelLeft && axisX <= labelRight
         let showsHorizontal = chrome.showsHorizontalAxis
 
         // The label row rides the axis when it is on screen, otherwise it pins
@@ -56,10 +64,13 @@ final class CanvasOverlayView: NSView {
         // zero tick would only collide with it.
         let originMarked = showsHorizontal && showsVertical
 
+        // 窗口边缘允许半个数字露在外面；贴着侧栏那一边则整个让开，不往毛玻璃底下压。
+        let minLabelX = labelLeft > 0 ? labelLeft + 12 : -24
+        let maxLabelX = labelRight < bounds.width ? labelRight - 12 : bounds.width + 24
         for tick in chrome.xTicks.major {
             if originMarked && abs(tick) < 1e-9 { continue }
             let x = viewport.dataToScreenX(tick) / scale
-            guard x > -24, x < bounds.width + 24 else { continue }
+            guard x > minLabelX, x < maxLabelX else { continue }
             draw(
                 formatted(tick, decimals: chrome.xTicks.labelDecimals),
                 at: CGPoint(x: x, y: xLabelY),
@@ -68,8 +79,8 @@ final class CanvasOverlayView: NSView {
             )
         }
 
-        let onAxisY = showsVertical && axisX > 44
-        let yLabelX = showsVertical ? min(max(axisX - 6, 22), bounds.width - 4) : 8
+        let onAxisY = showsVertical && axisX > labelLeft + 44
+        let yLabelX = showsVertical ? min(max(axisX - 6, labelLeft + 22), labelRight - 4) : labelLeft + 8
         let yAnchor: Anchor = onAxisY ? .trailing : .leading
 
         for tick in chrome.yTicks.major where !(originMarked && abs(tick) < 1e-9) {
@@ -104,7 +115,7 @@ final class CanvasOverlayView: NSView {
         if showsHorizontal {
             draw(
                 "x",
-                at: CGPoint(x: bounds.width - 12, y: min(max(axisY + 11, labelTop + 8), labelBottom)),
+                at: CGPoint(x: labelRight - 12, y: min(max(axisY + 11, labelTop + 8), labelBottom)),
                 anchor: .center,
                 attributes: axisNameAttributes
             )
@@ -112,7 +123,7 @@ final class CanvasOverlayView: NSView {
         if showsVertical {
             draw(
                 "y",
-                at: CGPoint(x: max(axisX + 13, 12), y: labelTop + 8),
+                at: CGPoint(x: max(axisX + 13, labelLeft + 12), y: labelTop + 8),
                 anchor: .center,
                 attributes: axisNameAttributes
             )
@@ -125,7 +136,9 @@ final class CanvasOverlayView: NSView {
 
     private func drawProbe(scale: Double, bounds: NSRect) {
         guard let state, let probe = state.probe else { return }
-        let point = CGPoint(x: probe.screenPoint.x / scale, y: probe.screenPoint.y / scale)
+        // 按数据点和当前视口现算位置：拖动画布时读数圈跟着曲线走，不停在命中那一刻的屏幕位置。
+        let screen = state.document.viewport.toScreen(x: probe.dataPoint.x, y: probe.dataPoint.y)
+        let point = CGPoint(x: screen.x / scale, y: screen.y / scale)
         let color = ControlFactory.nsColor(probe.color)
 
         let ring = NSBezierPath(ovalIn: NSRect(x: point.x - 4.5, y: point.y - 4.5, width: 9, height: 9))
@@ -163,12 +176,14 @@ final class CanvasOverlayView: NSView {
         let boxHeight = titleSize.height + bodySize.height + 12
 
         var originX = point.x + 12
-        if originX + boxWidth > bounds.width { originX = point.x - 12 - boxWidth }
+        let insets = obscuredInsets(scale: scale)
+        if originX + boxWidth > bounds.width - insets.right { originX = point.x - 12 - boxWidth }
         var originY = point.y + 12
         if originY + boxHeight > bounds.height { originY = point.y - 12 - boxHeight }
-        originX = max(4, originX)
+        // 读数框也让开毛玻璃侧栏。
+        originX = max(insets.left + 4, originX)
         // Stay clear of the toolbar band, which floats over the canvas.
-        originY = max(safeAreaInsets.top + 4, originY)
+        originY = max(insets.top + 4, originY)
 
         let box = NSRect(x: originX, y: originY, width: boxWidth, height: boxHeight)
         let path = NSBezierPath(roundedRect: box, xRadius: 6, yRadius: 6)
@@ -183,6 +198,17 @@ final class CanvasOverlayView: NSView {
     }
 
     // MARK: - Helpers
+
+    /// 画布被浮层盖住的四边，单位点。
+    private func obscuredInsets(scale: Double) -> NSEdgeInsets {
+        guard let viewport = state?.document.viewport, scale > 0 else { return safeAreaInsets }
+        return NSEdgeInsets(
+            top: viewport.insetTop / scale,
+            left: viewport.insetLeft / scale,
+            bottom: viewport.insetBottom / scale,
+            right: viewport.insetRight / scale
+        )
+    }
 
     private func draw(
         _ string: String,

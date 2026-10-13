@@ -41,7 +41,7 @@ targets:
         # Debug 默认是 -Onone，对这一层是 27 倍的代价（实测网格求值 1.2M vs 32M
         # 点/秒）：停手后重算要等 4 秒、拖动只有 5 帧，开发时没法用。
         # 只给这一层开优化，GrapherApp 仍是 -Onone，界面代码照样能单步。
-        # 这一层有 58 项单元测试兜底，本来也很少需要单步进去。
+        # 这一层有 76 项单元测试兜底，本来也很少需要单步进去。
         Debug:
           SWIFT_OPTIMIZATION_LEVEL: "-O"
           SWIFT_COMPILATION_MODE: wholemodule

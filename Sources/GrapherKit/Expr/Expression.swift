@@ -10,7 +10,7 @@ public struct ExpressionContext {
     }
 }
 
-public struct ExpressionError: Error, CustomStringConvertible {
+public struct ExpressionError: Error, Equatable, CustomStringConvertible {
     public let message: String
     public let column: Int
     public let length: Int

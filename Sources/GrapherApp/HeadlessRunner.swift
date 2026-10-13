@@ -226,5 +226,31 @@ enum HeadlessRunner {
         } catch {
             print("显函数基准失败: \(error)")
         }
+
+        // 交互画布一次重算的真实开销：示例文档、Retina 一屏、含视口外那一圈。
+        // 拖动时画面靠变换即时跟手，这个数决定的是「边上露出来的部分多久补上」。
+        var document = GrapherDocument.sample()
+        document.viewport.widthPixels = 2400
+        document.viewport.heightPixels = 1600
+        let compiled = LayerCompiler().compile(document)
+        for quality in [SampleQuality.interactive, .full] {
+            let request = SceneBuildRequest(
+                document: document,
+                compiled: compiled,
+                viewport: document.viewport,
+                quality: quality,
+                backingScale: 2,
+                overscan: AppState.overscan,
+                includesChrome: false
+            )
+            _ = SceneBuilder2D.build(request)
+            let started = Date()
+            let rounds = 5
+            for _ in 0..<rounds { _ = SceneBuilder2D.build(request) }
+            print(String(
+                format: "整屏重算（%@，2400×1600 含外扩）%6.1f ms/次",
+                quality.displayName, Date().timeIntervalSince(started) * 1000 / Double(rounds)
+            ))
+        }
     }
 }

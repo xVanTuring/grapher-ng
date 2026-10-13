@@ -16,8 +16,8 @@ enum Exporter {
         panel.title = "导出 PNG"
         present(panel, in: window) { url in
             let scene = state.buildForExport(scale: scale).scene
-            let width = Int(state.document.viewport.widthPixels * scale)
-            let height = Int(state.document.viewport.heightPixels * scale)
+            let width = Int(state.exportViewport.widthPixels * scale)
+            let height = Int(state.exportViewport.heightPixels * scale)
             guard width > 0, height > 0,
                   let context = MetalContext.shared,
                   let renderer = OffscreenRenderer2D(
@@ -47,8 +47,8 @@ enum Exporter {
         present(panel, in: window) { url in
             let scene = state.buildForExport(scale: 1).scene
             let pointsPerPixel = max(state.backingScale, 1)
-            let widthPoints = state.document.viewport.widthPixels / pointsPerPixel
-            let heightPoints = state.document.viewport.heightPixels / pointsPerPixel
+            let widthPoints = state.exportViewport.widthPixels / pointsPerPixel
+            let heightPoints = state.exportViewport.heightPixels / pointsPerPixel
             do {
                 try PDFExport.write(
                     scene: scene,

@@ -86,10 +86,19 @@ final class AppState {
     let compiler = LayerCompiler()
     var undoManager: UndoManager?
 
-    private var generation = 0
-    private var buildTask: Task<Void, Never>?
+    /// 交互画布在视口四周各多采这么一圈（按视口宽 / 高的比例）：拖动、缩小时露出来的边上
+    /// 已经有图，等下一份采样回来再补精。
+    nonisolated static let overscan = 0.25
+
+    /// 同一时刻只跑一份后台采样；跑着的时候来的请求只记下「还要再算一次、什么画质」，
+    /// 跑完立刻按**那一刻**的文档和视口再起一份。早先每个鼠标事件都取消上一份、只收最新一代，
+    /// 而一次采样比两次事件的间隔还长，结果是拖动全程一份都收不到，曲线只在停手后才跳过去；
+    /// 被「取消」的任务也照样算完，白白占满 CPU。
+    private var buildInFlight = false
+    private var pendingQuality: SampleQuality?
     private var settleTask: Task<Void, Never>?
     private var liveEditSnapshot: GrapherDocument?
+    private var chromeCache: (key: ChromeKey, scene: Scene2D, layout: ChromeLayout)?
 
     init(document: GrapherDocument? = nil) {
         if let document {
@@ -110,51 +119,132 @@ final class AppState {
 
     var viewport: Viewport2D { document.viewport }
 
-    func setViewportMetrics(pixelWidth: Double, pixelHeight: Double, backingScale scale: Double) {
+    /// 画布尺寸与被浮层盖住的四边（都是像素）。画布铺满整个窗格、伸到毛玻璃侧栏与工具栏底下，
+    /// `insets` 是被盖住的那一圈：视口中心落在没被盖住那块的中心，侧栏一开内容就被推开。
+    /// 侧栏开合动画里每一帧都会走到这里，所以走交互画质，停下来再补精。
+    func setViewportMetrics(
+        pixelWidth: Double,
+        pixelHeight: Double,
+        insets: NSEdgeInsets,
+        backingScale scale: Double
+    ) {
         guard pixelWidth > 1, pixelHeight > 1, scale > 0 else { return }
+        let scaleChanged = backingScale != scale
         backingScale = scale
-        guard document.viewport.widthPixels != pixelWidth
-            || document.viewport.heightPixels != pixelHeight
-        else { return }
-        document.viewport.widthPixels = pixelWidth
-        document.viewport.heightPixels = pixelHeight
-        requestRebuild(interactive: false)
+        var viewport = document.viewport
+        viewport.widthPixels = pixelWidth
+        viewport.heightPixels = pixelHeight
+        viewport.insetLeft = Double(insets.left) * scale
+        viewport.insetTop = Double(insets.top) * scale
+        viewport.insetRight = Double(insets.right) * scale
+        viewport.insetBottom = Double(insets.bottom) * scale
+        guard viewport != document.viewport || scaleChanged else { return }
+        document.viewport = viewport
+        notify(.viewport)
+        requestInteractiveRebuild()
+    }
+
+    /// 换文档 / 撤销时沿用当前画布的尺寸与遮挡：那是窗口的状态，不是文档的。
+    private func adoptCanvasMetrics(_ viewport: inout Viewport2D) {
+        let current = document.viewport
+        viewport.widthPixels = current.widthPixels
+        viewport.heightPixels = current.heightPixels
+        viewport.insetLeft = current.insetLeft
+        viewport.insetTop = current.insetTop
+        viewport.insetRight = current.insetRight
+        viewport.insetBottom = current.insetBottom
+    }
+
+    private func restore(_ snapshot: GrapherDocument) {
+        var restored = snapshot
+        adoptCanvasMetrics(&restored.viewport)
+        document = restored
+    }
+
+    // MARK: - Chrome
+
+    private struct ChromeKey: Equatable {
+        var viewport: Viewport2D
+        var theme: Theme
+        var showGrid: Bool
+        var showMinorGrid: Bool
+        var showAxes: Bool
+        var backingScale: Double
+    }
+
+    /// 网格与坐标轴（Metal 画线）和刻度位置（叠加层写数字），都按**当前**视口现算，不走后台：
+    /// 几十条线、微秒级，拖动时每一帧算一次，刻度数字与网格线就永远对得上。
+    func chrome() -> (scene: Scene2D, layout: ChromeLayout) {
+        let key = ChromeKey(
+            viewport: document.viewport,
+            theme: document.theme,
+            showGrid: document.showGrid,
+            showMinorGrid: document.showMinorGrid,
+            showAxes: document.showAxes,
+            backingScale: backingScale
+        )
+        if let cached = chromeCache, cached.key == key { return (cached.scene, cached.layout) }
+        let made = SceneBuilder2D.chromeScene(document: document, viewport: document.viewport, backingScale: backingScale)
+        chromeCache = (key, made.scene, made.layout)
+        return made
     }
 
     // MARK: - Rebuilding
 
     func requestRebuild(interactive: Bool) {
-        generation += 1
-        let currentGeneration = generation
-        let compiled = compiler.compile(document)
+        // 公式错误当场报，不等排队的采样。
+        _ = compileDocument()
+        pendingQuality = interactive ? .interactive : .full
+        startNextBuild()
+    }
 
+    private func compileDocument() -> [LayerCompiler.CompiledLayer] {
+        let compiled = compiler.compile(document)
         var errors: [UUID: ExpressionError] = [:]
         for layer in compiled {
             if let error = layer.primaryError { errors[layer.layer.id] = error }
         }
-        expressionErrors = errors
-        notify(.errors)
+        // 只在真变了时广播：图层列表与检查器收到 `.errors` 会整个刷新，拖动时每个事件都发一次
+        // 就是白白的主线程开销。
+        if errors != expressionErrors {
+            expressionErrors = errors
+            notify(.errors)
+        }
+        return compiled
+    }
+
+    private func startNextBuild() {
+        guard !buildInFlight, let quality = pendingQuality else { return }
+        pendingQuality = nil
+        buildInFlight = true
 
         let request = SceneBuildRequest(
             document: document,
-            compiled: compiled,
+            compiled: compileDocument(),
             viewport: document.viewport,
-            quality: interactive ? .interactive : .full,
-            backingScale: backingScale
+            quality: quality,
+            backingScale: backingScale,
+            overscan: Self.overscan,
+            includesChrome: false
         )
-
-        isBuilding = true
-        notify(.status)
-        buildTask?.cancel()
-        buildTask = Task.detached(priority: .userInitiated) {
-            let results = SceneBuilder2D.build(request)
-            if Task.isCancelled { return }
+        if !isBuilding {
+            isBuilding = true
+            notify(.status)
+        }
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = SceneBuilder2D.build(request)
             await MainActor.run { [weak self] in
-                guard let self, currentGeneration == self.generation else { return }
-                self.built = results
-                self.isBuilding = false
+                guard let self else { return }
+                self.buildInFlight = false
+                // 这份是按开工那一刻的视口算的，视口此后又动过也照收：画布会按两者的差把它
+                // 摆到当前位置，总比继续显示更旧的那份强。
+                self.built = result
                 self.notify(.scene)
-                self.notify(.status)
+                self.startNextBuild()
+                if !self.buildInFlight {
+                    self.isBuilding = false
+                    self.notify(.status)
+                }
             }
         }
     }
@@ -177,7 +267,8 @@ final class AppState {
     /// way (rather than upscaling screen geometry) means a 4x image really does
     /// contain 4x the detail in the curves.
     func buildForExport(scale: Double, quality: SampleQuality = .high) -> BuiltScene {
-        var viewport = document.viewport
+        // 导出用户眼前没被侧栏 / 工具栏盖住的那块，构图与屏幕上看到的一致。
+        var viewport = exportViewport
         viewport.widthPixels *= scale
         viewport.heightPixels *= scale
         viewport.scale *= scale
@@ -191,6 +282,8 @@ final class AppState {
         )
         return SceneBuilder2D.build(request)
     }
+
+    var exportViewport: Viewport2D { document.viewport.unobscured }
 
     // MARK: - Document mutation
 
@@ -213,7 +306,7 @@ final class AppState {
         guard document != previous else { return }
         undoManager?.registerUndo(withTarget: self) { target in
             Task { @MainActor in
-                target.document = previous
+                target.restore(previous)
                 target.repairSelection()
                 target.requestRebuild(interactive: false)
                 target.notify(.document)
@@ -262,7 +355,7 @@ final class AppState {
         guard snapshot != document else { return }
         undoManager?.registerUndo(withTarget: self) { target in
             Task { @MainActor in
-                target.document = snapshot
+                target.restore(snapshot)
                 target.repairSelection()
                 target.requestRebuild(interactive: false)
                 target.notify(.document)
@@ -375,7 +468,7 @@ final class AppState {
     /// 「适应内容」：把所有曲线的包围盒装进视口；内容为空则回原点。和 UniReader 的
     /// `ScratchBounds.fit` 是同一条规则。
     func fitToContent() {
-        guard let bounds = built?.contentBounds else {
+        guard let bounds = built?.fitBounds else {
             resetView()
             return
         }
@@ -402,7 +495,7 @@ final class AppState {
         mutateViewport { viewport in
             viewport.zoom(
                 by: factor,
-                anchorPixel: SIMD2(viewport.widthPixels / 2, viewport.heightPixels / 2)
+                anchorPixel: SIMD2(viewport.focusX, viewport.focusY)
             )
         }
         requestRebuild(interactive: false)
@@ -412,8 +505,7 @@ final class AppState {
 
     func newDocument() {
         var fresh = GrapherDocument()
-        fresh.viewport.widthPixels = document.viewport.widthPixels
-        fresh.viewport.heightPixels = document.viewport.heightPixels
+        adoptCanvasMetrics(&fresh.viewport)
         document = fresh
         selection = nil
         documentURL = nil
@@ -428,8 +520,7 @@ final class AppState {
     func open(url: URL) {
         do {
             var loaded = try DocumentStore.load(from: url)
-            loaded.viewport.widthPixels = document.viewport.widthPixels
-            loaded.viewport.heightPixels = document.viewport.heightPixels
+            adoptCanvasMetrics(&loaded.viewport)
             document = loaded
             selection = loaded.layers.first?.id
             documentURL = url

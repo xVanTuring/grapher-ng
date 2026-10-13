@@ -32,7 +32,7 @@ Sources/GrapherApp/     AppKit 界面、事件处理、命令行模式
 Tests/GrapherNGTests/   单元测试
 ```
 
-- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；它也是唯一有测试覆盖的层，全部 58 项测试都跑在它和 GrapherRender 上。
+- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；它也是唯一有测试覆盖的层，全部 76 项测试都跑在它和 GrapherRender 上。
 - 界面**不许用 SwiftUI**。`AppState` 用极简观察者回调广播变更（`observe(_:_:)`），不引入 Combine。
 - `GrapherRender` 的着色器是**运行期**从 `ShaderSource.swift` 里的内嵌字符串编译的，没有 `.metal` 编译阶段——别去加 build phase。
 - `GrapherKit` 在 Debug 下单独开 `-O` + `wholemodule`：这一层数值密集，`-Onone` 让网格求值慢 27 倍（1.2M vs 32M 点/秒）。界面层保持 `-Onone`。
@@ -41,6 +41,7 @@ Tests/GrapherNGTests/   单元测试
 
 - **抗锯齿靠解析式覆盖率，不是 MSAA**。线在屏幕空间展开成四边形、片元算像素中心到线段的精确距离；填充的边界逐像素算子像素覆盖率。**`MetalContext.sampleCount` 必须是 1**，开了 MSAA 会在覆盖率之上再叠一层，把边缘弄脏。
 - **采样在 CPU 上用 `Double`**（Apple GPU 没有双精度）。拖动时降到约 1/3 分辨率、停手 200ms 后重算精细版；这套节流在 `AppState.requestInteractiveRebuild`。
+  网格求值（`FieldEvaluator.fill`）按块摊到所有核上并行，单屏全精度从约 50ms 降到约 5ms。
 - **求值是字节码栈式虚拟机**，必须**可重入且线程安全**（`evaluate` 内部用 `withUnsafeTemporaryAllocation` 在栈上开求值栈，无共享可变状态）。网格求值走 `evaluateBatch`，不要退化成逐点调 `evaluate`。
 - **间断必须断开**：`1/x`、`tan(x)` 不能画出竖直连线。判定在 `CurveSampler.sampleExplicit`（跳变超过半屏高且横向跨度小于 4 像素即为极点）。
 - 画质常数别随手调：弦高容差 0.14 像素、`tolerancePixels` 分档在 `CurveSampler.options(for:)`；屏幕坐标进 GPU 前在 `SceneBuilder2D.screenClamped` 夹到 ±1e7，否则极点会把 float32 变成 inf。
@@ -59,6 +60,38 @@ Tests/GrapherNGTests/   单元测试
    `BuiltScene.contentBounds`——**不要放在拖动路径上现算**（那条路径每帧都走）。
 4. **输入**：普通滚动 = 平移，`⌘`+滚动 = 缩放，捏合 = 缩放。缩放只在 `momentumPhase == []` 时消费，
    否则触控板一甩会连着放大好几档；有级滚轮（`hasPreciseScrollingDeltas == false`）的 delta 要 ×10。
+
+### 拖动跟手：画面不等后台采样
+
+视口一变，**同一帧里**画面就要跟上（UniReader 画板 `viewportChanged` 的思路：平移只挪图层，不重画笔迹）：
+
+- **曲线层**：后台算好的几何留在它自己的像素空间（`BuiltScene.viewport`），上传一次显存
+  （`Renderer2D.prepare` → `PreparedScene2D`）；之后每帧只传一个 `ScreenTransform2D`
+  （`Viewport2D.screenTransform(from:)`，等比缩放 + 平移），着色器里套上。线宽、标记半径不跟着缩放。
+- **网格与坐标轴**不进后台场景，每次视口变化按当前视口现画（`SceneBuilder2D.chromeScene`，
+  `AppState.chrome()` 带缓存）；叠加层的刻度数字也用这一份，所以数字和网格线永远对得上。
+  读数圈按 `ProbeHit.dataPoint` 和当前视口现算位置，拖动时跟着曲线走。
+- **外扩采样**：交互画布四周各多采 `AppState.overscan = 0.25` 个视口，拖动、缩小时露出来的边上已经有图。
+  外扩量取整像素，停稳时变换只差整数平移，区域填充的逐像素矩形不会被插值糊掉。
+  导出、离屏渲染保持 `overscan = 0` 且带网格（`SceneBuildRequest` 的默认值）。
+- **后台采样单通道**：同一时刻只跑一份，跑着时来的请求只记「还要再算、什么画质」，跑完按**那一刻**的
+  文档和视口再起一份；结果一律收下（变换会把它摆到当前位置）。**不要**改回「每个事件取消上一份、
+  只收最新一代」：一次采样比两次鼠标事件的间隔长，拖动全程一份都收不到，曲线只在停手后才跳过去，
+  被取消的任务还照样算完、占满 CPU。
+- `.errors` 只在错误集合真变了时才广播：图层列表和检查器收到它会整个刷新。
+
+## 沉浸式侧栏（同 UniReader 阅读区）
+
+画布这一格伸到左侧毛玻璃侧栏底下，透过侧栏能看到曲线；侧栏一开内容被推到右边没被盖住的那块里居中，
+一收又回来，动画全程逐帧跟随。
+
+- 开关是画布分栏项的 `automaticallyAdjustsSafeAreaInsets = true`（macOS 26+，`#available` 包着）。
+  检查器是普通分栏项，不受影响，仍然真的占宽度。
+- 被盖住的四边记在 `Viewport2D.insetLeft/Top/Right/Bottom`（像素）：`centerX/Y` 落在没被盖住那块的
+  中心（`focusX/Y`），`xRange/yRange` 仍覆盖整块画布（毛玻璃底下也要有图）。遮挡宽度是窗口状态，
+  `CodingKeys` 不含它，不进文档；换文档 / 撤销时沿用当前值（`AppState.adoptCanvasMetrics`）。
+- 「适应内容」装进没被盖住的那块；导出、检查器里的 X/Y 范围、「视图范围」按钮都用 `Viewport2D.unobscured`。
+- 叠加层的文字、读数框、状态条都让开遮挡区；叠加层用视口里记的遮挡宽度，不读自己的 `safeAreaInsets`（原因见下一节）。
 
 ## 已踩过的坑
 
@@ -81,6 +114,9 @@ Tests/GrapherNGTests/   单元测试
   否则 `autosavesConfiguration` 存下来的老清单里没有新 item。
 - **`Array.move(fromOffsets:toOffset:)` 是 SwiftUI 的扩展**，去掉 SwiftUI 后链接会断在 `AppState.moveLayers`。自己实现的 `moveElements(fromOffsets:toOffset:)` 在 `AppState.swift` 末尾。
 - **`NSResponder` 已有 `mouseMoved` / `mouseDown` 等同名方法**，控制器的处理方法必须改名（现在是 `handleMouseMoved` 等），否则会被当成重写。
+- **侧栏收起时 `safeAreaInsets` 不逐帧变**：展开动画里它逐帧变，收起动画里它停在原值、动画结束才一下跳到 0，
+  内容就等侧栏收完再猛跳一下（实测）。按安全区参考线约束出来的 frame 两个方向都逐帧变，所以画布用
+  `SafeAreaProbeView`（钉在宿主 `safeAreaLayoutGuide` 上的透明视图）量遮挡宽度，frame 一变就对一次视口。
 - **不要在 `layout()` 里改观察状态**。`ViewportViewController` 的视口尺寸通过 `DispatchQueue.main.async` 延后一拍再写；在布局里直接写会让窗口进入无限重排（实测卡死在 `_layoutSubtreeWithOldSize` 递归里）。
 - **分栏/窗口的自动保存状态会被写坏**：`NSSplitView Subview Frames <name>` 里出现过侧栏和检查器 `isCollapsed = YES`、
   画布独占全宽的状态（怀疑是同时跑两个实例时互相覆盖）。遇到「面板莫名消失」先查这条，清掉即可：

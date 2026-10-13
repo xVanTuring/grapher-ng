@@ -2,7 +2,8 @@
 
 macOS 上用来画数学图形的工具：输入公式，画出曲线、区域和曲面。原生 Swift + Metal，没有任何第三方依赖。
 
-**当前版本覆盖 2D 的全部图型**（显函数、参数方程、极坐标、隐函数、不等式区域），3D 与两曲面交线是下一期。
+**平面图**覆盖 2D 的全部图型（显函数、参数方程、极坐标、隐函数、不等式区域）；**立体图**有显式曲面、参数曲面、
+空间曲线、隐式曲面，平面曲线也能放进立体图。两曲面交线是下一期。界面中英双语，跟随系统语言。
 
 ![界面](docs/screenshot.png)
 
@@ -58,6 +59,30 @@ bash scripts/test.sh                       # 跑单元测试
 
 侧栏「参数」里新建一个参数（比如 `a`），公式里就能当常量用。拖动滑块时图形实时重算，这是看参数怎么影响形状最方便的办法。
 
+## 立体图
+
+「文件 → 新建立体图」（⇧⌘N）开一扇立体图窗口。图形画在一个坐标盒里，盒外的部分裁掉；缩放改的是盒子框住的范围，
+盒子在屏幕上的大小不变。
+
+| 类型 | 公式写法 | 说明 |
+|---|---|---|
+| 显式曲面 | `z = f(x, y)`，只填 `f` | 例如 `a*sin(x)*cos(y)`，在坐标盒的 x、y 范围上画 |
+| 参数曲面 | `x(u,v)`、`y(u,v)`、`z(u,v)` 三栏，加 u、v 的范围 | 例如环面 `(2.4+0.7cos(v))cos(u)` … |
+| 空间曲线 | `x(t)`、`y(t)`、`z(t)` 三栏，加 t 的范围 | 例如螺旋线 `3.3cos(t)`、`3.3sin(t)`、`t/4` |
+| 隐式曲面 | `F(x, y, z) = 0`，只填 `F` | 例如球面 `x^2 + y^2 + z^2 - 4` |
+
+平面的四种曲线（显函数、参数方程、极坐标、隐函数）也能加进立体图：默认画在 z = 0 平面上；勾上「延伸到 3D」，
+就沿 z 方向拉成一张贯穿坐标盒的竖直曲面，比如 `y = x` 成一面斜墙、`x^2 + y^2 - 4` 成一个圆柱面。
+
+| 动作 | 快捷方式 |
+|---|---|
+| 旋转 | 拖动 / 方向键（每次 10°） |
+| 平移 | `⇧` + 拖动 / 双指滚动 |
+| 缩放 | `⌘` + 滚动，或触控板捏合 |
+| 适应内容 / 回到默认视角 | `F` / `R` |
+
+立体图导出 PNG（按目标分辨率重新采样，刻度文字一并画进图里）；矢量 PDF 与采样点 CSV 只对平面图提供。
+
 ## 操作
 
 | 动作 | 快捷方式 |
@@ -88,6 +113,10 @@ bash scripts/test.sh                       # 跑单元测试
 build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG \
   --render out.png --doc doc.json --width 1600 --height 1200 --quality high
 
+# 渲染立体图示例（立体图文件用 --doc 指定即可），可以换个角度
+build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG \
+  --render out.png --space --azimuth 1.2 --elevation 0.3
+
 # 采样与求值的性能
 build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG --benchmark
 ```
@@ -104,6 +133,10 @@ build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG --
 
 回归证据在测试里：`Renderer2DTests` 直接断言导出的像素值（45° 边缘的覆盖率、线宽在缩放下的稳定性、通道序、图层顺序、圆头端点），`SamplingTests` 断言填充区域的墨量等于 πr²、1/x 不会画出竖直连线之类。
 
+立体图的曲面边缘靠 4× MSAA（三角形边缘没法解析地算覆盖率），空间曲线与坐标盒的线照旧按像素距离算覆盖率；盒外的部分用
+六个裁剪平面在 GPU 上精确裁掉。`Sampling3DTests` 断言隐式球面的顶点都落在球面上、拼出的面积等于 4πr²，`Renderer3DTests`
+断言盒外的面一个像素都不画、近处的面挡住远处的面。
+
 ## 代码结构
 
 ```
@@ -111,10 +144,11 @@ project.yml          xcodegen 工程定义（GrapherNG.xcodeproj 是生成物）
 Sources/
   GrapherKit/        纯逻辑，不依赖界面框架（framework target）
     Expr/            词法 → 语法 → 字节码 → 栈式虚拟机求值
-    Sampling/        自适应细分、marching squares、区域填充、探针、场景组装
-    Model/           文档、图层、视口变换、刻度
+    Sampling/        自适应细分、marching squares、区域填充、探针、场景组装；
+                     3D 的曲面网格、marching tetrahedra、空间曲线、坐标盒线框
+    Model/           文档、图层、视口变换（2D 视口、3D 坐标盒与相机）、刻度
     IO/              PDF / CSV 导出
-  GrapherRender/     Metal 渲染（framework target）：描边、填充、离屏导出、MTKView 封装
+  GrapherRender/     Metal 渲染（framework target）：2D 描边与填充、3D 曲面与线、离屏导出、MTKView 封装
   GrapherApp/        AppKit 界面与事件处理、命令行模式
 Tests/
   GrapherNGTests/    表达式（含模糊测试与基准）、采样与几何、整条流水线、离屏渲染像素断言
@@ -128,6 +162,7 @@ Tests/
 
 ## 还没做的
 
-- 3D：显式曲面、参数曲面、空间曲线、隐式曲面（marching tetrahedra），以及**两曲面交线**（`z=f ∩ z=g` 降维求交、隐式 ∩ 隐式网格切片加牛顿投影细化、参数曲面 ∩ 隐式在 uv 平面上求交）。架构上已经留好位置。
+- **两曲面交线**（`z=f ∩ z=g` 降维求交、隐式 ∩ 隐式网格切片加牛顿投影细化、参数曲面 ∩ 隐式在 uv 平面上求交）。
+- 立体图：半透明曲面、悬停读数、矢量导出。
 - 切线、法线、自由标注文字。
 - 数据散点与统计图表。

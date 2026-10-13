@@ -3,7 +3,9 @@
 macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**纯 AppKit + Metal，零第三方依赖**；xcodegen 管理工程
 （`GrapherNG.xcodeproj` 由 `project.yml` 生成，不要手改），macOS 14+，Swift 5 语言模式，ad-hoc 签名。
 
-当前覆盖 **2D 全部图型**（显函数 / 参数方程 / 极坐标 / 隐函数 / 不等式区域）。3D 与两曲面交线是下一期，架构上已留位置。
+文档分**平面图**与**立体图**两种（新建时定下，`GrapherDocument.dimension`）：平面图有 2D 全部图型（显函数 / 参数方程 /
+极坐标 / 隐函数 / 不等式区域）；立体图有显式曲面、参数曲面、空间曲线、隐式曲面，平面曲线也能放进去（画在 z = 0 上或
+「延伸到 3D」）。两曲面交线是下一期。
 
 ## 构建 / 测试 / 运行
 
@@ -32,7 +34,7 @@ Sources/GrapherApp/     AppKit 界面、事件处理、命令行模式
 Tests/GrapherNGTests/   单元测试
 ```
 
-- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；它也是唯一有测试覆盖的层，全部 76 项测试都跑在它和 GrapherRender 上。
+- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；测试主要跑在它和 GrapherRender 上（共 122 项）。
 - 界面**不许用 SwiftUI**。`AppState` 用极简观察者回调广播变更（`observe(_:_:)`），不引入 Combine。
 - `GrapherRender` 的着色器是**运行期**从 `ShaderSource.swift` 里的内嵌字符串编译的，没有 `.metal` 编译阶段——别去加 build phase。
 - `GrapherKit` 在 Debug 下单独开 `-O` + `wholemodule`：这一层数值密集，`-Onone` 让网格求值慢 27 倍（1.2M vs 32M 点/秒）。界面层保持 `-Onone`。
@@ -40,6 +42,7 @@ Tests/GrapherNGTests/   单元测试
 ## 关键设计（改动前先读）
 
 - **抗锯齿靠解析式覆盖率，不是 MSAA**。线在屏幕空间展开成四边形、片元算像素中心到线段的精确距离；填充的边界逐像素算子像素覆盖率。**`MetalContext.sampleCount` 必须是 1**，开了 MSAA 会在覆盖率之上再叠一层，把边缘弄脏。
+  （这条只管 2D。3D 曲面的三角形边缘没法解析地算覆盖率，`Renderer3D.sampleCount` 是 4，两边互不相干。）
 - **采样在 CPU 上用 `Double`**（Apple GPU 没有双精度）。拖动时降到约 1/3 分辨率、停手 200ms 后重算精细版；这套节流在 `AppState.requestInteractiveRebuild`。
   网格求值（`FieldEvaluator.fill`）按块摊到所有核上并行，单屏全精度从约 50ms 降到约 5ms。
 - **求值是字节码栈式虚拟机**，必须**可重入且线程安全**（`evaluate` 内部用 `withUnsafeTemporaryAllocation` 在栈上开求值栈，无共享可变状态）。网格求值走 `evaluateBatch`，不要退化成逐点调 `evaluate`。
@@ -100,6 +103,28 @@ Tests/GrapherNGTests/   单元测试
   `CodingKeys` 不含它，不进文档；换文档 / 撤销时沿用当前值（`AppState.adoptCanvasMetrics`）。
 - 「适应内容」装进没被盖住的那块；导出、检查器里的 X/Y 范围、「视图范围」按钮都用 `Viewport2D.unobscured`。
 - 叠加层的文字、读数框、状态条都让开遮挡区；叠加层用视口里记的遮挡宽度，不读自己的 `safeAreaInsets`（原因见下一节）。
+
+## 立体图（3D）
+
+- **坐标盒**：`View3D` 存盒心 `center` 与半边长 `halfExtent`（三轴同一个，图形不变形）、相机方位角 / 仰角。
+  一切几何先换成**盒内归一化坐标** `n = (p − center) / halfExtent`（盒子 = [-1, 1]³），GPU 用 Float。
+  相机绕盒心转、z 轴朝上、离盒心固定距离透视投影；**缩放改的是 `halfExtent`**，盒子在屏幕上大小不变（同 Desmos 3D）。
+- **重采的边界**：只转相机不重采（`orbit` 只换投影矩阵）；平移、缩放改了盒子才重采，期间旧几何经
+  `View3D.boxTransform(from:)` 换到新盒子里照画。画布尺寸、遮挡变了也只改投影。
+- **裁剪**：盒外的部分在顶点着色器里用 6 个 `clip_distance` 裁掉（真几何裁剪，边缘有 MSAA）；盒子自己的棱线、
+  盒壁网格不裁（`Renderer3D.Pass.clipToBox`）。
+- **渲染次序**：先画所有曲面（不透明、写深度），再画所有线（半透明、只测深度、深度往相机偏一点）——曲线能被曲面挡住，
+  贴在曲面上的线也不被吃掉。曲面两面打光，背面压暗。
+- **采样**（`SceneBuilder3D`）：显式曲面在盒子 xy 范围上铺网格；参数曲面在 u、v 范围上铺网格（法向按面积加权，
+  极点处的退化三角形整个丢掉）；隐式曲面用体网格 + marching tetrahedra（Kuhn 剖分，法向取梯度）；
+  空间曲线在归一化坐标里自适应细分。一条边超过 4 个归一化单位的三角形当断开处（1/x 两侧不连竖墙）。
+- **平面曲线进立体图**（Desmos 3D 的做法）：`PlotKind.canExtrude` 的四种可以放进立体图，图层的 `extrudesInSpace`
+  决定画在 z = 0 上还是沿 z 拉成贯穿盒子的竖直曲面。采样直接复用 2D 采样器，给它一个铺满盒子 xy 范围的虚拟视口。
+- **坐标盒线框与刻度**（`Chrome3D`）：12 条棱、背向相机三面墙上的网格、过原点的坐标轴；刻度数字标在盒底朝向相机的棱
+  和屏幕最左的竖棱上，盒角上的不标。每帧按当前视角重算，叠加层投影后摆文字（`Canvas3DOverlayView`）。
+- **新字段都要兼容旧文件**：`Layer` 的 `tertiaryFormula` / `domain2Lower` / `domain2Upper` / `extrudesInSpace`、
+  文档的 `dimension` / `view3D` 都用 `decodeIfPresent` 读，2D 时代的文件照样能开（`View3DTests` 里有用例）。
+- 无界面渲染立体图：`--render out.png --space`（或 `--doc` 指定立体图文件），`--azimuth` / `--elevation` 换角度。
 
 ## 多语言（en + zh-Hans）
 

@@ -2,10 +2,9 @@ import CoreGraphics
 import CoreText
 import Foundation
 import GrapherKit
-import ImageIO
 
-/// 不经过界面，把一份文档按存下时的样子画出来：Quick Look 空格预览、Finder 缩略图、欢迎窗口的最近文档、
-/// 立体图导出 PNG 共用。图形按目标尺寸重新采样，不是把屏幕上的图缩放。
+/// 不经过界面，把一份文档按存下时的样子画出来：Finder 缩略图、欢迎窗口的最近文档、立体图导出 PNG 共用；
+/// 空格预览的初始取景（`planeViewport` / `spaceView`）也取自这里。图形按目标尺寸重新采样，不是把屏幕上的图缩放。
 /// 只依赖 Core Graphics / Core Text / Metal，不碰 AppKit，Quick Look 扩展里也能用。
 public enum GraphSnapshot {
 
@@ -110,59 +109,6 @@ public enum GraphSnapshot {
                 }
             }
         }
-    }
-
-    // MARK: - 预览
-
-    public enum Preview {
-        /// 平面图：矢量 PDF（网格、坐标轴、刻度数字、图形都是路径），放大不糊。
-        case pdf(Data)
-        /// 立体图：PNG（曲面只能光栅化）。
-        case png(Data)
-    }
-
-    /// Quick Look 空格预览：文档存下时眼前的那块，按点计的尺寸不超过 `maxPointSize`。
-    /// 存下时的画布按 Retina（2 像素 / 点）换算成点。
-    public static func preview(
-        of document: GrapherDocument,
-        maxPointSize: CGSize = CGSize(width: 960, height: 640)
-    ) throws -> (preview: Preview, pointSize: CGSize) {
-        let saved = savedCanvasSize(of: document)
-        let fit = min(1, maxPointSize.width / (saved.width / 2), maxPointSize.height / (saved.height / 2))
-        let size = CGSize(width: max((saved.width / 2 * fit).rounded(), 1), height: max((saved.height / 2 * fit).rounded(), 1))
-        let pointScale = 2.0
-
-        if document.dimension == .space {
-            guard let image = image(of: document, pixelWidth: Int(size.width * pointScale),
-                                    pixelHeight: Int(size.height * pointScale), pointScale: pointScale, labels: true),
-                  let png = pngData(image)
-            else { throw SnapshotError.renderFailed }
-            return (.png(png), size)
-        }
-
-        let viewport = planeViewport(of: document, pixelWidth: size.width * pointScale, pixelHeight: size.height * pointScale)
-        let built = SceneBuilder2D.build(SceneBuildRequest(
-            document: document, compiled: LayerCompiler().compile(document), viewport: viewport,
-            quality: .high, backingScale: pointScale))
-        let pdf = try PDFExport.data(
-            scene: built.scene, widthPoints: size.width, heightPoints: size.height, pixelsPerPoint: pointScale
-        ) { context in
-            drawPlaneLabels(document: document, viewport: viewport, pointScale: pointScale, in: context)
-        }
-        return (.pdf(pdf), size)
-    }
-
-    public enum SnapshotError: Error {
-        case renderFailed
-    }
-
-    public static func pngData(_ image: CGImage) -> Data? {
-        let data = NSMutableData()
-        guard let destination = CGImageDestinationCreateWithData(data as CFMutableData, "public.png" as CFString, 1, nil)
-        else { return nil }
-        CGImageDestinationAddImage(destination, image, nil)
-        guard CGImageDestinationFinalize(destination) else { return nil }
-        return data as Data
     }
 
     // MARK: - 文字

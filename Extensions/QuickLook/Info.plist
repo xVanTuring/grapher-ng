@@ -25,7 +25,7 @@
 		<key>NSExtensionAttributes</key>
 		<dict>
 			<key>QLIsDataBasedPreview</key>
-			<true/>
+			<false/>
 			<key>QLSupportedContentTypes</key>
 			<array>
 				<string>tech.xvanturing.grapherng.graph</string>
@@ -36,7 +36,7 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.quicklook.preview</string>
 		<key>NSExtensionPrincipalClass</key>
-		<string>$(PRODUCT_MODULE_NAME).PreviewProvider</string>
+		<string>$(PRODUCT_MODULE_NAME).PreviewViewController</string>
 	</dict>
 </dict>
 </plist>

@@ -147,6 +147,9 @@ targets:
       - path: Extensions/QuickLook
         excludes:
           - "Info.plist"
+      # 与 App 共用的两个界面文件：刻度文字图层池、把 NSEvent 换成 CanvasInput 的参数。
+      - path: Sources/GrapherApp/Views/TextLayerPool.swift
+      - path: Sources/GrapherApp/Views/CanvasInput+AppKit.swift
     dependencies:
       - target: GrapherKit
         embed: false
@@ -168,9 +171,10 @@ targets:
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.quicklook.preview
-          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PreviewProvider
+          # 视图型预览：扩展自己出一块只读画布，预览窗口会把拖动、滚动、捏合交给它（实测）。
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PreviewViewController
           NSExtensionAttributes:
-            QLIsDataBasedPreview: true
+            QLIsDataBasedPreview: false
             QLSupportsSearchableItems: false
             QLSupportedContentTypes: [tech.xvanturing.grapherng.graph]
 

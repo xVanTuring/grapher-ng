@@ -94,12 +94,18 @@ Tests/GrapherNGTests/   单元测试
 
 ## Quick Look 扩展（访达空格预览 / 文件缩略图，同 FreeMind）
 
-- `GrapherNGQuickLook`（空格预览，数据型）和 `GrapherNGThumbnail`（缩略图）两个 app-extension，源码在 `Extensions/`，
+- `GrapherNGQuickLook`（空格预览）和 `GrapherNGThumbnail`（缩略图）两个 app-extension，源码在 `Extensions/`，
   只链接 GrapherKit 与 GrapherRender，用 App 里那份（`embed: false`，rpath 指到 `../../../../Frameworks`），开沙盒。
   两个框架因此开了 `APPLICATION_EXTENSION_API_ONLY`：**别在 GrapherKit / GrapherRender 里用扩展不能用的 API**（如 `NSApplication`）。
-- 画法只有一份 `GraphSnapshot`（GrapherRender，只用 Core Graphics / Core Text / Metal，不碰 AppKit）：预览、缩略图、
-  欢迎窗口的最近文档、立体图导出 PNG 共用。取景是文档存下时没被侧栏盖住的那块（立体图是当时的视角）。
-  平面图预览出**矢量 PDF**（`PDFExport.data` + 刻度文字），立体图出 PNG；缩略图不画刻度文字。
+  另有两个界面文件与 App 共用、两边都编译：`TextLayerPool.swift`、`CanvasInput+AppKit.swift`（见 project.yml）。
+- **空格预览是可交互的只读画布**（视图型预览，`QLIsDataBasedPreview: false`）：`PreviewViewController` 里用 App 同款
+  `MetalView2D` / `MetalView3D` 与刻度文字图层，`PreviewSession` 按 App 的节奏后台采样（单通道、交互画质、停手补精）。
+  打开时是文档存下时的取景，双击复位；没有编辑、没有读数。实测访达的预览窗口会把拖动、滚动、捏合都交给扩展。
+- **手感只有一份 `CanvasInput`**（GrapherKit）：App 的 2D / 3D 画布与预览都按它把滚轮、捏合、拖动换成动作，
+  按键习惯改这里就两边一起改。**双指滚动永远是平移**，不当缩放（`CanvasInputTests` 守着）。
+- 缩略图的画法 `GraphSnapshot`（GrapherRender，只用 Core Graphics / Core Text / Metal，不碰 AppKit）：缩略图、
+  欢迎窗口的最近文档、立体图导出 PNG 共用，预览的初始取景（`planeViewport` / `spaceView`）也取自它。
+  取景是文档存下时没被侧栏盖住的那块（立体图是当时的视角）；缩略图不画刻度文字。
 - 平面图坐标轴文字的位置只有一份 `PlaneLabels`（GrapherKit）：画布叠加层与预览共用，字体由画的一方按角色挑。
 - 缩略图回调里交来的 `CGContext` 是**像素**口径（Retina 下是 `contextSize` 的两倍），按点画只占左下四分之一；
   要铺满 `context.boundingBoxOfClipPath`。
@@ -110,7 +116,8 @@ Tests/GrapherNGTests/   单元测试
   `kill -9 $(pgrep -f com.apple.quicklook.ThumbnailsAgent); qlmanage -r cache; killall Finder`。
   这几种都**不管用**：`killall`（进程名超过 16 个字符，匹配不上）、`pkill -f`（它不理会普通的结束信号）、
   `launchctl kickstart -k`（系统完整性保护拦下）、`qlmanage -r`（只重置 quicklookd，不是这个服务）。
-  空格预览只能在访达里按空格验证（FreeMind 的记录：`qlmanage -p` 调预览扩展会崩在 qlmanage 自己身上）。
+  空格预览只能在访达里按空格验证（FreeMind 的记录：`qlmanage -p` 调预览扩展会崩在 qlmanage 自己身上）；
+  预览服务也可能沿用旧版扩展，重启办法：`kill -9 $(pgrep -f QuickLookUIService); killall Finder`。
 
 ## 无限画布（照 UniReader 的画板抄的）
 
@@ -126,6 +133,7 @@ Tests/GrapherNGTests/   单元测试
    `BuiltScene.contentBounds`——**不要放在拖动路径上现算**（那条路径每帧都走）。
 4. **输入**：普通滚动 = 平移，`⌘`+滚动 = 缩放，捏合 = 缩放。缩放只在 `momentumPhase == []` 时消费，
    否则触控板一甩会连着放大好几档；有级滚轮（`hasPreciseScrollingDeltas == false`）的 delta 要 ×10。
+   这些规则都写在 `CanvasInput`（GrapherKit），App 画布与 Quick Look 预览共用，别在调用处再写一遍。
 
 ### 拖动跟手：画面不等后台采样
 

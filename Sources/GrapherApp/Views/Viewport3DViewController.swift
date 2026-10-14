@@ -211,13 +211,8 @@ final class Viewport3DViewController: NSViewController {
         let current = host.convert(event.locationInWindow, from: nil)
         let delta = SIMD2(Double(current.x - last.x), Double(current.y - last.y))
         lastDragLocation = current
-        if dragPans || event.modifierFlags.contains(.shift) {
-            state.mutateView3D { $0.pan(byPixels: delta * backingScale) }
-            state.requestInteractiveRebuild()
-        } else {
-            // 只转相机：坐标盒没变，画布当帧换投影就够了，不用重采。
-            state.mutateView3D { $0.orbit(byPoints: delta) }
-        }
+        apply(CanvasInput.drag(delta, modifiers: CanvasInput.Modifiers(event.modifierFlags), space: true,
+                               pansFromStart: dragPans, pointScale: backingScale))
     }
 
     fileprivate func handleMouseUp(_ event: NSEvent) {
@@ -225,37 +220,31 @@ final class Viewport3DViewController: NSViewController {
         dragPans = false
     }
 
+    /// ⌥+滚轮放大盒子，⌘+滚轮缩放图形（改范围，与平面图的 ⌘+滚轮一致），什么都不按是平移。
+    /// 具体规则在 `CanvasInput`，Quick Look 预览也用它。
     fileprivate func handleScrollWheel(_ event: NSEvent) {
-        var dx = Double(event.scrollingDeltaX)
-        var dy = Double(event.scrollingDeltaY)
-        if !event.hasPreciseScrollingDeltas {
-            dx *= 10
-            dy *= 10
-        }
-        // ⌥+滚轮放大盒子，⌘+滚轮缩放图形（改范围，与平面图的 ⌘+滚轮一致），什么都不按是平移。
-        let flags = event.modifierFlags
-        if flags.contains(.option) || flags.contains(.command) {
-            guard dy != 0, event.momentumPhase == [] else { return }
-            zoom(by: min(max(exp(-dy * 0.008), 0.5), 2), box: flags.contains(.option))
-            return
-        }
-        guard dx != 0 || dy != 0 else { return }
-        state.mutateView3D { $0.pan(byPixels: SIMD2(dx, dy) * backingScale) }
-        state.requestInteractiveRebuild()
+        apply(CanvasInput.scroll(CanvasInput.Scroll(event), space: true, pointScale: backingScale))
     }
 
     fileprivate func handleMagnify(_ event: NSEvent) {
-        let factor = 1 + Double(event.magnification)
-        guard factor.isFinite, factor > 0 else { return }
-        zoom(by: factor, box: event.modifierFlags.contains(.option))
+        apply(CanvasInput.pinch(magnification: Double(event.magnification),
+                                modifiers: CanvasInput.Modifiers(event.modifierFlags), space: true))
     }
 
-    /// 手势缩放：默认缩放图形（改坐标盒的范围，交互画质重采、停手补精）；
-    /// 按住 ⌥ 放大盒子（盒子连同图形在屏幕上变大，只换投影，当帧生效）。
-    private func zoom(by factor: Double, box: Bool) {
-        if box {
+    /// 只转相机、放大盒子：坐标盒没变，画布当帧换投影就够了，不用重采。
+    /// 平移、缩放图形改了坐标盒：交互画质重采、停手补精。
+    private func apply(_ action: CanvasInput.Action) {
+        switch action {
+        case .none:
+            return
+        case .orbit(let delta):
+            state.mutateView3D { $0.orbit(byPoints: delta) }
+        case .zoomBox(let factor):
             state.mutateView3D { $0.zoomCamera(by: factor) }
-        } else {
+        case .pan(let delta):
+            state.mutateView3D { $0.pan(byPixels: delta) }
+            state.requestInteractiveRebuild()
+        case .zoom(let factor):
             state.mutateView3D { $0.zoom(by: factor) }
             state.requestInteractiveRebuild()
         }

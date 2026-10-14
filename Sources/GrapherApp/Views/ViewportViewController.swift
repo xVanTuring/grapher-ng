@@ -272,13 +272,10 @@ final class ViewportViewController: NSViewController {
     fileprivate func handleMouseDragged(_ event: NSEvent) {
         guard let last = lastDragLocation else { return }
         let current = host.convert(event.locationInWindow, from: nil)
-        let delta = SIMD2(
-            Double(current.x - last.x) * backingScale,
-            Double(current.y - last.y) * backingScale
-        )
         lastDragLocation = current
-        state.mutateViewport { $0.pan(byPixels: delta) }
-        state.requestInteractiveRebuild()
+        let delta = SIMD2(Double(current.x - last.x), Double(current.y - last.y))
+        apply(CanvasInput.drag(delta, modifiers: CanvasInput.Modifiers(event.modifierFlags), space: false,
+                               pansFromStart: false, pointScale: backingScale), at: event)
     }
 
     fileprivate func handleMouseUp(_ event: NSEvent) {
@@ -287,35 +284,31 @@ final class ViewportViewController: NSViewController {
     }
 
     /// 滚轮：普通滚动 = 平移，⌘+滚动 = 缩放。这是无限画布的通行手感（Figma / Miro / 他们的
-    /// 画板都是这一套），缩放只在非惯性阶段消费——否则触控板一甩会连着放大好几档。
+    /// 画板都是这一套）。具体规则在 `CanvasInput`，Quick Look 预览也用它。
     fileprivate func handleScrollWheel(_ event: NSEvent) {
-        var dx = Double(event.scrollingDeltaX)
-        var dy = Double(event.scrollingDeltaY)
-        // 有级滚轮一格只有 1 左右，触控板是连续的小量；不放大手感迟钝得离谱。
-        if !event.hasPreciseScrollingDeltas {
-            dx *= 10
-            dy *= 10
+        let action = CanvasInput.scroll(CanvasInput.Scroll(event), space: false, pointScale: backingScale)
+        apply(action, at: event)
+        if case .pan = action {
+            // 指针没动、曲线在它底下滑过去：读数换成指针下面那条。
+            updateProbe(at: pixelPoint(from: event))
         }
-
-        if event.modifierFlags.contains(.command) {
-            guard dy != 0, event.momentumPhase == [] else { return }
-            let factor = min(max(exp(-dy * 0.008), 0.5), 2)
-            state.mutateViewport { $0.zoom(by: factor, anchorPixel: pixelPoint(from: event)) }
-            state.requestInteractiveRebuild()
-            return
-        }
-
-        guard dx != 0 || dy != 0 else { return }
-        state.mutateViewport { $0.pan(byPixels: SIMD2(dx, dy)) }
-        state.requestInteractiveRebuild()
-        // 指针没动、曲线在它底下滑过去：读数换成指针下面那条。
-        updateProbe(at: pixelPoint(from: event))
     }
 
     fileprivate func handleMagnify(_ event: NSEvent) {
-        let factor = 1 + Double(event.magnification)
-        guard factor.isFinite, factor > 0 else { return }
-        state.mutateViewport { $0.zoom(by: factor, anchorPixel: pixelPoint(from: event)) }
+        apply(CanvasInput.pinch(magnification: Double(event.magnification),
+                                modifiers: CanvasInput.Modifiers(event.modifierFlags), space: false), at: event)
+    }
+
+    /// 平移、缩放都过 `mutateViewport`（软边界只写一遍），缩放以指针为锚；交互画质重采、停手补精。
+    private func apply(_ action: CanvasInput.Action, at event: NSEvent) {
+        switch action {
+        case .pan(let delta):
+            state.mutateViewport { $0.pan(byPixels: delta) }
+        case .zoom(let factor):
+            state.mutateViewport { $0.zoom(by: factor, anchorPixel: pixelPoint(from: event)) }
+        case .none, .zoomBox, .orbit:
+            return
+        }
         state.requestInteractiveRebuild()
     }
 

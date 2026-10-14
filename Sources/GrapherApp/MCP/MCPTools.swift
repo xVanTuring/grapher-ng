@@ -175,12 +175,12 @@ enum MCPTools {
             "target": MCPSchema.string(
                 "projection only: xy (z = offset), yz (x = offset), xz (y = offset) or plane (use source_b)",
                 enumValues: ProjectionTarget.allCases.map(\.rawValue)),
-            "offset": MCPSchema.number("projection only: position of the xy / yz / xz plane (default 0)"),
+            "offset": MCPSchema.numberOrFormula("projection only: position of the xy / yz / xz plane (default 0). May be a formula with parameters, e.g. \"2*p\": playing p slides the plane"),
             "direction": MCPSchema.numbers("projection only: [dx, dy, dz] for an oblique projection along that direction; [0, 0, 0] goes back to a perpendicular one", count: 3),
             "projectors": MCPSchema.boolean("projection only: draw thin lines from the original to its projection (default true)"),
-            "at": MCPSchema.number("tangent / tangentPlane: the tangent point. tangent: x (explicit), t (parametric) or theta (polar). tangentPlane: x of a surface, u of a parametricSurface"),
-            "at2": MCPSchema.number("tangentPlane only: y of a surface, v of a parametricSurface. text: y"),
-            "at3": MCPSchema.number("text in a 3D document only: z of the text position"),
+            "at": MCPSchema.numberOrFormula("tangent / tangentPlane: the tangent point. tangent: x (explicit), t (parametric) or theta (polar). tangentPlane: x of a surface, u of a parametricSurface. text: x. May be a formula with parameters, e.g. \"p\": playing p slides the tangent along the curve"),
+            "at2": MCPSchema.numberOrFormula("tangentPlane: y of a surface, v of a parametricSurface. text: y. Number or formula"),
+            "at3": MCPSchema.numberOrFormula("text in a 3D document only: z of the text position. Number or formula"),
             "font_size": MCPSchema.number("text only: font size in points, 6–96 (default 14)"),
             "normal": MCPSchema.boolean("tangent only: draw the normal line instead of the tangent line"),
             "color_by_slope": MCPSchema.boolean("surface (z = f(x, y)) only: color the surface by its slope |∇f|, blue where flat to red where steep"),
@@ -236,12 +236,13 @@ enum MCPTools {
         edit.gridDensity = try args.optionalInt("density")
         edit.arrowScale = try args.optionalDouble("arrow_scale")
         edit.gradientOnFloor = try args.optionalBool("on_floor")
-        edit.anchorU = try args.optionalDouble("at")
-        edit.anchorV = try args.optionalDouble("at2")
-        edit.anchorW = try args.optionalDouble("at3")
+        // at / at2 / at3 / offset 可以是数，也可以是含参数的公式（字符串）。
+        (edit.anchorU, edit.anchorUFormula) = try args.numberOrFormula("at")
+        (edit.anchorV, edit.anchorVFormula) = try args.numberOrFormula("at2")
+        (edit.anchorW, edit.anchorWFormula) = try args.numberOrFormula("at3")
         edit.fontSize = try args.optionalDouble("font_size")
         edit.drawsNormal = try args.optionalBool("normal")
-        edit.projectionOffset = try args.optionalDouble("offset")
+        (edit.projectionOffset, edit.projectionOffsetFormula) = try args.numberOrFormula("offset")
         if let direction = try args.optionalDoubles("direction", count: 3) {
             edit.projectionDirection = SIMD3(direction[0], direction[1], direction[2])
         }

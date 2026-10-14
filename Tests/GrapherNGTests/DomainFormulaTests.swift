@@ -140,3 +140,101 @@ final class DomainFormulaTests: XCTestCase {
         XCTAssertEqual(old.domainUpper, 10)
     }
 }
+
+/// 切点、文字位置、投影平面位置也能写含参数的公式：播放参数它们就动起来。
+final class PositionFormulaTests: XCTestCase {
+
+    private func compiledLayer(_ layer: Layer, in document: GrapherDocument) -> LayerCompiler.CompiledLayer {
+        var doc = document
+        doc.layers.append(layer)
+        return LayerCompiler().compile(doc).last!
+    }
+
+    func testTangentFollowsTheParameter() throws {
+        var curve = Layer.makeDefault(kind: .explicit, index: 0)
+        curve.formula = "x^2"
+        var tangent = Layer.makeDefault(kind: .tangent, index: 1)
+        tangent.sourceA = curve.id
+        tangent.anchorUFormula = "p"
+        var document = GrapherDocument()
+        document.parameters = [ParameterDefinition(name: "p", value: 1, lowerBound: -3, upperBound: 3)]
+        document.layers = [curve, tangent]
+        func slope(_ p: Double) throws -> Double {
+            document.parameters[0].value = p
+            let compiled = LayerCompiler().compile(document)
+            XCTAssertFalse(compiled[1].hasError)
+            XCTAssertEqual(compiled[1].layer.anchorU, p, accuracy: 1e-12, "编译后的图层里切点是算好的数")
+            return try XCTUnwrap(Tangents.tangent(of: compiled[0], at: compiled[1].layer.anchorU)?.slope)
+        }
+        XCTAssertEqual(try slope(1), 2, accuracy: 1e-5)
+        XCTAssertEqual(try slope(-1.5), -3, accuracy: 1e-5)
+
+        // 画布上的切线也跟着：y = 2px − p² 过 (p, p²)。
+        let viewport = Viewport2D(centerX: 0, centerY: 0, scale: 40, widthPixels: 600, heightPixels: 400)
+        document.parameters[0].value = 1.5
+        let built = SceneBuilder2D.build(SceneBuildRequest(
+            document: document, compiled: LayerCompiler().compile(document), viewport: viewport, quality: .full, backingScale: 1))
+        let probe = try XCTUnwrap(built.probeCurves.first { $0.layerID == tangent.id })
+        for p in probe.segments.joined() { XCTAssertEqual(p.y, 3 * p.x - 2.25, accuracy: 1e-5) }
+    }
+
+    func testTangentPlaneAndTextAndProjectionOffsetFollowParameters() throws {
+        var bowl = Layer.makeDefault(kind: .surface, index: 0)
+        bowl.formula = "x^2 + y^2"
+        var plane = Layer.makeDefault(kind: .tangentPlane, index: 1)
+        plane.sourceA = bowl.id
+        plane.anchorUFormula = "2*cos(q)"
+        plane.anchorVFormula = "2*sin(q)"
+        var label = Layer.makeDefault(kind: .text, index: 2)
+        label.formula = "A"
+        label.anchorUFormula = "q"
+        label.anchorVFormula = "-q"
+        label.anchorWFormula = "2*q"
+        var shadow = Layer.makeDefault(kind: .projection, index: 3)
+        shadow.projectionOffsetFormula = "q - 1"
+        var document = GrapherDocument(dimension: .space)
+        document.parameters = [ParameterDefinition(name: "q", value: 0.5, lowerBound: 0, upperBound: 6.3)]
+        document.layers = [bowl, plane, label, shadow]
+
+        let compiled = LayerCompiler().compile(document)
+        XCTAssertTrue(compiled.allSatisfy { !$0.hasError })
+        XCTAssertEqual(compiled[1].layer.anchorU, 2 * cos(0.5), accuracy: 1e-12)
+        XCTAssertEqual(compiled[1].layer.anchorV, 2 * sin(0.5), accuracy: 1e-12)
+        guard case let .plane(_, offset)? = SpaceGeometry.recognize(compiled[1], in: compiled) else { return XCTFail("应是平面") }
+        let direct = try XCTUnwrap(Tangents.tangentPlane(of: compiled[0], u: 2 * cos(0.5), v: 2 * sin(0.5)))
+        XCTAssertEqual(offset, direct.offset, accuracy: 1e-9, "切平面用算好的切点")
+        XCTAssertEqual(TextAnnotations.all(in: document, compiled: compiled).first?.position, SIMD3(0.5, -0.5, 1))
+        XCTAssertEqual(compiled[3].layer.projectionOffset, -0.5, accuracy: 1e-12)
+
+        document.parameters[0].value = 2
+        let moved = LayerCompiler().compile(document)
+        XCTAssertEqual(TextAnnotations.all(in: document, compiled: moved).first?.position, SIMD3(2, -2, 4))
+        XCTAssertEqual(moved[3].layer.projectionOffset, 1, accuracy: 1e-12)
+    }
+
+    func testBadPositionFormulaIsReportedAndKeepsTheNumber() {
+        var label = Layer.makeDefault(kind: .text, index: 0)
+        label.formula = "A"
+        label.anchorU = 3
+        label.anchorUFormula = "nope*2"
+        var document = GrapherDocument()
+        document.layers = [label]
+        let compiled = LayerCompiler().compile(document)[0]
+        XCTAssertNotNil(compiled.domainError)
+        XCTAssertEqual(compiled.layer.anchorU, 3, "出错保留原来的数")
+    }
+
+    func testPositionFormulasSurviveCodableAndOldFilesStillOpen() throws {
+        var layer = Layer.makeDefault(kind: .tangentPlane, index: 0)
+        layer.anchorUFormula = "p"
+        layer.anchorVFormula = "2*p"
+        layer.anchorWFormula = "3"
+        layer.projectionOffsetFormula = "p-1"
+        let data = try JSONEncoder().encode(layer)
+        XCTAssertEqual(try JSONDecoder().decode(Layer.self, from: data), layer)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        for key in ["anchorUFormula", "anchorVFormula", "anchorWFormula", "projectionOffsetFormula"] { object.removeValue(forKey: key) }
+        let old = try JSONDecoder().decode(Layer.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertFalse(old.hasNumberFormulas)
+    }
+}

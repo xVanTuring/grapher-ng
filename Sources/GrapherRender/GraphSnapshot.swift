@@ -58,8 +58,9 @@ public enum GraphSnapshot {
         }
 
         let viewport = planeViewport(of: document, pixelWidth: Double(pixelWidth), pixelHeight: Double(pixelHeight))
+        let compiledPlane = LayerCompiler().compile(document)
         let built = SceneBuilder2D.build(SceneBuildRequest(
-            document: document, compiled: LayerCompiler().compile(document), viewport: viewport,
+            document: document, compiled: compiledPlane, viewport: viewport,
             quality: quality, backingScale: pointScale))
         // 小图多采一倍再缩回来，边缘更干净；大图（预览、导出）本身像素够多，不必。
         let supersample = pixelWidth * pixelHeight <= 1_000_000 ? 2 : 1
@@ -72,7 +73,7 @@ public enum GraphSnapshot {
         return drawing(on: rendered) { context in
             drawPlaneLabels(document: document, viewport: viewport, pointScale: pointScale, in: context)
             let painter = LabelPainter(pointScale: pointScale, color: document.theme.label, axisNameSize: 11)
-            for annotation in TextAnnotations.all(in: document) {
+            for annotation in TextAnnotations.all(in: document, compiled: compiledPlane) {
                 let screen = viewport.toScreen(x: annotation.position.x, y: annotation.position.y)
                 painter.draw(annotation.text, font: LabelPainter.font(size: annotation.fontSize * pointScale, bold: false, monospacedDigits: false),
                              at: CGPoint(x: screen.x, y: screen.y), anchor: .leading,
@@ -118,7 +119,7 @@ public enum GraphSnapshot {
                     painter.draw(name, font: painter.axisName, at: point, anchor: .center, in: context)
                 }
             }
-            for annotation in TextAnnotations.all(in: document) {
+            for annotation in TextAnnotations.all(in: document, compiled: compiledLayers) {
                 guard let screen = view.project(view.normalized(annotation.position)) else { continue }
                 painter.draw(annotation.text, font: LabelPainter.font(size: annotation.fontSize * pointScale, bold: false, monospacedDigits: false),
                              at: CGPoint(x: screen.x, y: screen.y), anchor: .leading,

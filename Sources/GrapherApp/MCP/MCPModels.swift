@@ -52,6 +52,18 @@ struct MCPArgs {
         return text
     }
 
+    /// 数，或者含参数的公式（字符串）。给了公式时数返回 0 占位、公式放在第二项；没传两项都是 nil。
+    func numberOrFormula(_ key: String) throws -> (Double?, String?) {
+        guard let value = value(key) else { return (nil, nil) }
+        if let text = value as? String {
+            guard !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+                throw MCPInvalidParams("'\(key)' must be a number or a non-empty formula")
+            }
+            return (0, text)
+        }
+        return (try optionalDouble(key), nil)
+    }
+
     /// 恰好 `count` 个字符串的数组（没传返回 nil）。
     func optionalStrings(_ key: String, count: Int) throws -> [String]? {
         guard let value = value(key) else { return nil }
@@ -135,6 +147,11 @@ enum MCPSchema {
 
     static func number(_ description: String) -> MCPObject {
         ["type": "number", "description": description]
+    }
+
+    /// 数，或含参数的公式（字符串）。
+    static func numberOrFormula(_ description: String) -> MCPObject {
+        ["oneOf": [["type": "number"], ["type": "string"]], "description": description]
     }
 
     static func integer(_ description: String, minimum: Int? = nil, maximum: Int? = nil) -> MCPObject {

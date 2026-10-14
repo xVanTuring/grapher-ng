@@ -155,6 +155,15 @@ public enum Demos {
                 b.text(L("normal at x = −0.5"), at: -5.6, 2.8)
                 return b.document
             },
+            Demo(id: "plane.tangent-slide", category: .tangents, title: L("A tangent sliding along a curve"),
+                 summary: L("The point of tangency is the parameter p. Press play on p: the tangent and the normal of the cubic slide along it and the slope changes with them.")) {
+                var b = DemoBuilder(.plane, scale: 44)
+                b.document.parameters = [ParameterDefinition(name: "p", value: -1.8, lowerBound: -2.5, upperBound: 2.5)]
+                let curve = b.add(.explicit, "y = x³ − 3x", "x^3 - 3*x")
+                b.tangent("Tangent at x = p", of: curve, at: 0, positionFormula: "p")
+                b.tangent("Normal at x = p", of: curve, at: 0, normal: true, positionFormula: "p")
+                return b.document
+            },
             Demo(id: "plane.tangent-curves", category: .tangents, title: L("Tangents of a circle and a cardioid"),
                  summary: L("Tangents work on parametric (position = t) and polar curves (position = θ) too.")) {
                 var b = DemoBuilder(.plane, scale: 36)
@@ -334,6 +343,14 @@ public enum Demos {
                 b.tangentPlane("Tangent plane at (−1.5, −2)", of: bowl, at: -1.5, -2)
                 return b.document
             },
+            Demo(id: "space.tangent-slide", category: .projections, title: L("A tangent plane circling a paraboloid"),
+                 summary: L("The point of tangency is (2 cos q, 2 sin q). Press play on q: the tangent plane and its normal travel once round the bowl.")) {
+                var b = DemoBuilder(.space, azimuth: 0.7, elevation: 0.55)
+                b.document.parameters = [ParameterDefinition(name: "q", value: 0.8, lowerBound: 0, upperBound: 6.2832)]
+                let bowl = b.add(.surface, "z = (x² + y²)/4 − 2", "(x^2 + y^2)/4 - 2") { $0.fillStyle.opacity = 0.5 }
+                b.tangentPlane("Tangent plane", of: bowl, at: 0, 0, uFormula: "2*cos(q)", vFormula: "2*sin(q)")
+                return b.document
+            },
             Demo(id: "space.tangent-sphere", category: .projections, title: L("Tangent plane of a sphere"),
                  summary: L("A tangent plane of a parametric sphere; the normal points along the radius to the centre.")) {
                 var b = DemoBuilder(.space, azimuth: 0.9, elevation: 0.5)
@@ -491,20 +508,27 @@ struct DemoBuilder {
     }
 
     @discardableResult
-    mutating func tangent(_ name: String, of source: Layer, at position: Double, normal: Bool = false) -> Layer {
+    mutating func tangent(
+        _ name: String, of source: Layer, at position: Double, normal: Bool = false, positionFormula: String = ""
+    ) -> Layer {
         add(.tangent, name) {
             $0.sourceA = source.id
             $0.anchorU = position
+            $0.anchorUFormula = positionFormula
             $0.drawsNormal = normal
         }
     }
 
     @discardableResult
-    mutating func tangentPlane(_ name: String, of source: Layer, at u: Double, _ v: Double) -> Layer {
+    mutating func tangentPlane(
+        _ name: String, of source: Layer, at u: Double, _ v: Double, uFormula: String = "", vFormula: String = ""
+    ) -> Layer {
         add(.tangentPlane, name) {
             $0.sourceA = source.id
             $0.anchorU = u
             $0.anchorV = v
+            $0.anchorUFormula = uFormula
+            $0.anchorVFormula = vFormula
         }
     }
 

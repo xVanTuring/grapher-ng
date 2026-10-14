@@ -89,10 +89,13 @@ public final class LayerCompiler {
     /// 范围端点写了表达式的，算成数放进 `compiled.layer`：下游的采样代码照常读 `domainLower` 等，
     /// 不用知道它们是怎么来的。出错的端点保留原来的数，错误记在 `domainError`。
     private func resolveDomain(of layer: Layer, into compiled: inout CompiledLayer, parameters: [String: Double]) {
-        guard layer.hasDomainFormulas else { return }
+        guard layer.hasNumberFormulas else { return }
         let ends: [(String, WritableKeyPath<Layer, Double>)] = [
             (layer.domainLowerFormula, \.domainLower), (layer.domainUpperFormula, \.domainUpper),
             (layer.domain2LowerFormula, \.domain2Lower), (layer.domain2UpperFormula, \.domain2Upper),
+            // 同一套办法也管切点、文字位置、投影平面位置。
+            (layer.anchorUFormula, \.anchorU), (layer.anchorVFormula, \.anchorV),
+            (layer.anchorWFormula, \.anchorW), (layer.projectionOffsetFormula, \.projectionOffset),
         ]
         for (source, keyPath) in ends where !source.trimmingCharacters(in: .whitespaces).isEmpty {
             let outcome = compileOne(source: source, variables: [], parameters: parameters)
@@ -104,7 +107,7 @@ public final class LayerCompiler {
                     compiled.layer[keyPath: keyPath] = value
                 } else if compiled.domainError == nil {
                     compiled.domainError = ExpressionError(
-                        message: L("A range end must be a finite number."), column: 1, length: max(source.count, 1))
+                        message: L("A range end or position must be a finite number."), column: 1, length: max(source.count, 1))
                 }
             }
         }

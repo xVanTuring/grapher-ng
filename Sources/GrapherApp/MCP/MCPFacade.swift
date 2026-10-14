@@ -131,6 +131,10 @@ final class MCPFacade {
             if state.document.dimension == .space { object["at3"] = layer.anchorW }
             object["fontSize"] = layer.fontSize
         }
+        // 位置写成公式的，一并给出（数只是没写公式时用的值）。
+        let positionFormulas = ["at": layer.anchorUFormula, "at2": layer.anchorVFormula, "at3": layer.anchorWFormula,
+                                "offset": layer.projectionOffsetFormula].filter { !$0.value.isEmpty }
+        if !positionFormulas.isEmpty { object["positionFormulas"] = positionFormulas }
         if layer.kind == .surface { object["colorBySlope"] = layer.colorsBySlope }
         if layer.kind == .gradientField {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
@@ -259,9 +263,14 @@ final class MCPFacade {
         var opacity: Double?
         var showsFit: Bool?
         var showsLabel: Bool?
+        /// 位置类的数也可以给公式：公式在 `…Formula` 里，数填 0 占位（让「该类型有没有这个字段」的检查照常走）。
         var anchorU: Double?
         var anchorV: Double?
         var anchorW: Double?
+        var anchorUFormula: String?
+        var anchorVFormula: String?
+        var anchorWFormula: String?
+        var projectionOffsetFormula: String?
         var fontSize: Double?
         var drawsNormal: Bool?
         var projectionTarget: ProjectionTarget?
@@ -470,6 +479,11 @@ final class MCPFacade {
                 layer.drawsNormal = normal
             }
         }
+        // 给了数就清掉旧公式，给了公式就以公式为准（上面各类型的检查已经确认这个字段对它有意义）。
+        if edit.anchorU != nil { layer.anchorUFormula = edit.anchorUFormula ?? "" }
+        if edit.anchorV != nil { layer.anchorVFormula = edit.anchorVFormula ?? "" }
+        if edit.anchorW != nil { layer.anchorWFormula = edit.anchorWFormula ?? "" }
+        if edit.projectionOffset != nil { layer.projectionOffsetFormula = edit.projectionOffsetFormula ?? "" }
         if edit.gridDensity != nil || edit.arrowScale != nil || edit.gradientOnFloor != nil {
             guard layer.kind == .gradientField || layer.kind == .gradientFlow else {
                 throw MCPToolError("Only 'gradientField' and 'gradientFlow' layers have density / arrow_scale / on_floor.")
@@ -599,7 +613,11 @@ final class MCPFacade {
     /// 切线 / 切平面：来源必须是对应的曲线 / 曲面图层，切点处要有切线 / 切平面。
     private func validateTangent(_ layer: Layer, in state: AppState) throws {
         guard let id = layer.sourceA else { throw MCPInvalidParams("'\(layer.kind.rawValue)' layers need 'source_a'") }
-        let compiled = LayerCompiler().compile(state.document)
+        // 切点可能是含参数的公式：把这个图层放进文档副本里编译一遍，用算好的数检查。
+        let (compiled, resolved) = compiledWith(layer, in: state)
+        if let error = compiled.first(where: { $0.layer.id == layer.id })?.domainError {
+            throw MCPToolError("A position formula (at / at2) was rejected: \(error.description)")
+        }
         guard let source = compiled.first(where: { $0.layer.id == id }) else {
             throw MCPToolError("source_a: no layer with id \(id.uuidString). Call get_document to list layers.")
         }
@@ -607,21 +625,37 @@ final class MCPFacade {
             guard source.layer.kind.isTangentSource else {
                 throw MCPToolError("source_a is a '\(source.layer.kind.rawValue)' layer; a tangent needs an explicit, parametric or polar curve.")
             }
-            guard Tangents.tangent(of: source, at: layer.anchorU) != nil else {
-                throw MCPToolError("The curve has no tangent at at = \(layer.anchorU) (undefined or singular there).")
+            guard Tangents.tangent(of: source, at: resolved.anchorU) != nil else {
+                throw MCPToolError("The curve has no tangent at at = \(resolved.anchorU) (undefined or singular there).")
             }
         } else {
             guard source.layer.kind.isTangentPlaneSource else {
                 throw MCPToolError("source_a is a '\(source.layer.kind.rawValue)' layer; a tangent plane needs a surface or parametricSurface layer.")
             }
-            guard Tangents.tangentPlane(of: source, u: layer.anchorU, v: layer.anchorV) != nil else {
-                throw MCPToolError("The surface has no tangent plane at (\(layer.anchorU), \(layer.anchorV)) (undefined or singular there).")
+            guard Tangents.tangentPlane(of: source, u: resolved.anchorU, v: resolved.anchorV) != nil else {
+                throw MCPToolError("The surface has no tangent plane at (\(resolved.anchorU), \(resolved.anchorV)) (undefined or singular there).")
             }
         }
     }
 
+    /// 把 `layer` 放进文档副本（已有就换掉）编译：返回整份编译结果与这个图层算好数的样子。
+    private func compiledWith(_ layer: Layer, in state: AppState) -> ([LayerCompiler.CompiledLayer], Layer) {
+        var document = state.document
+        if let index = document.layers.firstIndex(where: { $0.id == layer.id }) {
+            document.layers[index] = layer
+        } else {
+            document.layers.append(layer)
+        }
+        let compiled = LayerCompiler().compile(document)
+        return (compiled, compiled.first { $0.layer.id == layer.id }?.layer ?? layer)
+    }
+
     /// 投影：来源必须是点 / 空间曲线 / 交线；目标是 `plane` 时 source_b 必须是线性的平面图层。
     private func validateProjection(_ layer: Layer, in state: AppState) throws {
+        let (merged, _) = compiledWith(layer, in: state)
+        if let error = merged.first(where: { $0.layer.id == layer.id })?.domainError {
+            throw MCPToolError("The offset formula was rejected: \(error.description)")
+        }
         guard let a = layer.sourceA else {
             throw MCPInvalidParams("'projection' layers need 'source_a' (the layer to project)")
         }

@@ -12,9 +12,13 @@ public struct TextAnnotation: Equatable, Sendable {
 }
 
 public enum TextAnnotations {
-    /// 文档里可见的、有内容的文字图层，按图层顺序。
-    public static func all(in document: GrapherDocument) -> [TextAnnotation] {
-        document.layers.compactMap { layer in
+    /// 文档里可见的、有内容的文字图层，按图层顺序。位置可以写成含参数的公式，所以要用编译后的图层
+    /// （`compiled` 里的位置已经按当前参数算成了数）；没传就现编一份（不带缓存，画布每帧调用时请传进来）。
+    public static func all(
+        in document: GrapherDocument, compiled: [LayerCompiler.CompiledLayer]? = nil
+    ) -> [TextAnnotation] {
+        let resolved = (compiled ?? LayerCompiler().compile(document)).map(\.layer)
+        return resolved.compactMap { layer in
             guard layer.kind == .text, layer.isVisible, !layer.formula.isEmpty else { return nil }
             let position = SIMD3(layer.anchorU, layer.anchorV, document.dimension == .space ? layer.anchorW : 0)
             guard position.x.isFinite, position.y.isFinite, position.z.isFinite else { return nil }

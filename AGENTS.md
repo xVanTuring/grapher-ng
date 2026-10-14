@@ -331,3 +331,6 @@ Tests/GrapherNGTests/   单元测试
 **范围端点的表达式**：`Layer.domainLowerFormula` / `domainUpperFormula` / `domain2…`（空 = 用数）。`LayerCompiler.resolveDomain` 把它们按当前参数算成数，
 写进 `CompiledLayer.layer` 的 `domainLower` 等——**采样代码读 `compiled.layer`，不用知道端点是公式**（所以别在采样里读 `document.layers` 里的原图层范围）。
 出错记在 `CompiledLayer.domainError`（`hasError` 包含它），检查器写在范围那一行下面；出错的端点保留原来的数。范围缩成一点（参数为 0）时什么都不画、不崩（`DomainFormulaTests` 守着各图型）。
+
+**位置类数字也能写公式**：`anchorU/V/W`（切点、文字位置）和 `projectionOffset` 各有一个 `…Formula`，和范围端点走同一条路（`LayerCompiler.resolveDomain`，错误也记在 `domainError`）。
+**所以凡是要读这些数的地方都要用编译后的图层**：`TextAnnotations.all(in:compiled:)`、各个 `SceneBuilder` 读的 `compiled.layer`、检查器的读数、MCP 校验（`compiledWith`）。直接读 `document.layers` 里的原图层只会拿到没写公式时的数。

@@ -196,7 +196,8 @@ final class LayerEditorViewController: NSViewController {
         if layer.kind == .projection {
             let source = ControlFactory.popUp(items: [], target: self, action: #selector(projectionSourceEdited(_:)))
             let target = ControlFactory.popUp(items: [], target: self, action: #selector(projectionTargetEdited(_:)))
-            let offset = ControlFactory.numberField(layer.projectionOffset, target: self, action: #selector(projectionOffsetEdited(_:)))
+            let offset = formulaNumberField(
+                endpointText(layer.projectionOffsetFormula, layer.projectionOffset), action: #selector(projectionOffsetEdited(_:)))
             let projectors = ControlFactory.checkbox(
                 L("Show projecting lines"), target: self, action: #selector(projectorsToggled(_:)))
             projectionSourcePopUp = source
@@ -297,11 +298,12 @@ final class LayerEditorViewController: NSViewController {
             let isSpace = state.document.dimension == .space
             let axes = isSpace ? ["x", "y", "z"] : ["x", "y"]
             textPositionFields = axes.map { _ in
-                ControlFactory.numberField(0, target: self, action: #selector(textPositionEdited(_:)))
+                formulaNumberField("", action: #selector(textPositionEdited(_:)))
             }
             for (name, field) in zip(axes, textPositionFields) {
                 rows.append(ControlFactory.formRow(name, field))
             }
+            rows.append(numberErrorLabel())
             let size = ControlFactory.numberField(layer.fontSize, target: self, action: #selector(fontSizeEdited(_:)))
             fontSizeField = size
             rows.append(ControlFactory.formRow(L("Font size"), size))
@@ -311,7 +313,7 @@ final class LayerEditorViewController: NSViewController {
             let source = ControlFactory.popUp(items: [], target: self, action: #selector(tangentSourceEdited(_:)))
             tangentSourcePopUp = source
             rows.append(ControlFactory.formRow(L("Of"), source))
-            let first = ControlFactory.numberField(layer.anchorU, target: self, action: #selector(anchorEdited(_:)))
+            let first = formulaNumberField(endpointText(layer.anchorUFormula, layer.anchorU), action: #selector(anchorEdited(_:)))
             anchorUField = first
             if layer.kind == .tangent {
                 rows.append(ControlFactory.formRow(L("At"), first))
@@ -320,11 +322,12 @@ final class LayerEditorViewController: NSViewController {
                 normalCheckbox = normal
                 rows.append(normal)
             } else {
-                let second = ControlFactory.numberField(layer.anchorV, target: self, action: #selector(anchorEdited(_:)))
+                let second = formulaNumberField(endpointText(layer.anchorVFormula, layer.anchorV), action: #selector(anchorEdited(_:)))
                 anchorVField = second
                 rows.append(ControlFactory.formRow(L("At u or x"), first))
                 rows.append(ControlFactory.formRow(L("At v or y"), second))
             }
+            rows.append(numberErrorLabel())
             let readout = ControlFactory.caption("")
             tangentReadout = readout
             rows.append(readout)
@@ -561,9 +564,9 @@ final class LayerEditorViewController: NSViewController {
 
     private func refreshText(_ layer: Layer) {
         if let field = textContentField, field.currentEditor() == nil { field.stringValue = layer.formula }
-        let values = [layer.anchorU, layer.anchorV, layer.anchorW]
+        let values = [(layer.anchorUFormula, layer.anchorU), (layer.anchorVFormula, layer.anchorV), (layer.anchorWFormula, layer.anchorW)]
         for (field, value) in zip(textPositionFields, values) where field.currentEditor() == nil {
-            field.stringValue = ControlFactory.format(value)
+            field.stringValue = endpointText(value.0, value.1)
         }
         if let field = fontSizeField, field.currentEditor() == nil { field.stringValue = ControlFactory.format(layer.fontSize) }
     }
@@ -575,14 +578,18 @@ final class LayerEditorViewController: NSViewController {
 
     @objc private func textPositionEdited(_ sender: NSTextField) {
         guard let layer = state.selectedLayer else { return }
-        var values = [layer.anchorU, layer.anchorV, layer.anchorW]
+        var values = [(layer.anchorU, layer.anchorUFormula), (layer.anchorV, layer.anchorVFormula), (layer.anchorW, layer.anchorWFormula)]
         for (index, field) in textPositionFields.enumerated() {
-            values[index] = ControlFactory.parse(field.stringValue) ?? values[index]
+            let end = endpoint(from: field.stringValue, keeping: values[index].0)
+            values[index] = (end.number, end.formula)
         }
         editLayer(L("Move Text")) {
-            $0.anchorU = values[0]
-            $0.anchorV = values[1]
-            $0.anchorW = values[2]
+            $0.anchorU = values[0].0
+            $0.anchorUFormula = values[0].1
+            $0.anchorV = values[1].0
+            $0.anchorVFormula = values[1].1
+            $0.anchorW = values[2].0
+            $0.anchorWFormula = values[2].1
         }
     }
 
@@ -610,8 +617,8 @@ final class LayerEditorViewController: NSViewController {
         } else {
             popUp.selectItem(at: 0)
         }
-        for (field, value) in [(anchorUField, layer.anchorU), (anchorVField, layer.anchorV)] {
-            if let field, field.currentEditor() == nil { field.stringValue = ControlFactory.format(value) }
+        for (field, formula, value) in [(anchorUField, layer.anchorUFormula, layer.anchorU), (anchorVField, layer.anchorVFormula, layer.anchorV)] {
+            if let field, field.currentEditor() == nil { field.stringValue = endpointText(formula, value) }
         }
         normalCheckbox?.state = layer.drawsNormal ? .on : .off
 
@@ -622,16 +629,18 @@ final class LayerEditorViewController: NSViewController {
         }
         let all = state.compiler.compile(state.document)
         let source = all.first { $0.layer.id == layer.sourceA }
+        // 切点的位置可能写成了含参数的公式：读数用算好的数。
+        let resolved = all.first { $0.layer.id == layer.id }?.layer ?? layer
         var text = L("Pick a source layer.")
         if let source {
             if layer.kind == .tangent {
-                if let t = Tangents.tangent(of: source, at: layer.anchorU) {
+                if let t = Tangents.tangent(of: source, at: resolved.anchorU) {
                     let slope = t.slope.map { "\(L("slope")) \(ControlFactory.format($0))" } ?? L("vertical tangent")
                     text = "\(L("Point")) \(p2(t.point))  ·  \(slope)"
                 } else {
                     text = L("The curve has no tangent at this position.")
                 }
-            } else if let plane = Tangents.tangentPlane(of: source, u: layer.anchorU, v: layer.anchorV) {
+            } else if let plane = Tangents.tangentPlane(of: source, u: resolved.anchorU, v: resolved.anchorV) {
                 text = "\(L("Point")) \(p3(plane.point))\n\(L("Normal")) \(p3(plane.normal))"
             } else {
                 text = L("The surface has no tangent plane at this position.")
@@ -650,11 +659,13 @@ final class LayerEditorViewController: NSViewController {
 
     @objc private func anchorEdited(_ sender: NSTextField) {
         guard let layer = state.selectedLayer else { return }
-        let u = ControlFactory.parse(anchorUField?.stringValue ?? "") ?? layer.anchorU
-        let v = ControlFactory.parse(anchorVField?.stringValue ?? "") ?? layer.anchorV
+        let u = endpoint(from: anchorUField?.stringValue ?? "", keeping: layer.anchorU)
+        let v = endpoint(from: anchorVField?.stringValue ?? "", keeping: layer.anchorV)
         editLayer(L("Change Tangent")) {
-            $0.anchorU = u
-            $0.anchorV = v
+            $0.anchorU = u.number
+            $0.anchorUFormula = u.formula
+            $0.anchorV = v.number
+            $0.anchorVFormula = v.formula
         }
     }
 
@@ -703,7 +714,7 @@ final class LayerEditorViewController: NSViewController {
 
         projectionOffsetRow?.isHidden = layer.projectionTarget == .plane
         if let field = projectionOffsetField, field.currentEditor() == nil {
-            field.stringValue = ControlFactory.format(layer.projectionOffset)
+            field.stringValue = endpointText(layer.projectionOffsetFormula, layer.projectionOffset)
         }
         projectorsCheckbox?.state = layer.showsProjectors ? .on : .off
         obliqueCheckbox?.state = layer.projectionDirection != nil ? .on : .off
@@ -757,8 +768,11 @@ final class LayerEditorViewController: NSViewController {
 
     @objc private func projectionOffsetEdited(_ sender: NSTextField) {
         guard let layer = state.selectedLayer else { return }
-        let value = ControlFactory.parse(sender.stringValue) ?? layer.projectionOffset
-        editLayer(L("Change Projection")) { $0.projectionOffset = value }
+        let end = endpoint(from: sender.stringValue, keeping: layer.projectionOffset)
+        editLayer(L("Change Projection")) {
+            $0.projectionOffset = end.number
+            $0.projectionOffsetFormula = end.formula
+        }
     }
 
     @objc private func projectorsToggled(_ sender: NSButton) {
@@ -933,7 +947,7 @@ final class LayerEditorViewController: NSViewController {
             monospaced: true, target: self, action: action)
         for field in [lower, upper] {
             field.alignment = .right
-            field.toolTip = L("A number, or a formula with parameters such as p*2*pi: the range follows the parameter, so playing it draws the curve gradually.")
+            field.toolTip = L("A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually).")
         }
         lower.setContentHuggingPriority(.defaultLow, for: .horizontal)
         upper.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -980,6 +994,23 @@ final class LayerEditorViewController: NSViewController {
             rows.append(error)
         }
         return ControlFactory.stack(rows, spacing: ControlFactory.Metric.rowSpacing)
+    }
+
+    /// 能填数也能填含参数公式的输入框（范围端点、切点、文字位置、投影平面位置共用）。
+    private func formulaNumberField(_ text: String, action: Selector) -> NSTextField {
+        let field = ControlFactory.textField(text, monospaced: true, target: self, action: action)
+        field.alignment = .right
+        field.toolTip = L("A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually).")
+        return field
+    }
+
+    /// 数字公式出错时的红字（范围、切点、位置共用同一处；刷新时按 `errors.domain` 显示）。
+    private func numberErrorLabel() -> NSTextField {
+        let error = ControlFactory.caption("")
+        error.textColor = ControlFactory.Palette.error
+        error.isHidden = true
+        domainErrorLabel = error
+        return error
     }
 
     /// 端点输入框里显示什么：写了表达式显示表达式，否则是数。

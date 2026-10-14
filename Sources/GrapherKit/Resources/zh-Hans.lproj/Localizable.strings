@@ -201,9 +201,14 @@
 
 "Steepness as a heat map" = "用热力图表示陡缓";
 "The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below." = "曲面本身按坡度上色，平缓处是蓝色、陡处是红色，下面地面上再画出梯度场。";
-"A range end must be a finite number." = "范围的端点必须是有限的数。";
+"A range end or position must be a finite number." = "范围的端点和位置必须是有限的数。";
 
 "A curve that draws itself" = "自己画出来的曲线";
 "The upper end of t is p·2π. Press play on p and the Lissajous figure and the cycloid are drawn as p grows." = "t 的上限是 p·2π。在 p 上按播放，李萨如图形和摆线随着 p 变大一点点被画出来。";
 "A knot and a torus that build themselves" = "自己生长的结和环面";
 "The ranges of t and u end at p·2π. Press play on p: the trefoil knot is traced and the torus is swept out around its axis." = "t 和 u 的范围都到 p·2π 为止。在 p 上按播放：三叶结被一笔画出，环面绕轴一圈圈扫出来。";
+
+"A tangent sliding along a curve" = "沿曲线滑动的切线";
+"The point of tangency is the parameter p. Press play on p: the tangent and the normal of the cubic slide along it and the slope changes with them." = "切点就是参数 p。在 p 上按播放：三次曲线的切线和法线沿曲线滑动，斜率跟着变化。";
+"A tangent plane circling a paraboloid" = "绕抛物面转一圈的切平面";
+"The point of tangency is (2 cos q, 2 sin q). Press play on q: the tangent plane and its normal travel once round the bowl." = "切点是 (2 cos q, 2 sin q)。在 q 上按播放：切平面连同法线绕碗转一圈。";

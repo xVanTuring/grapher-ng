@@ -390,6 +390,12 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var drawsNormal: Bool
     /// 文字标注：位置的第三个坐标（立体图的 z）与字号（点）。
     public var anchorW: Double
+    /// 位置类数字（切点、文字位置、投影平面位置）也可以写成含参数的表达式：非空时以它为准，
+    /// 上面的数只是没写表达式时用的值。同范围端点（`domainLowerFormula`），由 `LayerCompiler` 算成数。
+    public var anchorUFormula: String
+    public var anchorVFormula: String
+    public var anchorWFormula: String
+    public var projectionOffsetFormula: String
     public var fontSize: Double
     /// 散点图：画最小二乘拟合直线。
     public var showsFit: Bool
@@ -434,6 +440,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         anchorV: Double = 0,
         drawsNormal: Bool = false,
         anchorW: Double = 0,
+        anchorUFormula: String = "",
+        anchorVFormula: String = "",
+        anchorWFormula: String = "",
+        projectionOffsetFormula: String = "",
         fontSize: Double = 14,
         showsFit: Bool = false,
         gridDensity: Int = 12,
@@ -473,6 +483,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.anchorV = anchorV
         self.drawsNormal = drawsNormal
         self.anchorW = anchorW
+        self.anchorUFormula = anchorUFormula
+        self.anchorVFormula = anchorVFormula
+        self.anchorWFormula = anchorWFormula
+        self.projectionOffsetFormula = projectionOffsetFormula
         self.fontSize = fontSize
         self.showsFit = showsFit
         self.gridDensity = gridDensity
@@ -490,6 +504,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case domainLowerFormula, domainUpperFormula, domain2LowerFormula, domain2UpperFormula
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
         case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize, showsFit
+        case anchorUFormula, anchorVFormula, anchorWFormula, projectionOffsetFormula
         case gridDensity, arrowScale, gradientOnFloor, colorsBySlope
         case lineStyle, fillStyle, extraLevels
     }
@@ -526,6 +541,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         drawsNormal = try container.decodeIfPresent(Bool.self, forKey: .drawsNormal) ?? false
         projectionDirection = try container.decodeIfPresent(SIMD3<Double>.self, forKey: .projectionDirection)
         anchorW = try container.decodeIfPresent(Double.self, forKey: .anchorW) ?? 0
+        anchorUFormula = try container.decodeIfPresent(String.self, forKey: .anchorUFormula) ?? ""
+        anchorVFormula = try container.decodeIfPresent(String.self, forKey: .anchorVFormula) ?? ""
+        anchorWFormula = try container.decodeIfPresent(String.self, forKey: .anchorWFormula) ?? ""
+        projectionOffsetFormula = try container.decodeIfPresent(String.self, forKey: .projectionOffsetFormula) ?? ""
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? 14
         showsFit = try container.decodeIfPresent(Bool.self, forKey: .showsFit) ?? false
         gridDensity = try container.decodeIfPresent(Int.self, forKey: .gridDensity) ?? 12
@@ -540,6 +559,11 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     /// 有没有哪个范围端点写了表达式（四个里任何一个非空）。
     public var hasDomainFormulas: Bool {
         !(domainLowerFormula + domainUpperFormula + domain2LowerFormula + domain2UpperFormula).isEmpty
+    }
+
+    /// 有没有哪个数写成了表达式：范围端点、切点 / 文字位置、投影平面位置。
+    public var hasNumberFormulas: Bool {
+        hasDomainFormulas || !(anchorUFormula + anchorVFormula + anchorWFormula + projectionOffsetFormula).isEmpty
     }
 
     /// A ready-to-edit layer for the given plot kind, styled with the palette entry.

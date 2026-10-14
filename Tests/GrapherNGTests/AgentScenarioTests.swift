@@ -407,3 +407,43 @@ extension AgentScenarioTests {
         XCTAssertTrue(surface.isError)
     }
 }
+
+extension AgentScenarioTests {
+    /// 切点 / 文字 / 投影平面位置写成公式：助手建好后只改参数，图跟着动；写错报清楚。
+    func testAgentSlidesATangentWithAParameter() async throws {
+        let session = try await agentSession()
+        defer { session.close() }
+        _ = await session.open("plane")
+        _ = await session.call("set_parameter", ["name": "p", "value": 1, "min": -2, "max": 2])
+        let curve = await session.add("explicit", ["formula": "x^2"])
+        let tangent = await session.add("tangent", ["source_a": curve, "at": "p"])
+        XCTAssertFalse(tangent.isEmpty, "at 可以是公式")
+        let label = await session.add("text", ["formula": "here", "at": "p", "at2": "p^2 + 0.5"])
+        XCTAssertFalse(label.isEmpty)
+
+        let layers = await session.layers()
+        let described = try XCTUnwrap(layers.first { $0["id"] as? String == tangent })
+        XCTAssertEqual((described["positionFormulas"] as? [String: String])?["at"], "p")
+        XCTAssertNil(described["errors"])
+        let first = await session.call("render_image", ["width": 500, "height": 400])
+        _ = await session.call("set_parameter", ["name": "p", "value": -1.5])
+        let second = await session.call("render_image", ["width": 500, "height": 400])
+        XCTAssertFalse(first.isError || second.isError)
+        XCTAssertNotNil(first.image)
+        XCTAssertNotNil(second.image)
+
+        // 公式里没定义的名字、空字符串：报错，不留半成品。
+        let before = await session.layers().count
+        let bad = await session.call("add_layer", ["kind": "tangent", "source_a": curve, "at": "q + 1"])
+        XCTAssertTrue(bad.isError)
+        XCTAssertTrue(bad.text.contains("position formula"), bad.text)
+        let empty = await session.call("add_layer", ["kind": "tangent", "source_a": curve, "at": "  "])
+        XCTAssertTrue(empty.isError)
+        let after = await session.layers().count
+        XCTAssertEqual(after, before)
+        // 改回数字：公式清掉。
+        _ = await session.call("update_layer", ["layer_id": tangent, "at": 0.5])
+        let reset = await session.layers().first { $0["id"] as? String == tangent }
+        XCTAssertNil(reset?["positionFormulas"])
+    }
+}

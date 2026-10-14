@@ -110,6 +110,10 @@ final class MCPFacade {
         }
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
+        if layer.kind == .surfaceIntersection {
+            object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
+            object["sourceB"] = layer.sourceB?.uuidString ?? NSNull()
+        }
         if let errors = state.formulaErrors[layer.id] {
             var messages: [String] = []
             if let error = errors.primary { messages.append("formula: \(error.description)") }
@@ -191,6 +195,8 @@ final class MCPFacade {
         var domain: (Double, Double)?
         var domain2: (Double, Double)?
         var extrude: Bool?
+        var sourceA: UUID?
+        var sourceB: UUID?
         var color: RGBAColor?
         var lineWidth: Double?
         var dashed: Bool?
@@ -207,8 +213,12 @@ final class MCPFacade {
                 "A \(state.document.dimension == .space ? "3D" : "2D") document cannot hold '\(kind.rawValue)' layers. Allowed kinds: \(names)."
             )
         }
-        guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
-            throw MCPInvalidParams("missing required 'formula'")
+        if kind.needsFormula {
+            guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
+                throw MCPInvalidParams("missing required 'formula'")
+            }
+        } else if edit.sourceA == nil || edit.sourceB == nil {
+            throw MCPInvalidParams("'\(kind.rawValue)' layers need both 'source_a' and 'source_b' (layer ids)")
         }
 
         var layer = Layer.makeDefault(kind: kind, index: state.document.layers.count)
@@ -287,6 +297,13 @@ final class MCPFacade {
             guard layer.kind.canExtrude else { throw MCPToolError("'\(layer.kind.rawValue)' layers cannot be extruded.") }
             layer.extrudesInSpace = extrude
         }
+        if edit.sourceA != nil || edit.sourceB != nil {
+            guard layer.kind == .surfaceIntersection else {
+                throw MCPToolError("Only 'surfaceIntersection' layers have source_a / source_b.")
+            }
+            if let id = edit.sourceA { layer.sourceA = id }
+            if let id = edit.sourceB { layer.sourceB = id }
+        }
         if let color = edit.color {
             layer.lineStyle.color = color
             layer.fillStyle.color = color.withAlpha(layer.fillStyle.color.a)
@@ -302,6 +319,10 @@ final class MCPFacade {
     /// 用文档当前的参数编译一遍：公式有错就拒绝（带列号），免得图层列表里躺一条红色报错的图层。
     /// 返回的警告：公式里用到了文档里没定义的名字之类，编译器本身不报错的情况留给 `get_document` 的 `errors`。
     private func validate(_ layer: Layer, in state: AppState) throws -> [String] {
+        if layer.kind == .surfaceIntersection {
+            try validateSources(layer, in: state)
+            return []
+        }
         let probe = GrapherDocument(
             dimension: state.document.dimension,
             layers: [layer],
@@ -319,6 +340,22 @@ final class MCPFacade {
         )
     }
 
+    /// 交线的两个来源必须是本文档里两个不同的曲面图层。
+    private func validateSources(_ layer: Layer, in state: AppState) throws {
+        guard let a = layer.sourceA, let b = layer.sourceB else {
+            throw MCPInvalidParams("'surfaceIntersection' layers need both 'source_a' and 'source_b' (layer ids)")
+        }
+        guard a != b else { throw MCPToolError("source_a and source_b must be two different layers.") }
+        for (field, id) in [("source_a", a), ("source_b", b)] {
+            guard let source = state.layer(with: id) else {
+                throw MCPToolError("\(field): no layer with id \(id.uuidString). Call get_document to list layers.")
+            }
+            guard source.kind.isSurfaceSource else {
+                throw MCPToolError("\(field) is a '\(source.kind.rawValue)' layer; it must be a surface, parametricSurface or implicitSurface layer.")
+            }
+        }
+    }
+
     nonisolated static func variables(of kind: PlotKind) -> String {
         switch kind {
         case .explicit: return "x"
@@ -327,6 +364,7 @@ final class MCPFacade {
         case .implicit, .region, .surface: return "x, y"
         case .parametricSurface: return "u, v (all three formulas)"
         case .implicitSurface: return "x, y, z"
+        case .surfaceIntersection: return "(none; it has no formula)"
         }
     }
 

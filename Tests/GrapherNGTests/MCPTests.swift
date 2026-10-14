@@ -199,6 +199,37 @@ final class MCPTests: XCTestCase {
         XCTAssertThrowsError(try facade.addLayer(to: GraphDocument(), edit(kind: .explicit, formula: "x", secondary: "x")))
     }
 
+    func testSurfaceIntersectionNeedsTwoDifferentSurfaceSources() throws {
+        let space = GraphDocument(dimension: .space)
+        let facade = MCPFacade()
+        let (sphere, _) = try facade.addLayer(to: space, edit(kind: .implicitSurface, formula: "x^2+y^2+z^2-4"))
+        let (plane, _) = try facade.addLayer(to: space, edit(kind: .surface, formula: "1"))
+        let (curve, _) = try facade.addLayer(
+            to: space, edit(kind: .spaceCurve, formula: "cos(t)", secondary: "sin(t)", tertiary: "t/4"))
+
+        var intersection = MCPFacade.LayerEdit()
+        intersection.kind = .surfaceIntersection
+        XCTAssertThrowsError(try facade.addLayer(to: space, intersection), "缺来源")
+        intersection.sourceA = sphere.id
+        intersection.sourceB = sphere.id
+        XCTAssertThrowsError(try facade.addLayer(to: space, intersection), "两个来源相同")
+        intersection.sourceB = curve.id
+        XCTAssertThrowsError(try facade.addLayer(to: space, intersection), "空间曲线不是曲面")
+        intersection.sourceB = UUID()
+        XCTAssertThrowsError(try facade.addLayer(to: space, intersection), "来源不存在")
+
+        intersection.sourceB = plane.id
+        let (layer, _) = try facade.addLayer(to: space, intersection)
+        XCTAssertEqual(layer.kind, .surfaceIntersection)
+        XCTAssertEqual(layer.sourceA, sphere.id)
+        XCTAssertEqual(layer.sourceB, plane.id)
+        XCTAssertThrowsError(try facade.addLayer(to: GraphDocument(), intersection), "平面图里没有交线")
+
+        var stray = MCPFacade.LayerEdit()
+        stray.sourceA = sphere.id
+        XCTAssertThrowsError(try facade.updateLayer(in: space, id: plane.id, stray), "只有交线图层有来源")
+    }
+
     func testUpdateAndRemoveLayer() throws {
         let document = GraphDocument()
         let facade = MCPFacade()

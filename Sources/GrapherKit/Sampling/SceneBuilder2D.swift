@@ -36,6 +36,10 @@ public final class LayerCompiler {
 
         for layer in document.layers {
             var compiled = CompiledLayer(layer: layer)
+            guard layer.kind.needsFormula else {
+                result.append(compiled)
+                continue
+            }
             let primaryOutcome = compileOne(
                 source: layer.formula,
                 variables: layer.kind.primaryVariables,
@@ -235,7 +239,7 @@ public enum SceneBuilder2D {
         case .explicit: return layer.usesExplicitDomain
         case .parametric, .polar: return true
         case .implicit, .region: return false
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface: return false
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection: return false
         }
     }
 
@@ -442,7 +446,7 @@ public enum SceneBuilder2D {
                             viewport: viewport, into: &scene)
             }
 
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface:
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection:
             // 立体图型只在 3D 画布上画（`SceneBuilder3D`）。
             return
         }

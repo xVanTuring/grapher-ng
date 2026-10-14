@@ -64,6 +64,9 @@ public enum SceneBuilder3D {
         let view = request.view
         let box = DataBox3D(min: view.center - view.halfExtent, max: view.center + view.halfExtent)
 
+        // 交线要用到来源曲面的网格：画过的存下来，没画的（来源图层藏起来了）用到时再采。
+        var surfaceMeshes: [UUID: Mesh3D] = [:]
+
         for compiled in request.compiled where compiled.layer.isVisible {
             let layer = compiled.layer
             switch layer.kind {
@@ -71,12 +74,14 @@ public enum SceneBuilder3D {
                 guard let f = compiled.primary else { continue }
                 let (mesh, extent) = explicitSurface(f, layer: layer, request: request)
                 if mesh.triangleCount > 0 { scene.meshes.append(mesh) }
+                surfaceMeshes[layer.id] = mesh
                 fit = extent.flatMap { $0.intersection(box) }?.union(fit) ?? fit
 
             case .parametricSurface:
                 guard let fx = compiled.primary, let fy = compiled.secondary, let fz = compiled.tertiary else { continue }
                 let (mesh, extent) = parametricSurface(fx, fy, fz, layer: layer, request: request)
                 if mesh.triangleCount > 0 { scene.meshes.append(mesh) }
+                surfaceMeshes[layer.id] = mesh
                 fit = extent?.union(fit) ?? fit
 
             case .spaceCurve:
@@ -88,6 +93,7 @@ public enum SceneBuilder3D {
             case .implicitSurface:
                 guard let f = compiled.primary else { continue }
                 let mesh = implicitSurface(f, layer: layer, request: request)
+                surfaceMeshes[layer.id] = mesh
                 if mesh.triangleCount > 0 {
                     scene.meshes.append(mesh)
                     let points = mesh.vertices.lazy.map { view.data(SIMD3<Double>($0.position)) }
@@ -110,9 +116,15 @@ public enum SceneBuilder3D {
                     fit = flat.flatMap { $0.intersection(box) }?.union(fit) ?? fit
                 }
 
-            case .region:
+            case .region, .surfaceIntersection:
                 continue
             }
+        }
+
+        for compiled in request.compiled where compiled.layer.isVisible && compiled.layer.kind == .surfaceIntersection {
+            let (lines, extent) = surfaceIntersection(compiled.layer, cache: &surfaceMeshes, request: request)
+            scene.polylines.append(contentsOf: lines)
+            fit = extent?.intersection(box)?.union(fit) ?? fit
         }
 
         return BuiltScene3D(scene: scene, view: view, fitBounds: fit)
@@ -334,6 +346,56 @@ public enum SceneBuilder3D {
             )
         }
         return (lines, DataBox3D.enclosing(runs.joined()))
+    }
+
+    /// 来源图层的曲面网格：曲面类图层才有，公式有错或没填的返回 nil。
+    static func surfaceMesh(
+        of compiled: LayerCompiler.CompiledLayer,
+        request: SceneBuild3DRequest
+    ) -> Mesh3D? {
+        let layer = compiled.layer
+        switch layer.kind {
+        case .surface:
+            guard let f = compiled.primary else { return nil }
+            return explicitSurface(f, layer: layer, request: request).0
+        case .parametricSurface:
+            guard let fx = compiled.primary, let fy = compiled.secondary, let fz = compiled.tertiary else { return nil }
+            return parametricSurface(fx, fy, fz, layer: layer, request: request).0
+        case .implicitSurface:
+            guard let f = compiled.primary else { return nil }
+            return implicitSurface(f, layer: layer, request: request)
+        default:
+            return nil
+        }
+    }
+
+    /// 两个来源曲面的交线，画成一组空间折线。来源缺失、不是曲面、公式有错、两个是同一个图层时什么都不画。
+    static func surfaceIntersection(
+        _ layer: Layer,
+        cache: inout [UUID: Mesh3D],
+        request: SceneBuild3DRequest
+    ) -> ([Polyline3D], DataBox3D?) {
+        guard let idA = layer.sourceA, let idB = layer.sourceB, idA != idB else { return ([], nil) }
+        var meshes: [Mesh3D] = []
+        for id in [idA, idB] {
+            if let cached = cache[id] {
+                meshes.append(cached)
+            } else if let source = request.compiled.first(where: { $0.layer.id == id }),
+                      let mesh = surfaceMesh(of: source, request: request) {
+                cache[id] = mesh
+                meshes.append(mesh)
+            } else {
+                return ([], nil)
+            }
+        }
+
+        let view = request.view
+        let curves = MeshIntersection.curves(meshes[0], meshes[1])
+        let width = max(layer.lineStyle.width * request.backingScale, 0.5)
+        let lines = curves.map { curve in
+            Polyline3D(points: curve.map { SIMD3<Float>($0) }, color: layer.lineStyle.color, width: width)
+        }
+        return (lines, DataBox3D.enclosing(curves.joined().map { view.data($0) }))
     }
 
     /// F(x, y, z) = 0：在坐标盒的体网格上求值，marching tetrahedra 抽零值面。

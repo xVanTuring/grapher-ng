@@ -488,6 +488,14 @@ final class AppState {
         var created = Layer.makeDefault(kind: kind, index: document.layers.count)
         // 参数方程、极坐标、空间曲线、参数曲面的参数范围总是生效。
         created.usesExplicitDomain = kind.usesDomain && kind != .explicit
+        if kind == .surfaceIntersection {
+            // 先替用户选好：最近的两个曲面图层（图层列表里最后两张）。
+            let surfaces = document.layers.filter { $0.kind.isSurfaceSource }
+            if surfaces.count >= 2 {
+                created.sourceA = surfaces[surfaces.count - 2].id
+                created.sourceB = surfaces[surfaces.count - 1].id
+            }
+        }
         let id = created.id
         mutate(String(format: L("New %@"), kind.shortName)) { $0.layers.append(created) }
         selection = id

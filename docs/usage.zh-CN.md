@@ -105,6 +105,7 @@ curl -s -X POST http://127.0.0.1:8775/mcp \
 | 立体 | `parametricSurface` | 三个公式栏依次是 x(u,v)、y(u,v)、z(u,v)，`domain` 是 u 的范围，`domain2` 是 v 的范围 |
 | 立体 | `spaceCurve` | 三个公式栏依次是 x(t)、y(t)、z(t)，`domain` |
 | 立体 | `implicitSurface` | `formula` = F(x, y, z)，画 F = 0 |
+| 立体 | `surfaceIntersection` | 没有公式：`source_a`、`source_b` 是两个曲面图层（`surface`、`parametricSurface`、`implicitSurface`）的 id，画它们的交线；来源图层隐藏了也照画 |
 | 立体 | `explicit`、`parametric`、`polar`、`implicit` | 同平面；默认画在 z = 0 上，`extrude: true` 则沿 z 拉成竖直曲面 |
 
 隐式图型的 F 不要写 `= 0`（写 `x^2 + y^2 - 4`，不要写 `x^2 + y^2 = 4`）。

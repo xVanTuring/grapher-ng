@@ -14,6 +14,8 @@
 "Implicit surface F(x,y,z)=0" = "隐式曲面 F(x,y,z)=0";
 "Surface" = "曲面";
 "Implicit surface" = "隐式曲面";
+"Surface intersection" = "曲面交线";
+"Intersection" = "交线";
 
 /* GrapherKit：画质 */
 "Smooth (while dragging)" = "流畅（拖动时）";

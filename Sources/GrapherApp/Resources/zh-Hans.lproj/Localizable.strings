@@ -126,6 +126,12 @@
 "Change Type" = "修改类型";
 "Change Domain" = "修改定义域";
 "Change Relation" = "修改关系";
+"Change Surface" = "修改曲面";
+"Surface A" = "曲面 A";
+"Surface B" = "曲面 B";
+"None" = "无";
+"The curve where the two surfaces meet. Hide the surfaces to keep only the curve." = "两个曲面相交处的曲线。把两个曲面隐藏起来，就只剩这条曲线。";
+"Pick two different surface layers. Add surfaces first if the lists are empty." = "请选两个不同的曲面图层。列表是空的话，先添加曲面。";
 "Change Color" = "修改颜色";
 "Change Line Width" = "修改线宽";
 "Change Fill" = "修改填充";

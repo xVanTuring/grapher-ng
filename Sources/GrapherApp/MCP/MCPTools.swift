@@ -167,6 +167,8 @@ enum MCPTools {
             "domain": MCPSchema.numbers("[min, max] of t / theta / u (explicit, parametric, polar, spaceCurve, parametricSurface)", count: 2),
             "domain2": MCPSchema.numbers("[min, max] of v (parametricSurface only)", count: 2),
             "extrude": MCPSchema.boolean("3D documents, 2D curve kinds only: sweep the curve along z into a vertical surface"),
+            "source_a": MCPSchema.string("surfaceIntersection only: id of the first surface layer (surface, parametricSurface or implicitSurface)"),
+            "source_b": MCPSchema.string("surfaceIntersection only: id of the second surface layer"),
             "color": MCPSchema.string("#RRGGBB"),
             "line_width": MCPSchema.number("Stroke width in points (default 1.8)"),
             "dashed": MCPSchema.boolean("Dashed stroke"),
@@ -196,6 +198,8 @@ enum MCPTools {
         if let domain = try args.optionalDoubles("domain", count: 2) { edit.domain = (domain[0], domain[1]) }
         if let domain2 = try args.optionalDoubles("domain2", count: 2) { edit.domain2 = (domain2[0], domain2[1]) }
         edit.extrude = try args.optionalBool("extrude")
+        edit.sourceA = try args.optionalUUID("source_a")
+        edit.sourceB = try args.optionalUUID("source_b")
         if let color = try args.optionalString("color") { edit.color = try MCPFacade.parseColor(color) }
         edit.lineWidth = try args.optionalDouble("line_width")
         edit.dashed = try args.optionalBool("dashed")
@@ -209,8 +213,10 @@ enum MCPTools {
             name: "add_layer",
             title: "Add layer",
             description: "Insert a graph (curve, region or surface) into a document. The formula is checked first; if it is wrong nothing is added and the error says where. "
-                + "2D documents take explicit, parametric, polar, implicit, region; 3D documents take surface, parametricSurface, spaceCurve, implicitSurface, plus explicit/parametric/polar/implicit (drawn on z=0 or extruded).",
-            inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind", "formula"]),
+                + "2D documents take explicit, parametric, polar, implicit, region; 3D documents take surface, parametricSurface, spaceCurve, implicitSurface, plus explicit/parametric/polar/implicit (drawn on z=0 or extruded), plus surfaceIntersection "
+                + "(no formula: pass source_a and source_b, the ids of two surface layers; draws their intersection curve). "
+                + "Every kind except surfaceIntersection requires 'formula'.",
+            inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind"]),
             tier: .write
         ) { args in
             let document = try await facade.resolve(try args.optionalUUID("document_id"))
@@ -392,6 +398,8 @@ enum MCPTools {
       parametricSurface   formula = x(u,v), secondary_formula = y(u,v), tertiary_formula = z(u,v), domain = [u0,u1], domain2 = [v0,v1]
       spaceCurve          formula = x(t), secondary_formula = y(t), tertiary_formula = z(t), domain = [t0,t1]
       implicitSurface     formula = F(x,y,z)   draws F = 0
+      surfaceIntersection source_a = id of one surface layer, source_b = id of another (surface / parametricSurface / implicitSurface); no formula.
+                          Draws the curve where the two surfaces meet. Hiding the source layers keeps the curve.
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.
     Write the F of an implicit layer WITHOUT "= 0": x^2 + y^2 - 4, not x^2 + y^2 = 4.
     Everything in a 3D document is clipped to the axis box (default −4 … 4 on each axis); scale shapes to fit or call set_view.

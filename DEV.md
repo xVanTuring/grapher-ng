@@ -124,8 +124,8 @@ asserts that not a single pixel is drawn outside the box and that nearer faces h
 
 ## Not done yet
 
-- **Surface–surface intersection curves** (dimension reduction for `z=f ∩ z=g`, grid slicing with Newton refinement for
-  implicit ∩ implicit, intersection in the uv plane for parametric ∩ implicit).
+- Surface intersection curves are refined only to mesh accuracy (see `MeshIntersection`); Newton projection onto the true
+  surfaces, and curves between a surface and a 2D-extruded wall, are not done.
 - 3D: translucent surfaces, hover read-out, vector export.
 - Tangent and normal lines, free text annotations.
 - Data scatter plots and statistical charts.

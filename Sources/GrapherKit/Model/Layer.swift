@@ -20,13 +20,15 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case spaceCurve
     /// F(x, y, z) = 0
     case implicitSurface
+    /// 两个曲面图层的交线（引用另外两个图层，自己没有公式）
+    case surfaceIntersection
 
     public var id: String { rawValue }
 
     public var dimension: DocumentDimension {
         switch self {
         case .explicit, .parametric, .polar, .implicit, .region: return .plane
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface: return .space
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection: return .space
         }
     }
 
@@ -43,7 +45,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var canExtrude: Bool {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
-        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface: return false
+        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection: return false
         }
     }
 
@@ -58,6 +60,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametricSurface: return L("Parametric surface")
         case .spaceCurve: return L("Space curve")
         case .implicitSurface: return L("Implicit surface F(x,y,z)=0")
+        case .surfaceIntersection: return L("Surface intersection")
         }
     }
 
@@ -72,6 +75,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametricSurface: return L("Parametric surface")
         case .spaceCurve: return L("Space curve")
         case .implicitSurface: return L("Implicit surface")
+        case .surfaceIntersection: return L("Intersection")
         }
     }
 
@@ -85,6 +89,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
+        case .surfaceIntersection: return []
         }
     }
 
@@ -123,6 +128,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametricSurface: return "(2 + cos(v))*cos(u)"
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
+        case .surfaceIntersection: return ""
         }
     }
 
@@ -143,6 +149,17 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// 交线图层没有公式，只引用另外两个图层。
+    public var needsFormula: Bool { self != .surfaceIntersection }
+
+    /// 能当交线来源的图型：立体图里画成一张面的那几种（平面曲线「延伸到 3D」之后也是一张面）。
+    public var isSurfaceSource: Bool {
+        switch self {
+        case .surface, .parametricSurface, .implicitSurface: return true
+        default: return false
+        }
+    }
+
     public var needsSecondaryFormula: Bool {
         self == .parametric || self == .parametricSurface || self == .spaceCurve
     }
@@ -153,7 +170,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var usesDomain: Bool {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
-        case .implicit, .region, .surface, .implicitSurface: return false
+        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection: return false
         }
     }
 
@@ -245,6 +262,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var usesExplicitDomain: Bool
     /// 平面曲线放在立体图里时：false 画成 z = 0 平面上的一条曲线，true 沿 z 延伸成竖直曲面。
     public var extrudesInSpace: Bool
+    /// 交线图层的两个来源（另外两个图层的 id）。来源被删掉或不是曲面时，交线什么都不画。
+    public var sourceA: UUID?
+    public var sourceB: UUID?
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -265,6 +285,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         domain2Upper: Double = 2 * Double.pi,
         usesExplicitDomain: Bool = false,
         extrudesInSpace: Bool = false,
+        sourceA: UUID? = nil,
+        sourceB: UUID? = nil,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -283,6 +305,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.domain2Upper = domain2Upper
         self.usesExplicitDomain = usesExplicitDomain
         self.extrudesInSpace = extrudesInSpace
+        self.sourceA = sourceA
+        self.sourceB = sourceB
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -291,6 +315,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
+        case sourceA, sourceB
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -311,6 +336,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         domain2Upper = try container.decodeIfPresent(Double.self, forKey: .domain2Upper) ?? 2 * Double.pi
         usesExplicitDomain = try container.decode(Bool.self, forKey: .usesExplicitDomain)
         extrudesInSpace = try container.decodeIfPresent(Bool.self, forKey: .extrudesInSpace) ?? false
+        sourceA = try container.decodeIfPresent(UUID.self, forKey: .sourceA)
+        sourceB = try container.decodeIfPresent(UUID.self, forKey: .sourceB)
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -343,7 +370,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             // 螺旋线：t 走两圈。
             lower = -2 * Double.pi
             upper = 2 * Double.pi
-        case .surface, .parametricSurface, .implicitSurface:
+        case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection:
             break
         }
 

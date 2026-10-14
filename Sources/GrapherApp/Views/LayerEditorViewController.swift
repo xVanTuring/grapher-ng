@@ -46,6 +46,9 @@ final class LayerEditorViewController: NSViewController {
     private var domain2LowerField: NSTextField?
     private var domain2UpperField: NSTextField?
     private var extrudeCheckbox: NSButton?
+    private var sourceAPopUp: NSPopUpButton?
+    private var sourceBPopUp: NSPopUpButton?
+    private var sourceHint: NSTextField?
     private var relationPopUp: NSPopUpButton?
     private var lineColorWell: NSColorWell?
     private var lineWidthSlider: NSSlider?
@@ -117,7 +120,7 @@ final class LayerEditorViewController: NSViewController {
         case .surface, .parametricSurface, .implicitSurface: return true
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
-        case .region, .spaceCurve: return false
+        case .region, .spaceCurve, .surfaceIntersection: return false
         }
     }
 
@@ -145,6 +148,20 @@ final class LayerEditorViewController: NSViewController {
         rows.append(ControlFactory.formRow(L("Type"), kindPopUp))
 
         rows.append(contentsOf: formulaRows(layer))
+
+        if layer.kind == .surfaceIntersection {
+            let a = ControlFactory.popUp(items: [], target: self, action: #selector(sourceAEdited(_:)))
+            let b = ControlFactory.popUp(items: [], target: self, action: #selector(sourceBEdited(_:)))
+            sourceAPopUp = a
+            sourceBPopUp = b
+            rows.append(ControlFactory.formRow(L("Surface A"), a))
+            rows.append(ControlFactory.formRow(L("Surface B"), b))
+            let hint = ControlFactory.caption(
+                L("The curve where the two surfaces meet. Hide the surfaces to keep only the curve.")
+            )
+            sourceHint = hint
+            rows.append(hint)
+        }
 
         if layer.kind.usesDomain {
             // 只有显函数的定义域是可选的（不限定就跟着可见范围走）；参数方程、极坐标、空间曲线、
@@ -224,6 +241,7 @@ final class LayerEditorViewController: NSViewController {
             if let field, field.currentEditor() == nil { field.stringValue = ControlFactory.format(value) }
         }
         extrudeCheckbox?.state = layer.extrudesInSpace ? .on : .off
+        refreshSourcePopUps(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -236,6 +254,31 @@ final class LayerEditorViewController: NSViewController {
         fillColorWell?.color = ControlFactory.nsColor(layer.fillStyle.color)
         fillOpacitySlider?.doubleValue = layer.fillStyle.opacity
         fillOpacityLabel?.stringValue = ControlFactory.format(layer.fillStyle.opacity)
+    }
+
+    /// 交线能选的来源：文档里所有曲面图层（列表随图层增删改名变化，每次刷新都重填）。
+    private var sourceCandidates: [Layer] { state.document.layers.filter { $0.kind.isSurfaceSource } }
+
+    private func refreshSourcePopUps(_ layer: Layer) {
+        guard let a = sourceAPopUp, let b = sourceBPopUp else { return }
+        let candidates = sourceCandidates
+        for (popUp, selected) in [(a, layer.sourceA), (b, layer.sourceB)] {
+            popUp.removeAllItems()
+            popUp.addItem(withTitle: L("None"))
+            popUp.menu?.addItem(.separator())
+            for candidate in candidates { popUp.addItem(withTitle: candidate.name) }
+            // 菜单项 = 「无」+ 分隔线 + 各曲面；分隔线占一个序号。
+            if let selected, let index = candidates.firstIndex(where: { $0.id == selected }) {
+                popUp.selectItem(at: index + 2)
+            } else {
+                popUp.selectItem(at: 0)
+            }
+        }
+        let ready = layer.sourceA != nil && layer.sourceB != nil && layer.sourceA != layer.sourceB
+            && candidates.contains { $0.id == layer.sourceA } && candidates.contains { $0.id == layer.sourceB }
+        sourceHint?.stringValue = ready
+            ? L("The curve where the two surfaces meet. Hide the surfaces to keep only the curve.")
+            : L("Pick two different surface layers. Add surfaces first if the lists are empty.")
     }
 
     private func replaceContents(_ views: [NSView]) {
@@ -262,6 +305,9 @@ final class LayerEditorViewController: NSViewController {
         domain2LowerField = nil
         domain2UpperField = nil
         extrudeCheckbox = nil
+        sourceAPopUp = nil
+        sourceBPopUp = nil
+        sourceHint = nil
         relationPopUp = nil
         lineColorWell = nil
         lineWidthSlider = nil
@@ -303,6 +349,7 @@ final class LayerEditorViewController: NSViewController {
             return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
+        case .surfaceIntersection: return []
         }
     }
 
@@ -538,6 +585,23 @@ final class LayerEditorViewController: NSViewController {
     @objc private func extrudeToggled(_ sender: NSButton) {
         let on = sender.state == .on
         editLayer(L("Extend into 3D")) { $0.extrudesInSpace = on }
+    }
+
+    @objc private func sourceAEdited(_ sender: NSPopUpButton) {
+        let id = sourceID(at: sender.indexOfSelectedItem)
+        editLayer(L("Change Surface")) { $0.sourceA = id }
+    }
+
+    @objc private func sourceBEdited(_ sender: NSPopUpButton) {
+        let id = sourceID(at: sender.indexOfSelectedItem)
+        editLayer(L("Change Surface")) { $0.sourceB = id }
+    }
+
+    /// 菜单序号 → 图层 id；0 是「无」，1 是分隔线。
+    private func sourceID(at index: Int) -> UUID? {
+        let candidates = sourceCandidates
+        guard index >= 2, index - 2 < candidates.count else { return nil }
+        return candidates[index - 2].id
     }
 
     @objc private func relationEdited(_ sender: NSPopUpButton) {

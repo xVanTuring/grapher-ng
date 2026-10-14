@@ -126,6 +126,12 @@
 "Change Type" = "Change Type";
 "Change Domain" = "Change Domain";
 "Change Relation" = "Change Relation";
+"Change Surface" = "Change Surface";
+"Surface A" = "Surface A";
+"Surface B" = "Surface B";
+"None" = "None";
+"The curve where the two surfaces meet. Hide the surfaces to keep only the curve." = "The curve where the two surfaces meet. Hide the surfaces to keep only the curve.";
+"Pick two different surface layers. Add surfaces first if the lists are empty." = "Pick two different surface layers. Add surfaces first if the lists are empty.";
 "Change Color" = "Change Color";
 "Change Line Width" = "Change Line Width";
 "Change Fill" = "Change Fill";

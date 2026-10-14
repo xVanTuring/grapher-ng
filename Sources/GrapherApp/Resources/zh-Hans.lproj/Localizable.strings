@@ -274,3 +274,5 @@
 
 /* Range formulas */
 "A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually)." = "填数，或者填含参数的公式（如 p*2*pi）：它会跟着参数走，播放参数它就动起来（范围的端点则让曲线一点点画出来）。";
+"%ld of %ld points drawn" = "画出 %ld 个，共写了 %ld 个起点";
+"Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q)." = "每一栏可以是数，也可以是含参数的公式，例如 3*cos(q), 3*sin(q)。";

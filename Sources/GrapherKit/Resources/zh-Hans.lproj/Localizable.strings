@@ -212,3 +212,6 @@
 "The point of tangency is the parameter p. Press play on p: the tangent and the normal of the cubic slide along it and the slope changes with them." = "切点就是参数 p。在 p 上按播放：三次曲线的切线和法线沿曲线滑动，斜率跟着变化。";
 "A tangent plane circling a paraboloid" = "绕抛物面转一圈的切平面";
 "The point of tangency is (2 cos q, 2 sin q). Press play on q: the tangent plane and its normal travel once round the bowl." = "切点是 (2 cos q, 2 sin q)。在 q 上按播放：切平面连同法线绕碗转一圈。";
+
+"Which summit does it reach?" = "它会爬到哪座山顶？";
+"One starting point travels round a circle, (3 cos q, 3 sin q). Press play on q: the path jumps from one summit to the other where the basins meet." = "一个起点沿圆 (3 cos q, 3 sin q) 走一圈。在 q 上按播放：走到两个山谷的分界处时，路径会从一座山顶跳到另一座。";

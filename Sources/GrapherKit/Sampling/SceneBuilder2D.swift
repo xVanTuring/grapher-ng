@@ -15,6 +15,8 @@ public final class LayerCompiler {
         public var tertiaryError: ExpressionError?
         /// 范围端点的表达式出错（第一个出错的那个）。`layer` 里对应的数留着没写表达式时的值。
         public var domainError: ExpressionError?
+        /// 梯度流线：起点文本算好的起点（出错的起点不在里面）。
+        public var seeds: [SIMD2<Double>] = []
 
         public var hasError: Bool {
             primaryError != nil || secondaryError != nil || tertiaryError != nil || domainError != nil
@@ -42,11 +44,13 @@ public final class LayerCompiler {
         for layer in document.layers {
             var compiled = CompiledLayer(layer: layer)
             resolveDomain(of: layer, into: &compiled, parameters: parameters)
-            // 梯度流线：`formula` 是起点列表（文字），只有「小球位置」`secondaryFormula` 是公式（可以写参数）。
+            // 梯度流线：`formula` 是起点列表（文字，每栏是数或含参数的公式，在这里算成数放进 `seeds`），
+            // `secondaryFormula` 是「小球位置」公式。
             if layer.kind == .gradientFlow {
                 let outcome = compileOne(source: layer.secondaryFormula, variables: [], parameters: parameters)
                 compiled.secondary = outcome.0
                 compiled.secondaryError = outcome.1
+                resolveSeeds(of: layer, into: &compiled, parameters: parameters)
                 result.append(compiled)
                 continue
             }
@@ -110,6 +114,31 @@ public final class LayerCompiler {
                         message: L("A range end or position must be a finite number."), column: 1, length: max(source.count, 1))
                 }
             }
+        }
+    }
+
+    /// 梯度流线的起点：每一栏编译、算成数。出错的起点跳过，第一个错误记在 `domainError`。
+    private func resolveSeeds(of layer: Layer, into compiled: inout CompiledLayer, parameters: [String: Double]) {
+        func value(_ source: String) -> Double? {
+            let outcome = compileOne(source: source, variables: [], parameters: parameters)
+            if let error = outcome.1 {
+                compiled.domainError = compiled.domainError ?? error
+                return nil
+            }
+            guard let expression = outcome.0 else { return nil }
+            let number = expression.evaluate([])
+            guard number.isFinite else {
+                if compiled.domainError == nil {
+                    compiled.domainError = ExpressionError(
+                        message: L("A range end or position must be a finite number."), column: 1, length: max(source.count, 1))
+                }
+                return nil
+            }
+            return number
+        }
+        compiled.seeds = GradientSeeds.fields(layer.formula).prefix(40).compactMap { fields in
+            guard let x = value(fields.x), let y = value(fields.y) else { return nil }
+            return SIMD2(x, y)
         }
     }
 

@@ -285,6 +285,11 @@ final class LayerEditorViewController: NSViewController {
                 fitCheckbox = fit
                 rows.append(fit)
             }
+            if layer.kind == .gradientFlow {
+                rows.append(ControlFactory.caption(
+                    L("Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q).")))
+                rows.append(numberErrorLabel())
+            }
             let readout = ControlFactory.caption("")
             scatterReadout = readout
             rows.append(readout)
@@ -537,12 +542,18 @@ final class LayerEditorViewController: NSViewController {
         }
         fitCheckbox?.state = layer.showsFit ? .on : .off
 
-        let points = ScatterData.parse(layer.formula)
-        var text = String(format: L("%ld points"), points.count)
         if layer.kind == .gradientFlow {
-            scatterReadout?.stringValue = text
+            // 起点的每一栏可以是公式：数「写出的起点」，出错的在红字里说。
+            let all = state.compiler.compile(state.document)
+            let resolved = all.first { $0.layer.id == layer.id }?.seeds.count ?? 0
+            let written = GradientSeeds.fields(layer.formula).count
+            scatterReadout?.stringValue = resolved == written
+                ? String(format: L("%ld points"), written)
+                : String(format: L("%ld of %ld points drawn"), resolved, written)
             return
         }
+        let points = ScatterData.parse(layer.formula)
+        var text = String(format: L("%ld points"), points.count)
         if let fit = ScatterData.fit(points) {
             func n(_ v: Double) -> String { ControlFactory.format(v) }
             text += "\n" + String(format: L("mean (%@, %@)  ·  std (%@, %@)"),

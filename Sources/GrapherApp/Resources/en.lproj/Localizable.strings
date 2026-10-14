@@ -274,3 +274,5 @@
 
 /* Range formulas */
 "A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually)." = "A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually).";
+"%ld of %ld points drawn" = "%ld of %ld points drawn";
+"Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q)." = "Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q).";

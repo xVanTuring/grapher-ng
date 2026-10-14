@@ -144,7 +144,7 @@ final class MCPFacade {
         }
         if layer.kind == .gradientFlow {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
-            object["seeds"] = ScatterData.parse(layer.formula).map { [$0.x, $0.y] }
+            object["seeds"] = GradientSeeds.fields(layer.formula).map { [$0.x, $0.y] }
             object["progress"] = layer.secondaryFormula
             object["descent"] = layer.arrowScale < 0
             object["onFloor"] = layer.gradientOnFloor
@@ -171,7 +171,7 @@ final class MCPFacade {
         }
         if let errors = state.formulaErrors[layer.id] {
             var messages: [String] = []
-            if let error = errors.domain { messages.append("domain_formulas: \(error.description)") }
+            if let error = errors.domain { messages.append("domain_formulas / at / offset / starting point formula: \(error.description)") }
             if let error = errors.primary { messages.append("formula: \(error.description)") }
             if let error = errors.secondary { messages.append("secondary_formula: \(error.description)") }
             if let error = errors.tertiary { messages.append("tertiary_formula: \(error.description)") }
@@ -308,7 +308,7 @@ final class MCPFacade {
             if edit.sourceA == nil {
                 throw MCPInvalidParams("'gradientFlow' layers need 'source_a' (the id of a surface layer z = f(x, y))")
             }
-            guard let seeds = edit.formula, !ScatterData.parse(seeds).isEmpty else {
+            guard let seeds = edit.formula, !GradientSeeds.fields(seeds).isEmpty else {
                 throw MCPInvalidParams("'gradientFlow' layers need 'formula': the starting points, one \"x, y\" per line")
             }
         } else if kind == .gradientField {
@@ -558,7 +558,7 @@ final class MCPFacade {
         }
         if layer.kind == .gradientFlow {
             try validateGradient(layer, in: state)
-            guard !ScatterData.parse(layer.formula).isEmpty else {
+            guard !GradientSeeds.fields(layer.formula).isEmpty else {
                 throw MCPToolError("The starting points have no valid \"x, y\" line. Write one pair per line, e.g. \"1.5, 0.5\".")
             }
             // 往下走：小球位置公式（secondary_formula）照常编译检查。
@@ -573,7 +573,7 @@ final class MCPFacade {
         if let error = compiled.primaryError { messages.append("formula: \(error.description)") }
         if let error = compiled.secondaryError { messages.append("secondary_formula: \(error.description)") }
         if let error = compiled.tertiaryError { messages.append("tertiary_formula: \(error.description)") }
-        if let error = compiled.domainError { messages.append("domain_formulas: \(error.description)") }
+        if let error = compiled.domainError { messages.append("domain_formulas / at / offset / starting point formula: \(error.description)") }
         throw MCPToolError(
             "The formula was rejected, nothing was changed. " + messages.joined(separator: "; ")
                 + ". Variables for '\(layer.kind.rawValue)': \(Self.variables(of: layer.kind)). "

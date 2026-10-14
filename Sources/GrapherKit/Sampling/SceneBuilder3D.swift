@@ -139,7 +139,7 @@ public enum SceneBuilder3D {
                 let width = max(layer.lineStyle.width * request.backingScale, 0.5)
                 let limit = SurfaceMesher.coordinateLimit
                 var extent: [SIMD3<Double>] = []
-                for seed in ScatterData.parse(layer.formula).prefix(40) {
+                for seed in compiled.seeds {
                     let xy = GradientFlow.path(
                         of: f, from: seed, center: view.center, halfExtent: view.halfExtent, descent: layer.arrowScale < 0)
                     let line = xy.map { SIMD3($0.x, $0.y, layer.gradientOnFloor ? floorZ : f.evaluate([$0.x, $0.y])) }

@@ -212,3 +212,6 @@
 "The point of tangency is the parameter p. Press play on p: the tangent and the normal of the cubic slide along it and the slope changes with them." = "The point of tangency is the parameter p. Press play on p: the tangent and the normal of the cubic slide along it and the slope changes with them.";
 "A tangent plane circling a paraboloid" = "A tangent plane circling a paraboloid";
 "The point of tangency is (2 cos q, 2 sin q). Press play on q: the tangent plane and its normal travel once round the bowl." = "The point of tangency is (2 cos q, 2 sin q). Press play on q: the tangent plane and its normal travel once round the bowl.";
+
+"Which summit does it reach?" = "Which summit does it reach?";
+"One starting point travels round a circle, (3 cos q, 3 sin q). Press play on q: the path jumps from one summit to the other where the basins meet." = "One starting point travels round a circle, (3 cos q, 3 sin q). Press play on q: the path jumps from one summit to the other where the basins meet.";

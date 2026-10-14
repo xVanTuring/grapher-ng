@@ -411,6 +411,16 @@ public enum Demos {
                        seeds: "0.2, 0.2\n3, -0.5\n1.5, 3\n-0.5, 1.2\n-3, -2.5\n-1.5, 0\n0, -3\n3, 3", progress: "p")
                 return b.document
             },
+            Demo(id: "space.gradient-basins", category: .gradients, title: L("Which summit does it reach?"),
+                 summary: L("One starting point travels round a circle, (3 cos q, 3 sin q). Press play on q: the path jumps from one summit to the other where the basins meet.")) {
+                var b = DemoBuilder(.space, azimuth: 0.8, elevation: 0.6)
+                b.document.parameters = [ParameterDefinition(name: "q", value: 0.5, lowerBound: 0, upperBound: 6.2832)]
+                let hills = b.add(.surface, "Two hills", "2.5*exp(-((x - 1.5)^2 + (y - 1)^2)/3) + 1.6*exp(-((x + 1.8)^2 + (y + 1.2)^2)/2.5)") {
+                    $0.fillStyle.opacity = 0.5
+                }
+                b.flow("Path from the moving start", of: hills, seeds: "3*cos(q), 3*sin(q)", progress: "1")
+                return b.document
+            },
             Demo(id: "space.gradient-descent", category: .gradients, title: L("Gradient descent in a narrow valley"),
                  summary: L("Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p.")) {
                 var b = DemoBuilder(.space, azimuth: 0.55, elevation: 0.55)

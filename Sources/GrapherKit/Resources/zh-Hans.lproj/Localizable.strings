@@ -87,3 +87,11 @@
 "The planes are parallel." = "两平面平行。";
 "The planes are perpendicular." = "两平面垂直。";
 "The planes intersect in a line." = "两平面相交于一条直线。";
+
+/* GrapherKit: projection */
+"Projection onto a plane" = "投影到平面";
+"Projection" = "投影";
+"xy plane (z = c)" = "xy 平面（z = c，俯视）";
+"yz plane (x = c)" = "yz 平面（x = c，侧视）";
+"xz plane (y = c)" = "xz 平面（y = c，正视）";
+"A plane layer" = "某个平面图层";

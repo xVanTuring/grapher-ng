@@ -108,6 +108,8 @@ Every tool that targets a document takes an optional `document_id`. Leave it out
 | 3D | `spaceCurve` | x(t), y(t), z(t) in the three formula fields, `domain` |
 | 3D | `implicitSurface` | `formula` = F(x, y, z), drawn where F = 0 |
 | 3D | `surfaceIntersection` | no formula: `source_a` and `source_b` are the ids of two surface layers (`surface`, `parametricSurface`, `implicitSurface`); draws the curve where they meet, even if the sources are hidden |
+| 3D | `point` | `formula`, `secondary_formula`, `tertiary_formula` = x, y, z (numbers and parameters only); `line_width` is the size |
+| 3D | `projection` | no formula: `source_a` = a `point` / `spaceCurve` / `surfaceIntersection` layer, `target` = `xy` / `yz` / `xz` (the plane z / x / y = `offset`) or `plane` (`source_b` = a plane layer), `projectors` draws the projecting lines |
 | 3D | `explicit`, `parametric`, `polar`, `implicit` | as in 2D; drawn on z = 0, or with `extrude: true` swept along z |
 
 For implicit kinds write F without `= 0` (`x^2 + y^2 - 4`, not `x^2 + y^2 = 4`).

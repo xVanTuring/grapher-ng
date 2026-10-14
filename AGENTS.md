@@ -10,6 +10,16 @@ macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**
 `SceneBuilder3D` 先画完其它图层再处理它，两张来源曲面的网格（藏起来的现采）交给 `MeshIntersection` 逐对三角形求交、按端点拼成折线，
 不分图型组合；精度就是网格精度。
 
+**点 / 投影 / 位置关系**（立体图）：
+- `.point` 图层三个公式只能含参数，画成小球（`PointMarker`，半径按盒内归一化坐标，随盒子缩放）。
+- **直线、平面不是图型**，是从图层里认出来的（`SpaceGeometry.recognize`）：线性的空间曲线 = 直线，线性的隐式 / 显式曲面 = 平面。
+  识别靠在几个点上验证线性（容差 1e-7），所以带参数 `a` 的直线 / 平面照样认得。关系计算（距离、夹角、垂足、交点、交线、公垂线）
+  全在 `SpaceGeometry.relation`，纯逻辑；检查器里的「位置关系」面板（`RelationPaneViewController`）只是选两个对象、显示结果，
+  「画出结果」用 `GeometryConstruction.makeLayer` 把辅助对象加成新图层（数值快照，不跟来源联动）。
+- `.projection` 图层（`sourceA` 来源：点 / 空间曲线 / 交线；目标：三张坐标面 + `projectionOffset`，或 `sourceB` 指向的平面图层）
+  是正投影，在 `SceneBuilder3D` 里和交线一样最后处理；投影线最多 24 根，半透明细线。
+- 以上三种新 `PlotKind` 都要同步：`SceneBuilder2D` 里两处 switch、`LayerEditorViewController`、`MCPFacade.variables`、`MCPTests`、两份用法文档。
+
 测试里 MCP 令牌只放内存（`MCPSettings.token`），不碰真正的 Keychain，免得弄丢 / 改写正在用的令牌。
 
 ## 构建 / 测试 / 运行

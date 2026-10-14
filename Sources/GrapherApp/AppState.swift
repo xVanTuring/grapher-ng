@@ -496,6 +496,10 @@ final class AppState {
                 created.sourceB = surfaces[surfaces.count - 1].id
             }
         }
+        if kind == .projection {
+            // 默认投影最近的一个点 / 曲线 / 交线。
+            created.sourceA = document.layers.last { $0.kind.isProjectable }?.id
+        }
         let id = created.id
         mutate(String(format: L("New %@"), kind.shortName)) { $0.layers.append(created) }
         selection = id

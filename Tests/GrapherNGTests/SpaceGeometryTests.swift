@@ -246,7 +246,149 @@ final class SpaceGeometryTests: XCTestCase {
         assertEqual(d, SIMD3(0, 0, 1))
     }
 
-    // MARK: - 投影
+    // MARK: - 投影图层
+
+    private func projection(of source: Layer, target: ProjectionTarget = .xy, offset: Double = 0,
+                            plane: Layer? = nil, projectors: Bool = false, sourceVisible: Bool = false) -> (BuiltScene3D, [Layer]) {
+        var layer = Layer.makeDefault(kind: .projection, index: 5)
+        layer.sourceA = source.id
+        layer.projectionTarget = target
+        layer.projectionOffset = offset
+        layer.sourceB = plane?.id
+        layer.showsProjectors = projectors
+        var origin = source
+        origin.isVisible = sourceVisible
+        var document = GrapherDocument(dimension: .space)
+        document.layers = [origin] + (plane.map { [$0] } ?? []) + [layer]
+        let built = SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document, compiled: LayerCompiler().compile(document),
+            view: .standard, quality: .full, backingScale: 2))
+        return (built, document.layers)
+    }
+
+    func testHelixProjectsToACircleOnTheFloor() throws {
+        let helix = curve("2*cos(t)", "2*sin(t)", "t/2")
+        let (built, _) = projection(of: helix)
+        XCTAssertEqual(built.scene.polylines.count, 1, "来源藏起来、不画投影线时只剩投影")
+        let line = try XCTUnwrap(built.scene.polylines.first)
+        for p in line.points {
+            let data = built.view.data(SIMD3<Double>(p))
+            XCTAssertEqual(data.z, 0, accuracy: 1e-5, "落在 z = 0 上")
+            XCTAssertEqual(simd_length(SIMD2(data.x, data.y)), 2, accuracy: 1e-4, "半径 2 的圆")
+        }
+    }
+
+    func testProjectionOntoOffsetCoordinatePlanes() throws {
+        let line = curve("t", "1", "2")
+        for (target, check) in [
+            (ProjectionTarget.yz, { (p: SIMD3<Double>) in p.x }),
+            (.xz, { $0.y }),
+            (.xy, { $0.z }),
+        ] {
+            let (built, _) = projection(of: line, target: target, offset: -1.5)
+            let points = try XCTUnwrap(built.scene.polylines.first).points
+            for p in points { XCTAssertEqual(check(built.view.data(SIMD3<Double>(p))), -1.5, accuracy: 1e-5) }
+        }
+    }
+
+    func testPointProjectsToASphereAndProjectorsAreDrawn() throws {
+        let p = point("1", "2", "3")
+        let (built, _) = projection(of: p, projectors: true)
+        let sphere = try XCTUnwrap(built.scene.meshes.first)
+        let center = sphere.vertices.reduce(SIMD3<Float>.zero) { $0 + $1.position } / Float(sphere.vertices.count)
+        let data = built.view.data(SIMD3<Double>(center))
+        XCTAssertEqual(data.x, 1, accuracy: 0.02)
+        XCTAssertEqual(data.y, 2, accuracy: 0.02)
+        XCTAssertEqual(data.z, 0, accuracy: 0.02)
+        XCTAssertEqual(built.scene.polylines.count, 1, "一根投影线")
+        let projector = built.scene.polylines[0].points.map { built.view.data(SIMD3<Double>($0)) }
+        XCTAssertEqual(projector[0].z, 3, accuracy: 1e-5)
+        XCTAssertEqual(projector[1].z, 0, accuracy: 1e-5)
+    }
+
+    func testProjectionOntoAPlaneLayer() throws {
+        // 平面 x + y + z = 3，把点 (1,1,4) 投上去：沿法向 (1,1,1)/√3 移 -1 个 √3 单位到 (0,0,3)。
+        let wall = plane("x + y + z - 3")
+        let (built, _) = projection(of: point("1", "1", "4"), target: .plane, plane: wall)
+        XCTAssertEqual(built.scene.meshes.count, 2, "平面本身和投影点")
+        let sphere = try XCTUnwrap(built.scene.meshes.last, "投影最后画")
+        let center = sphere.vertices.reduce(SIMD3<Float>.zero) { $0 + $1.position } / Float(sphere.vertices.count)
+        let data = built.view.data(SIMD3<Double>(center))
+        XCTAssertEqual(data.x + data.y + data.z, 3, accuracy: 0.03)
+        XCTAssertEqual(data.x, 0, accuracy: 0.03)
+        XCTAssertEqual(data.z, 3, accuracy: 0.03)
+    }
+
+    func testProjectionOfAnIntersectionCurve() throws {
+        // 球面与平面 z = 1 的交圆（半径 √3）投到 xz 面（y = 0）：压成 x ∈ [-√3, √3] 的一段线。
+        let sphere = Layer.makeDefault(kind: .implicitSurface, index: 0)
+        var s = sphere
+        s.formula = "x^2 + y^2 + z^2 - 4"
+        var floor = Layer.makeDefault(kind: .surface, index: 1)
+        floor.formula = "1"
+        var cut = Layer.makeDefault(kind: .surfaceIntersection, index: 2)
+        cut.sourceA = s.id
+        cut.sourceB = floor.id
+        cut.isVisible = false
+        var shadow = Layer.makeDefault(kind: .projection, index: 3)
+        shadow.sourceA = cut.id
+        shadow.projectionTarget = .xz
+        shadow.showsProjectors = false
+        var document = GrapherDocument(dimension: .space)
+        s.isVisible = false
+        floor.isVisible = false
+        document.layers = [s, floor, cut, shadow]
+        let built = SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document, compiled: LayerCompiler().compile(document),
+            view: .standard, quality: .full, backingScale: 2))
+        XCTAssertEqual(built.scene.polylines.count, 1)
+        for p in built.scene.polylines[0].points {
+            let data = built.view.data(SIMD3<Double>(p))
+            XCTAssertEqual(data.y, 0, accuracy: 1e-5)
+            XCTAssertEqual(data.z, 1, accuracy: 0.01)
+            XCTAssertLessThanOrEqual(abs(data.x), 3.0.squareRoot() + 0.02)
+        }
+    }
+
+    func testProjectionNeedsAValidSource() {
+        let p = point("1", "2", "3")
+        var orphan = Layer.makeDefault(kind: .projection, index: 0)
+        orphan.sourceA = UUID()
+        var document = GrapherDocument(dimension: .space)
+        document.layers = [p, orphan]
+        var built = SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document, compiled: LayerCompiler().compile(document),
+            view: .standard, quality: .interactive, backingScale: 2))
+        XCTAssertEqual(built.scene.meshes.count, 1, "只剩点本身")
+
+        // 目标是平面却没指定平面图层：什么都不画。
+        orphan.sourceA = p.id
+        orphan.projectionTarget = .plane
+        document.layers = [p, orphan]
+        built = SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document, compiled: LayerCompiler().compile(document),
+            view: .standard, quality: .interactive, backingScale: 2))
+        XCTAssertEqual(built.scene.meshes.count, 1)
+        XCTAssertTrue(built.scene.polylines.isEmpty)
+    }
+
+    func testProjectionFieldsSurviveCodableAndOldFilesStillOpen() throws {
+        var layer = Layer.makeDefault(kind: .projection, index: 0)
+        layer.projectionTarget = .yz
+        layer.projectionOffset = 2.5
+        layer.showsProjectors = false
+        let data = try JSONEncoder().encode(layer)
+        XCTAssertEqual(try JSONDecoder().decode(Layer.self, from: data), layer)
+
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        for key in ["projectionTarget", "projectionOffset", "showsProjectors"] { object.removeValue(forKey: key) }
+        let old = try JSONDecoder().decode(Layer.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertEqual(old.projectionTarget, .xy)
+        XCTAssertEqual(old.projectionOffset, 0)
+        XCTAssertTrue(old.showsProjectors)
+    }
+
+    // MARK: - 投影（几何）
 
     func testProjections() throws {
         let p = SIMD3<Double>(1, 2, 3)

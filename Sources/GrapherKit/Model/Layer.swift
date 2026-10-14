@@ -24,13 +24,16 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case surfaceIntersection
     /// 空间里的一个点 (x, y, z)，三个公式只能含参数（不含变量）
     case point
+    /// 另一个图层（点、空间曲线、曲面交线）在平面上的正投影，没有公式
+    case projection
 
     public var id: String { rawValue }
 
     public var dimension: DocumentDimension {
         switch self {
         case .explicit, .parametric, .polar, .implicit, .region: return .plane
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point: return .space
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection:
+            return .space
         }
     }
 
@@ -47,7 +50,8 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var canExtrude: Bool {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
-        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point:
+        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point,
+             .projection:
             return false
         }
     }
@@ -65,6 +69,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicitSurface: return L("Implicit surface F(x,y,z)=0")
         case .surfaceIntersection: return L("Surface intersection")
         case .point: return L("Point (x, y, z)")
+        case .projection: return L("Projection onto a plane")
         }
     }
 
@@ -81,6 +86,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicitSurface: return L("Implicit surface")
         case .surfaceIntersection: return L("Intersection")
         case .point: return L("Point")
+        case .projection: return L("Projection")
         }
     }
 
@@ -94,7 +100,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection, .point: return []
+        case .surfaceIntersection, .point, .projection: return []
         }
     }
 
@@ -133,7 +139,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametricSurface: return "(2 + cos(v))*cos(u)"
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
-        case .surfaceIntersection: return ""
+        case .surfaceIntersection, .projection: return ""
         case .point: return "1"
         }
     }
@@ -157,8 +163,16 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// 交线图层没有公式，只引用另外两个图层。
-    public var needsFormula: Bool { self != .surfaceIntersection }
+    /// 交线、投影图层没有公式，只引用别的图层。
+    public var needsFormula: Bool { self != .surfaceIntersection && self != .projection }
+
+    /// 能当投影来源的图型：点、空间曲线、曲面交线。
+    public var isProjectable: Bool {
+        switch self {
+        case .point, .spaceCurve, .surfaceIntersection: return true
+        default: return false
+        }
+    }
 
     /// 能当交线来源的图型：立体图里画成一张面的那几种（平面曲线「延伸到 3D」之后也是一张面）。
     public var isSurfaceSource: Bool {
@@ -180,7 +194,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var usesDomain: Bool {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
-        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point: return false
+        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection: return false
         }
     }
 
@@ -213,6 +227,36 @@ public enum RegionRelation: String, Codable, CaseIterable, Identifiable, Sendabl
         case .lessOrEqual: return value <= 0
         case .greater: return value > 0
         case .greaterOrEqual: return value >= 0
+        }
+    }
+}
+
+/// 投影图层往哪张平面上投：三张坐标面（位置由 `projectionOffset` 定，如 z = c），或另一个平面图层（`sourceB`）。
+public enum ProjectionTarget: String, Codable, CaseIterable, Sendable {
+    /// z = offset 平面（俯视）
+    case xy
+    /// x = offset 平面（侧视）
+    case yz
+    /// y = offset 平面（正视）
+    case xz
+    case plane
+
+    public var displayName: String {
+        switch self {
+        case .xy: return L("xy plane (z = c)")
+        case .yz: return L("yz plane (x = c)")
+        case .xz: return L("xz plane (y = c)")
+        case .plane: return L("A plane layer")
+        }
+    }
+
+    /// 坐标面的单位法向；`plane` 没有。
+    public var normal: SIMD3<Double>? {
+        switch self {
+        case .xy: return SIMD3(0, 0, 1)
+        case .yz: return SIMD3(1, 0, 0)
+        case .xz: return SIMD3(0, 1, 0)
+        case .plane: return nil
         }
     }
 }
@@ -275,6 +319,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     /// 交线图层的两个来源（另外两个图层的 id）。来源被删掉或不是曲面时，交线什么都不画。
     public var sourceA: UUID?
     public var sourceB: UUID?
+    /// 投影图层：投到哪里、坐标面的位置、是否画出投影线（从原图形连到投影的细线）。
+    public var projectionTarget: ProjectionTarget
+    public var projectionOffset: Double
+    public var showsProjectors: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -297,6 +345,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         extrudesInSpace: Bool = false,
         sourceA: UUID? = nil,
         sourceB: UUID? = nil,
+        projectionTarget: ProjectionTarget = .xy,
+        projectionOffset: Double = 0,
+        showsProjectors: Bool = true,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -317,6 +368,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.extrudesInSpace = extrudesInSpace
         self.sourceA = sourceA
         self.sourceB = sourceB
+        self.projectionTarget = projectionTarget
+        self.projectionOffset = projectionOffset
+        self.showsProjectors = showsProjectors
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -325,7 +379,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
-        case sourceA, sourceB
+        case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -348,6 +402,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         extrudesInSpace = try container.decodeIfPresent(Bool.self, forKey: .extrudesInSpace) ?? false
         sourceA = try container.decodeIfPresent(UUID.self, forKey: .sourceA)
         sourceB = try container.decodeIfPresent(UUID.self, forKey: .sourceB)
+        projectionTarget = try container.decodeIfPresent(ProjectionTarget.self, forKey: .projectionTarget) ?? .xy
+        projectionOffset = try container.decodeIfPresent(Double.self, forKey: .projectionOffset) ?? 0
+        showsProjectors = try container.decodeIfPresent(Bool.self, forKey: .showsProjectors) ?? true
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -381,7 +438,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             // 螺旋线：t 走两圈。
             lower = -2 * Double.pi
             upper = 2 * Double.pi
-        case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection:
+        case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection, .projection:
             break
         case .point:
             // 默认大小比线宽大一点，一眼能看见。

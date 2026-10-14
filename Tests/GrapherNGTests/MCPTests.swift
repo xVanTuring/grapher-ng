@@ -230,6 +230,38 @@ final class MCPTests: XCTestCase {
         XCTAssertThrowsError(try facade.updateLayer(in: space, id: plane.id, stray), "只有交线图层有来源")
     }
 
+    func testProjectionLayerValidatesItsSourceAndTarget() throws {
+        let space = GraphDocument(dimension: .space)
+        let facade = MCPFacade()
+        let (curve, _) = try facade.addLayer(
+            to: space, edit(kind: .spaceCurve, formula: "cos(t)", secondary: "sin(t)", tertiary: "t/4"))
+        let (surface, _) = try facade.addLayer(to: space, edit(kind: .surface, formula: "x*y"))
+        let (wall, _) = try facade.addLayer(to: space, edit(kind: .implicitSurface, formula: "x + y + z - 1"))
+
+        var projection = MCPFacade.LayerEdit()
+        projection.kind = .projection
+        XCTAssertThrowsError(try facade.addLayer(to: space, projection), "缺来源")
+        projection.sourceA = surface.id
+        XCTAssertThrowsError(try facade.addLayer(to: space, projection), "曲面不能当投影来源")
+        projection.sourceA = curve.id
+        let (onFloor, _) = try facade.addLayer(to: space, projection)
+        XCTAssertEqual(onFloor.projectionTarget, .xy)
+
+        projection.projectionTarget = .plane
+        XCTAssertThrowsError(try facade.addLayer(to: space, projection), "target plane 缺 source_b")
+        projection.sourceB = surface.id
+        XCTAssertThrowsError(try facade.addLayer(to: space, projection), "x*y 曲面不是平面")
+        projection.sourceB = wall.id
+        let (onWall, _) = try facade.addLayer(to: space, projection)
+        XCTAssertEqual(onWall.sourceB, wall.id)
+
+        var stray = MCPFacade.LayerEdit()
+        stray.projectionOffset = 1
+        XCTAssertThrowsError(try facade.updateLayer(in: space, id: curve.id, stray), "只有投影图层有 offset")
+        let (moved, _) = try facade.updateLayer(in: space, id: onFloor.id, stray)
+        XCTAssertEqual(moved.projectionOffset, 1)
+    }
+
     func testUpdateAndRemoveLayer() throws {
         let document = GraphDocument()
         let facade = MCPFacade()

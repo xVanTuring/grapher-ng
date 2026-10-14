@@ -127,7 +127,7 @@ public enum SceneBuilder3D {
                 ))
                 fit = DataBox3D(min: p, max: p).intersection(box)?.union(fit) ?? fit
 
-            case .region, .surfaceIntersection:
+            case .region, .surfaceIntersection, .projection:
                 continue
             }
         }
@@ -136,6 +136,14 @@ public enum SceneBuilder3D {
             let (lines, extent) = surfaceIntersection(compiled.layer, cache: &surfaceMeshes, request: request)
             scene.polylines.append(contentsOf: lines)
             fit = extent?.intersection(box)?.union(fit) ?? fit
+        }
+
+        // 投影在最后画：它的来源可能是交线，要等交线算完。
+        for compiled in request.compiled where compiled.layer.isVisible && compiled.layer.kind == .projection {
+            let result = projection(compiled.layer, cache: &surfaceMeshes, request: request)
+            scene.polylines.append(contentsOf: result.polylines)
+            scene.meshes.append(contentsOf: result.meshes)
+            fit = result.extent?.intersection(box)?.union(fit) ?? fit
         }
 
         return BuiltScene3D(scene: scene, view: view, fitBounds: fit)
@@ -329,6 +337,24 @@ public enum SceneBuilder3D {
         return (mesh, DataBox3D.enclosing(points))
     }
 
+    /// 空间曲线的采样点（数据坐标，断开处分成几段）。
+    static func spaceCurveRuns(
+        _ fx: CompiledExpression,
+        _ fy: CompiledExpression,
+        _ fz: CompiledExpression,
+        layer: Layer,
+        request: SceneBuild3DRequest
+    ) -> [[SIMD3<Double>]] {
+        let lower = min(layer.domainLower, layer.domainUpper)
+        let upper = max(layer.domainLower, layer.domainUpper)
+        return SpaceCurveSampler.sample(
+            f: { t in SIMD3(fx.evaluate([t]), fy.evaluate([t]), fz.evaluate([t])) },
+            tRange: lower...upper,
+            view: request.view,
+            options: SpaceCurveSampler.options(for: request.quality)
+        )
+    }
+
     /// (x, y, z) = F(t)：整条曲线都采，线宽同 2D 描边。
     static func spaceCurve(
         _ fx: CompiledExpression,
@@ -337,14 +363,7 @@ public enum SceneBuilder3D {
         layer: Layer,
         request: SceneBuild3DRequest
     ) -> ([Polyline3D], DataBox3D?) {
-        let lower = min(layer.domainLower, layer.domainUpper)
-        let upper = max(layer.domainLower, layer.domainUpper)
-        let runs = SpaceCurveSampler.sample(
-            f: { t in SIMD3(fx.evaluate([t]), fy.evaluate([t]), fz.evaluate([t])) },
-            tRange: lower...upper,
-            view: request.view,
-            options: SpaceCurveSampler.options(for: request.quality)
-        )
+        let runs = spaceCurveRuns(fx, fy, fz, layer: layer, request: request)
         let width = max(layer.lineStyle.width * request.backingScale, 0.5)
         let limit = SurfaceMesher.coordinateLimit
         let lines = runs.map { run in
@@ -386,7 +405,27 @@ public enum SceneBuilder3D {
         cache: inout [UUID: Mesh3D],
         request: SceneBuild3DRequest
     ) -> ([Polyline3D], DataBox3D?) {
-        guard let idA = layer.sourceA, let idB = layer.sourceB, idA != idB else { return ([], nil) }
+        let runs = intersectionRuns(layer, cache: &cache, request: request)
+        let limit = SurfaceMesher.coordinateLimit
+        let width = max(layer.lineStyle.width * request.backingScale, 0.5)
+        let lines = runs.map { run in
+            Polyline3D(
+                points: run.map {
+                    simd_clamp(SIMD3<Float>(request.view.normalized($0)), SIMD3(repeating: -limit), SIMD3(repeating: limit))
+                },
+                color: layer.lineStyle.color, width: width
+            )
+        }
+        return (lines, DataBox3D.enclosing(runs.joined()))
+    }
+
+    /// 交线的折线（数据坐标）。
+    static func intersectionRuns(
+        _ layer: Layer,
+        cache: inout [UUID: Mesh3D],
+        request: SceneBuild3DRequest
+    ) -> [[SIMD3<Double>]] {
+        guard let idA = layer.sourceA, let idB = layer.sourceB, idA != idB else { return [] }
         var meshes: [Mesh3D] = []
         for id in [idA, idB] {
             if let cached = cache[id] {
@@ -396,17 +435,94 @@ public enum SceneBuilder3D {
                 cache[id] = mesh
                 meshes.append(mesh)
             } else {
-                return ([], nil)
+                return []
             }
         }
+        return MeshIntersection.curves(meshes[0], meshes[1]).map { $0.map { request.view.data($0) } }
+    }
 
-        let view = request.view
-        let curves = MeshIntersection.curves(meshes[0], meshes[1])
-        let width = max(layer.lineStyle.width * request.backingScale, 0.5)
-        let lines = curves.map { curve in
-            Polyline3D(points: curve.map { SIMD3<Float>($0) }, color: layer.lineStyle.color, width: width)
+    // MARK: - 投影
+
+    /// 投影图层的来源：点、空间曲线、曲面交线的折线（数据坐标）；点是长度为 1 的一段。
+    static func projectableRuns(
+        of source: LayerCompiler.CompiledLayer,
+        cache: inout [UUID: Mesh3D],
+        request: SceneBuild3DRequest
+    ) -> [[SIMD3<Double>]] {
+        let layer = source.layer
+        switch layer.kind {
+        case .point:
+            guard let fx = source.primary, let fy = source.secondary, let fz = source.tertiary else { return [] }
+            let p = SIMD3(fx.evaluate([]), fy.evaluate([]), fz.evaluate([]))
+            return p.x.isFinite && p.y.isFinite && p.z.isFinite ? [[p]] : []
+        case .spaceCurve:
+            guard let fx = source.primary, let fy = source.secondary, let fz = source.tertiary else { return [] }
+            return spaceCurveRuns(fx, fy, fz, layer: layer, request: request)
+        case .surfaceIntersection:
+            return intersectionRuns(layer, cache: &cache, request: request)
+        default:
+            return []
         }
-        return (lines, DataBox3D.enclosing(curves.joined().map { view.data($0) }))
+    }
+
+    /// 投影：每一段折线的点落到目标平面上（正投影），再加上从原图形连到投影的细线。
+    static func projection(
+        _ layer: Layer,
+        cache: inout [UUID: Mesh3D],
+        request: SceneBuild3DRequest
+    ) -> (polylines: [Polyline3D], meshes: [Mesh3D], extent: DataBox3D?) {
+        guard let sourceID = layer.sourceA,
+              let source = request.compiled.first(where: { $0.layer.id == sourceID }),
+              source.layer.kind.isProjectable else { return ([], [], nil) }
+
+        // 目标平面：坐标面（位置由偏移定）或另一个平面图层。
+        let normal: SIMD3<Double>
+        let offset: Double
+        if let axis = layer.projectionTarget.normal {
+            normal = axis
+            offset = layer.projectionOffset
+        } else if let id = layer.sourceB, let target = request.compiled.first(where: { $0.layer.id == id }),
+                  case let .plane(n, c)? = SpaceGeometry.recognize(target) {
+            normal = n
+            offset = c
+        } else {
+            return ([], [], nil)
+        }
+
+        let runs = projectableRuns(of: source, cache: &cache, request: request)
+        let view = request.view
+        let limit = SurfaceMesher.coordinateLimit
+        func place(_ p: SIMD3<Double>) -> SIMD3<Float> {
+            simd_clamp(SIMD3<Float>(view.normalized(p)), SIMD3(repeating: -limit), SIMD3(repeating: limit))
+        }
+
+        let color = layer.lineStyle.color
+        let width = max(layer.lineStyle.width * request.backingScale, 0.5)
+        let projectorColor = color.withAlpha(color.a * 0.5)
+        var polylines: [Polyline3D] = []
+        var meshes: [Mesh3D] = []
+        var extent: [SIMD3<Double>] = []
+
+        for run in runs {
+            let feet = run.map { SpaceGeometry.foot(of: $0, onPlane: normal, offset: offset) }
+            extent.append(contentsOf: feet)
+            if run.count == 1 {
+                meshes.append(PointMarker.mesh(
+                    center: place(feet[0]), radius: PointMarker.radius(width: layer.lineStyle.width), color: color))
+            } else if feet.count >= 2 {
+                polylines.append(Polyline3D(points: feet.map(place), color: color, width: width))
+            }
+            guard layer.showsProjectors else { continue }
+            // 投影线：沿折线均匀取不多于 24 根（点只有一根）。
+            let count = min(run.count, 24)
+            for k in 0..<count {
+                let index = count == 1 ? 0 : k * (run.count - 1) / (count - 1)
+                polylines.append(Polyline3D(
+                    points: [place(run[index]), place(feet[index])],
+                    color: projectorColor, width: max(width * 0.4, 0.5)))
+            }
+        }
+        return (polylines, meshes, DataBox3D.enclosing(extent))
     }
 
     /// F(x, y, z) = 0：在坐标盒的体网格上求值，marching tetrahedra 抽零值面。

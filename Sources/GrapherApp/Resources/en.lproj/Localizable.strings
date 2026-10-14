@@ -192,3 +192,12 @@
 "Add Construction" = "Add Construction";
 "Add the foot of the perpendicular, intersection point, common perpendicular or line of intersection as new layers." = "Add the foot of the perpendicular, intersection point, common perpendicular or line of intersection as new layers.";
 "Pick two of: a point, a straight line (a linear space curve), a plane (a linear surface)." = "Pick two of: a point, a straight line (a linear space curve), a plane (a linear surface).";
+
+/* Projection */
+"Project" = "Project";
+"Onto" = "Onto";
+"Position" = "Position";
+"Plane" = "Plane";
+"Show projecting lines" = "Show projecting lines";
+"Change Projection" = "Change Projection";
+"Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection." = "Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.";

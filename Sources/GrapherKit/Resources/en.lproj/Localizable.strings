@@ -87,3 +87,11 @@
 "The planes are parallel." = "The planes are parallel.";
 "The planes are perpendicular." = "The planes are perpendicular.";
 "The planes intersect in a line." = "The planes intersect in a line.";
+
+/* GrapherKit: projection */
+"Projection onto a plane" = "Projection onto a plane";
+"Projection" = "Projection";
+"xy plane (z = c)" = "xy plane (z = c)";
+"yz plane (x = c)" = "yz plane (x = c)";
+"xz plane (y = c)" = "xz plane (y = c)";
+"A plane layer" = "A plane layer";

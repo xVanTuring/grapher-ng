@@ -110,6 +110,16 @@ final class MCPFacade {
         }
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
+        if layer.kind == .projection {
+            object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
+            object["target"] = layer.projectionTarget.rawValue
+            if layer.projectionTarget == .plane {
+                object["sourceB"] = layer.sourceB?.uuidString ?? NSNull()
+            } else {
+                object["offset"] = layer.projectionOffset
+            }
+            object["projectors"] = layer.showsProjectors
+        }
         if layer.kind == .surfaceIntersection {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["sourceB"] = layer.sourceB?.uuidString ?? NSNull()
@@ -197,6 +207,9 @@ final class MCPFacade {
         var extrude: Bool?
         var sourceA: UUID?
         var sourceB: UUID?
+        var projectionTarget: ProjectionTarget?
+        var projectionOffset: Double?
+        var showsProjectors: Bool?
         var color: RGBAColor?
         var lineWidth: Double?
         var dashed: Bool?
@@ -217,6 +230,8 @@ final class MCPFacade {
             guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
                 throw MCPInvalidParams("missing required 'formula'")
             }
+        } else if kind == .projection {
+            if edit.sourceA == nil { throw MCPInvalidParams("'projection' layers need 'source_a' (the layer to project)") }
         } else if edit.sourceA == nil || edit.sourceB == nil {
             throw MCPInvalidParams("'\(kind.rawValue)' layers need both 'source_a' and 'source_b' (layer ids)")
         }
@@ -297,9 +312,17 @@ final class MCPFacade {
             guard layer.kind.canExtrude else { throw MCPToolError("'\(layer.kind.rawValue)' layers cannot be extruded.") }
             layer.extrudesInSpace = extrude
         }
+        if edit.projectionTarget != nil || edit.projectionOffset != nil || edit.showsProjectors != nil {
+            guard layer.kind == .projection else {
+                throw MCPToolError("Only 'projection' layers have target / offset / projectors.")
+            }
+            if let target = edit.projectionTarget { layer.projectionTarget = target }
+            if let offset = edit.projectionOffset { layer.projectionOffset = offset }
+            if let projectors = edit.showsProjectors { layer.showsProjectors = projectors }
+        }
         if edit.sourceA != nil || edit.sourceB != nil {
-            guard layer.kind == .surfaceIntersection else {
-                throw MCPToolError("Only 'surfaceIntersection' layers have source_a / source_b.")
+            guard layer.kind == .surfaceIntersection || layer.kind == .projection else {
+                throw MCPToolError("Only 'surfaceIntersection' and 'projection' layers have source_a / source_b.")
             }
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
@@ -321,6 +344,10 @@ final class MCPFacade {
     private func validate(_ layer: Layer, in state: AppState) throws -> [String] {
         if layer.kind == .surfaceIntersection {
             try validateSources(layer, in: state)
+            return []
+        }
+        if layer.kind == .projection {
+            try validateProjection(layer, in: state)
             return []
         }
         let probe = GrapherDocument(
@@ -356,6 +383,30 @@ final class MCPFacade {
         }
     }
 
+    /// 投影：来源必须是点 / 空间曲线 / 交线；目标是 `plane` 时 source_b 必须是线性的平面图层。
+    private func validateProjection(_ layer: Layer, in state: AppState) throws {
+        guard let a = layer.sourceA else {
+            throw MCPInvalidParams("'projection' layers need 'source_a' (the layer to project)")
+        }
+        guard let source = state.layer(with: a) else {
+            throw MCPToolError("source_a: no layer with id \(a.uuidString). Call get_document to list layers.")
+        }
+        guard source.kind.isProjectable else {
+            throw MCPToolError("source_a is a '\(source.kind.rawValue)' layer; it must be a point, spaceCurve or surfaceIntersection layer.")
+        }
+        guard layer.projectionTarget == .plane else { return }
+        guard let b = layer.sourceB else {
+            throw MCPToolError("target 'plane' needs source_b: the id of a plane layer (a linear implicitSurface or surface).")
+        }
+        let compiled = LayerCompiler().compile(state.document)
+        guard let target = compiled.first(where: { $0.layer.id == b }) else {
+            throw MCPToolError("source_b: no layer with id \(b.uuidString). Call get_document to list layers.")
+        }
+        guard case .plane? = SpaceGeometry.recognize(target) else {
+            throw MCPToolError("source_b must be a plane: an implicitSurface or surface layer whose formula is linear (a*x + b*y + c*z + d).")
+        }
+    }
+
     nonisolated static func variables(of kind: PlotKind) -> String {
         switch kind {
         case .explicit: return "x"
@@ -366,6 +417,7 @@ final class MCPFacade {
         case .implicitSurface: return "x, y, z"
         case .surfaceIntersection: return "(none; it has no formula)"
         case .point: return "(none; only parameters and numbers)"
+        case .projection: return "(none; it has no formula)"
         }
     }
 

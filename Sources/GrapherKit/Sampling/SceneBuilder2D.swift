@@ -239,7 +239,8 @@ public enum SceneBuilder2D {
         case .explicit: return layer.usesExplicitDomain
         case .parametric, .polar: return true
         case .implicit, .region: return false
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point: return false
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection:
+            return false
         }
     }
 
@@ -446,7 +447,7 @@ public enum SceneBuilder2D {
                             viewport: viewport, into: &scene)
             }
 
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point:
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection:
             // 立体图型只在 3D 画布上画（`SceneBuilder3D`）。
             return
         }

@@ -106,6 +106,8 @@ curl -s -X POST http://127.0.0.1:8775/mcp \
 | 立体 | `spaceCurve` | 三个公式栏依次是 x(t)、y(t)、z(t)，`domain` |
 | 立体 | `implicitSurface` | `formula` = F(x, y, z)，画 F = 0 |
 | 立体 | `surfaceIntersection` | 没有公式：`source_a`、`source_b` 是两个曲面图层（`surface`、`parametricSurface`、`implicitSurface`）的 id，画它们的交线；来源图层隐藏了也照画 |
+| 立体 | `point` | `formula`、`secondary_formula`、`tertiary_formula` 依次是 x、y、z（只能写数和参数）；`line_width` 是点的大小 |
+| 立体 | `projection` | 没有公式：`source_a` 是 `point` / `spaceCurve` / `surfaceIntersection` 图层，`target` 取 `xy` / `yz` / `xz`（投到 z / x / y = `offset` 的平面）或 `plane`（`source_b` 是一个平面图层），`projectors` 控制是否画投影线 |
 | 立体 | `explicit`、`parametric`、`polar`、`implicit` | 同平面；默认画在 z = 0 上，`extrude: true` 则沿 z 拉成竖直曲面 |
 
 隐式图型的 F 不要写 `= 0`（写 `x^2 + y^2 - 4`，不要写 `x^2 + y^2 = 4`）。

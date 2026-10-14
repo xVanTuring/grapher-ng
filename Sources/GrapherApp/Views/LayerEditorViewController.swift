@@ -49,6 +49,11 @@ final class LayerEditorViewController: NSViewController {
     private var sourceAPopUp: NSPopUpButton?
     private var sourceBPopUp: NSPopUpButton?
     private var sourceHint: NSTextField?
+    private var projectionSourcePopUp: NSPopUpButton?
+    private var projectionTargetPopUp: NSPopUpButton?
+    private var projectionOffsetField: NSTextField?
+    private var projectionOffsetRow: NSView?
+    private var projectorsCheckbox: NSButton?
     private var relationPopUp: NSPopUpButton?
     private var lineColorWell: NSColorWell?
     private var lineWidthSlider: NSSlider?
@@ -120,7 +125,7 @@ final class LayerEditorViewController: NSViewController {
         case .surface, .parametricSurface, .implicitSurface: return true
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
-        case .region, .spaceCurve, .surfaceIntersection, .point: return false
+        case .region, .spaceCurve, .surfaceIntersection, .point, .projection: return false
         }
     }
 
@@ -161,6 +166,26 @@ final class LayerEditorViewController: NSViewController {
             )
             sourceHint = hint
             rows.append(hint)
+        }
+
+        if layer.kind == .projection {
+            let source = ControlFactory.popUp(items: [], target: self, action: #selector(projectionSourceEdited(_:)))
+            let target = ControlFactory.popUp(items: [], target: self, action: #selector(projectionTargetEdited(_:)))
+            let offset = ControlFactory.numberField(layer.projectionOffset, target: self, action: #selector(projectionOffsetEdited(_:)))
+            let projectors = ControlFactory.checkbox(
+                L("Show projecting lines"), target: self, action: #selector(projectorsToggled(_:)))
+            projectionSourcePopUp = source
+            projectionTargetPopUp = target
+            projectionOffsetField = offset
+            projectorsCheckbox = projectors
+            let offsetRow = ControlFactory.formRow(L("Position"), offset)
+            projectionOffsetRow = offsetRow
+            rows.append(ControlFactory.formRow(L("Project"), source))
+            rows.append(ControlFactory.formRow(L("Onto"), target))
+            rows.append(offsetRow)
+            rows.append(projectors)
+            rows.append(ControlFactory.caption(
+                L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
         }
 
         if layer.kind.usesDomain {
@@ -242,6 +267,7 @@ final class LayerEditorViewController: NSViewController {
         }
         extrudeCheckbox?.state = layer.extrudesInSpace ? .on : .off
         refreshSourcePopUps(layer)
+        refreshProjection(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -281,6 +307,85 @@ final class LayerEditorViewController: NSViewController {
             : L("Pick two different surface layers. Add surfaces first if the lists are empty.")
     }
 
+    // MARK: - Projection rows
+
+    private var projectableLayers: [Layer] { state.document.layers.filter { $0.kind.isProjectable } }
+
+    /// 能当投影目标的平面图层（线性的隐式 / 显式曲面）。
+    private var planeLayers: [Layer] {
+        state.compiler.compile(state.document).compactMap { compiled in
+            if case .plane? = SpaceGeometry.recognize(compiled) { return compiled.layer }
+            return nil
+        }
+    }
+
+    private func refreshProjection(_ layer: Layer) {
+        guard let source = projectionSourcePopUp, let target = projectionTargetPopUp else { return }
+        let sources = projectableLayers
+        source.removeAllItems()
+        source.addItem(withTitle: L("None"))
+        source.menu?.addItem(.separator())
+        for candidate in sources { source.addItem(withTitle: candidate.name) }
+        if let id = layer.sourceA, let index = sources.firstIndex(where: { $0.id == id }) {
+            source.selectItem(at: index + 2)
+        } else {
+            source.selectItem(at: 0)
+        }
+
+        let planes = planeLayers
+        target.removeAllItems()
+        for kind in [ProjectionTarget.xy, .yz, .xz] { target.addItem(withTitle: kind.displayName) }
+        for plane in planes { target.addItem(withTitle: "\(L("Plane")): \(plane.name)") }
+        if layer.projectionTarget != .plane {
+            target.selectItem(at: [ProjectionTarget.xy, .yz, .xz].firstIndex(of: layer.projectionTarget) ?? 0)
+        } else if let id = layer.sourceB, let index = planes.firstIndex(where: { $0.id == id }) {
+            target.selectItem(at: 3 + index)
+        } else {
+            target.selectItem(at: -1)
+        }
+
+        projectionOffsetRow?.isHidden = layer.projectionTarget == .plane
+        if let field = projectionOffsetField, field.currentEditor() == nil {
+            field.stringValue = ControlFactory.format(layer.projectionOffset)
+        }
+        projectorsCheckbox?.state = layer.showsProjectors ? .on : .off
+    }
+
+    @objc private func projectionSourceEdited(_ sender: NSPopUpButton) {
+        let sources = projectableLayers
+        let index = sender.indexOfSelectedItem
+        let id = index >= 2 && index - 2 < sources.count ? sources[index - 2].id : nil
+        editLayer(L("Change Projection")) { $0.sourceA = id }
+    }
+
+    @objc private func projectionTargetEdited(_ sender: NSPopUpButton) {
+        let index = sender.indexOfSelectedItem
+        let coordinate: [ProjectionTarget] = [.xy, .yz, .xz]
+        if index >= 0, index < coordinate.count {
+            let kind = coordinate[index]
+            editLayer(L("Change Projection")) { $0.projectionTarget = kind }
+            return
+        }
+        let planes = planeLayers
+        guard index - 3 >= 0, index - 3 < planes.count else { return }
+        let id = planes[index - 3].id
+        editLayer(L("Change Projection")) {
+            $0.projectionTarget = .plane
+            $0.sourceB = id
+        }
+    }
+
+    @objc private func projectionOffsetEdited(_ sender: NSTextField) {
+        guard let layer = state.selectedLayer else { return }
+        let value = ControlFactory.parse(sender.stringValue) ?? layer.projectionOffset
+        editLayer(L("Change Projection")) { $0.projectionOffset = value }
+    }
+
+    @objc private func projectorsToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Change Projection")) { $0.showsProjectors = on }
+    }
+
     private func replaceContents(_ views: [NSView]) {
         for subview in container.arrangedSubviews {
             container.removeArrangedSubview(subview)
@@ -308,6 +413,11 @@ final class LayerEditorViewController: NSViewController {
         sourceAPopUp = nil
         sourceBPopUp = nil
         sourceHint = nil
+        projectionSourcePopUp = nil
+        projectionTargetPopUp = nil
+        projectionOffsetField = nil
+        projectionOffsetRow = nil
+        projectorsCheckbox = nil
         relationPopUp = nil
         lineColorWell = nil
         lineWidthSlider = nil
@@ -349,7 +459,7 @@ final class LayerEditorViewController: NSViewController {
             return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
-        case .surfaceIntersection: return []
+        case .surfaceIntersection, .projection: return []
         case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }

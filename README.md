@@ -19,6 +19,8 @@
   inequality regions.
 - **3D graphs**: explicit surfaces, parametric surfaces, space curves and implicit surfaces; 2D curves can be placed in
   3D too. Rotate, pan and zoom freely.
+- **Space geometry**: surface intersection curves, points, orthogonal projections onto coordinate planes or any plane, and
+  a relations panel for points, lines and planes (distance, angle, foot of perpendicular, intersection, common perpendicular).
 - **Parameter sliders**: define a parameter such as `a`, use it in any formula, and drag the slider to see the graph change live.
 - **Readable formulas**: implicit multiplication (`2x`, `3sin(x)`), common math functions and constants, piecewise
   functions with `if(...)`, and clear error messages that point at the mistake.

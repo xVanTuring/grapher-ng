@@ -169,6 +169,11 @@ enum MCPTools {
             "extrude": MCPSchema.boolean("3D documents, 2D curve kinds only: sweep the curve along z into a vertical surface"),
             "source_a": MCPSchema.string("surfaceIntersection only: id of the first surface layer (surface, parametricSurface or implicitSurface)"),
             "source_b": MCPSchema.string("surfaceIntersection only: id of the second surface layer"),
+            "target": MCPSchema.string(
+                "projection only: xy (z = offset), yz (x = offset), xz (y = offset) or plane (use source_b)",
+                enumValues: ProjectionTarget.allCases.map(\.rawValue)),
+            "offset": MCPSchema.number("projection only: position of the xy / yz / xz plane (default 0)"),
+            "projectors": MCPSchema.boolean("projection only: draw thin lines from the original to its projection (default true)"),
             "color": MCPSchema.string("#RRGGBB"),
             "line_width": MCPSchema.number("Stroke width in points (default 1.8)"),
             "dashed": MCPSchema.boolean("Dashed stroke"),
@@ -200,6 +205,14 @@ enum MCPTools {
         edit.extrude = try args.optionalBool("extrude")
         edit.sourceA = try args.optionalUUID("source_a")
         edit.sourceB = try args.optionalUUID("source_b")
+        if let target = try args.optionalString("target") {
+            guard let parsed = ProjectionTarget(rawValue: target) else {
+                throw MCPInvalidParams("unknown target '\(target)'; one of: \(ProjectionTarget.allCases.map(\.rawValue).joined(separator: ", "))")
+            }
+            edit.projectionTarget = parsed
+        }
+        edit.projectionOffset = try args.optionalDouble("offset")
+        edit.showsProjectors = try args.optionalBool("projectors")
         if let color = try args.optionalString("color") { edit.color = try MCPFacade.parseColor(color) }
         edit.lineWidth = try args.optionalDouble("line_width")
         edit.dashed = try args.optionalBool("dashed")
@@ -215,7 +228,8 @@ enum MCPTools {
             description: "Insert a graph (curve, region or surface) into a document. The formula is checked first; if it is wrong nothing is added and the error says where. "
                 + "2D documents take explicit, parametric, polar, implicit, region; 3D documents take surface, parametricSurface, spaceCurve, implicitSurface, plus explicit/parametric/polar/implicit (drawn on z=0 or extruded), plus surfaceIntersection "
                 + "(no formula: pass source_a and source_b, the ids of two surface layers; draws their intersection curve). "
-                + "Every kind except surfaceIntersection requires 'formula'.",
+                + "and projection (no formula: source_a = a point / spaceCurve / surfaceIntersection layer, target = xy | yz | xz | plane). "
+                + "Every kind except surfaceIntersection and projection requires 'formula'.",
             inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind"]),
             tier: .write
         ) { args in
@@ -401,6 +415,9 @@ enum MCPTools {
       point               formula = x, secondary_formula = y, tertiary_formula = z   (numbers and parameters only, no variables); line_width = size
       surfaceIntersection source_a = id of one surface layer, source_b = id of another (surface / parametricSurface / implicitSurface); no formula.
                           Draws the curve where the two surfaces meet. Hiding the source layers keeps the curve.
+      projection          source_a = id of a point / spaceCurve / surfaceIntersection layer; target = xy (plane z = offset) | yz (x = offset) | xz (y = offset)
+                          | plane (source_b = id of a plane layer); projectors = draw projecting lines. Orthogonal projection; no formula.
+                          A straight line is a spaceCurve linear in t, e.g. (1+t, 2*t, 3-t); a plane is an implicitSurface linear in x, y, z, e.g. x + 2*y - z - 3.
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.
     Write the F of an implicit layer WITHOUT "= 0": x^2 + y^2 - 4, not x^2 + y^2 = 4.
     Everything in a 3D document is clipped to the axis box (default −4 … 4 on each axis); scale shapes to fit or call set_view.

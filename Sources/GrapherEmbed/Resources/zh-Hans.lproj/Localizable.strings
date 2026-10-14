@@ -1,0 +1,8 @@
+/* GrapherEmbed：放进别的 App 文字里的可操作图形块 */
+"Reset view" = "回到原来的视角";
+"Save view and parameters to the note" = "把当前视角和参数存进笔记";
+"Open in Grapher NG" = "在 Grapher NG 中打开";
+"Play" = "播放";
+"Pause" = "暂停";
+"Line %ld: %@" = "第 %ld 行：%@";
+"Grapher NG is not installed." = "没有安装 Grapher NG。";

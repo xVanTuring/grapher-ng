@@ -78,6 +78,41 @@ enum MCPTools {
             let png = try await facade.renderPNG(of: document, width: width, height: height)
             return MCPToolResult(text: "Rendered \(width)×\(height) PNG.", imagePNG: png)
         })
+
+        catalog.register(MCPTool(
+            name: "get_text_reference",
+            title: "Text format reference",
+            description: "The short text format for a graph block (a ```grapher fenced block in a Markdown note, e.g. in UniReader): "
+                + "one layer per line, sliders, camera, examples. Read this before writing a block, then check it with render_text.",
+            inputSchema: MCPSchema.object([:]),
+            tier: .read
+        ) { _ in
+            MCPToolResult(text: GrapherText.reference)
+        })
+
+        catalog.register(MCPTool(
+            name: "render_text",
+            title: "Render a text block",
+            description: "Draw a graph from its text description (the body of a ```grapher block) and return a PNG plus line-numbered errors. "
+                + "Does not touch any open document. Use it to check a block before putting it in a note.",
+            inputSchema: MCPSchema.object([
+                "text": MCPSchema.string("The block body, one layer per line (see get_text_reference)"),
+                "width": MCPSchema.integer("Image width in pixels (default 900); the height follows the block's aspect", minimum: 200, maximum: 2400),
+                "theme": MCPSchema.string("light or dark; default follows the text, then light", enumValues: ["light", "dark"]),
+            ], required: ["text"]),
+            tier: .read
+        ) { args in
+            let text = try args.string("text")
+            let width = try args.optionalInt("width") ?? 900
+            try checkImageSize(width: width, height: 200)
+            let theme = try args.optionalString("theme")
+            let rendering = try await facade.renderText(text, width: width, theme: theme)
+            let problems = rendering.errors.map { "line \($0.line): \($0.message)" }
+            let summary = problems.isEmpty
+                ? "Rendered \(width)×\(Int((Double(width) / rendering.aspect).rounded())) PNG. No errors."
+                : "Rendered with \(problems.count) error(s); the lines named below were skipped:\n" + problems.joined(separator: "\n")
+            return MCPToolResult(text: summary, imagePNG: rendering.png)
+        })
     }
 
     // MARK: - Documents

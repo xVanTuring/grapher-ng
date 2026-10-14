@@ -1,0 +1,8 @@
+/* GrapherEmbed: the interactive graph block placed inside another app's text */
+"Reset view" = "Reset view";
+"Save view and parameters to the note" = "Save view and parameters to the note";
+"Open in Grapher NG" = "Open in Grapher NG";
+"Play" = "Play";
+"Pause" = "Pause";
+"Line %ld: %@" = "Line %ld: %@";
+"Grapher NG is not installed." = "Grapher NG is not installed.";

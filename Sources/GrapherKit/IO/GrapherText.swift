@@ -167,7 +167,7 @@ public enum GrapherText {
     }
 
     /// 最多 4 位小数，去掉多余的 0。
-    static func number(_ value: Double) -> String {
+    public static func number(_ value: Double) -> String {
         guard value.isFinite else { return "0" }
         let rounded = (value * 10_000).rounded() / 10_000
         if rounded == rounded.rounded(), abs(rounded) < 1e15 { return String(Int64(rounded)) }

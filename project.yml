@@ -81,6 +81,27 @@ targets:
         SKIP_INSTALL: YES
         APPLICATION_EXTENSION_API_ONLY: YES
 
+  # ── 嵌入层 ─────────────────────────────────────────────────────
+  # 给别的 App（UniReader 的 Markdown 笔记）放进文字里的可操作图形块：`GrapherBlockView`。
+  # 依赖 AppKit，所以不与 GrapherKit / GrapherRender 合并；别的 App 链接这三个 framework 即可。
+  # 刻度文字图层池、事件参数换算与 App、Quick Look 共用同一份源文件。
+  GrapherEmbed:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/GrapherEmbed
+      - path: Sources/GrapherApp/Views/TextLayerPool.swift
+      - path: Sources/GrapherApp/Views/CanvasInput+AppKit.swift
+    dependencies:
+      - target: GrapherKit
+      - target: GrapherRender
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNG.GrapherEmbed
+        PRODUCT_NAME: GrapherEmbed
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+
   # ── App ───────────────────────────────────────────────────────
   GrapherNG:
     type: application
@@ -245,6 +266,7 @@ targets:
       - target: GrapherNG
       - target: GrapherKit
       - target: GrapherRender
+      - target: GrapherEmbed
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNGTests

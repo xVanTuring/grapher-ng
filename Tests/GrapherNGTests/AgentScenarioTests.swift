@@ -109,6 +109,32 @@ final class AgentScenarioTests: XCTestCase {
         for kind in PlotKind.allCases { XCTAssertTrue(reference.text.contains(kind.rawValue), "get_reference 漏了 \(kind.rawValue)") }
     }
 
+    // MARK: - 笔记里的图形块（文字描述）
+
+    /// AI 为笔记写一个 ```grapher 块：先读写法说明，再用 render_text 看效果，错误按行号回来，改完再画。
+    func testAgentWritesAndChecksATextBlock() async throws {
+        let session = Session()
+        let reference = await session.call("get_text_reference", document: false)
+        XCTAssertFalse(reference.isError)
+        for kind in PlotKind.allCases where kind != .surfaceIntersection {
+            // 每种图型都有写法（交线叫 intersection）。
+            XCTAssertTrue(reference.text.lowercased().contains(GrapherText.kindKeywords.first { $0.0 == kind }!.1),
+                          "写法说明漏了 \(kind.rawValue)")
+        }
+        XCTAssertTrue(reference.text.contains("```grapher"), "示例要能直接抄进笔记")
+
+        let bad = await session.call("render_text", ["text": "space\nsurface S: sin(x)*cos(y)\ntangent-plane: of=Nope; at=0, 0", "width": 600], document: false)
+        XCTAssertFalse(bad.isError, "出错的行只是被跳过，图照常画")
+        XCTAssertTrue(bad.text.contains("line 3"), bad.text)
+        XCTAssertNotNil(bad.image)
+
+        let good = await session.call("render_text", ["text": "space\nsurface S: sin(x)*cos(y)\ntangent-plane: of=S; at=0, 0", "width": 600, "theme": "dark"], document: false)
+        XCTAssertTrue(good.text.contains("No errors"), good.text)
+        let image = try XCTUnwrap(good.image)
+        XCTAssertEqual(image.width, 600)
+        XCTAssertEqual(image.height, 400, "高度按 aspect 默认 3:2")
+    }
+
     // MARK: - 立体图：交线 + 投影
 
     func testAgentDrawsASphereCutByAPlaneAndItsShadow() async throws {

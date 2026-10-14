@@ -896,6 +896,21 @@ final class MCPFacade {
         return data as Data
     }
 
+    /// 文字描述画成 PNG（不动任何打开的文档）。
+    func renderText(_ text: String, width: Int, theme: String?) throws -> (png: Data, errors: [GrapherText.Diagnostic], aspect: Double) {
+        let pointScale = Swift.max(1, Double(width) / 700)
+        let chosen: Theme? = theme == "dark" ? .dark : (theme == "light" ? .light : nil)
+        let rendering = GraphSnapshot.image(text: text, pixelWidth: width, theme: chosen, pointScale: pointScale)
+        guard let image = rendering.image else { throw MCPToolError("Could not initialize the renderer.") }
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else {
+            throw MCPToolError("Could not encode the PNG.")
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { throw MCPToolError("Could not encode the PNG.") }
+        return (data as Data, rendering.errors, rendering.aspect)
+    }
+
     func exportPNG(of document: GraphDocument, path: String, width: Int, height: Int) throws -> String {
         var url = try Self.fileURL(path)
         if url.pathExtension.lowercased() != "png" { url.appendPathExtension("png") }

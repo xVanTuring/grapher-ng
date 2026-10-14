@@ -78,6 +78,7 @@ Read tools always work:
 | `get_document` | Everything in one document: layers with ids, formulas, colours and errors; parameters; view; appearance. |
 | `get_reference` | Plot kinds, formula syntax, functions and examples. |
 | `render_image` | Renders the document as a PNG the assistant can look at. Defaults to 900×600, up to 2400×2400. |
+| `relate` | 3D: how two points / straight lines / planes relate (relation code, distance, angle, foot of the perpendicular, intersection, common perpendicular, line of intersection) with coordinates. A line is a `spaceCurve` linear in `t`, a plane an `implicitSurface` / `surface` linear in x, y, z or a `tangentPlane`. |
 
 Write tools need **Allow AI to modify graphs**:
 
@@ -91,6 +92,7 @@ Write tools need **Allow AI to modify graphs**:
 | `set_view` | 2D: `center_x`, `center_y`, `scale`. 3D: `center`, `half_extent`, `azimuth`, `elevation` (degrees), `camera_zoom`. Also `fit` and `reset`. |
 | `set_appearance` | `theme` (light/dark), grid, minor grid, axes, tick labels. |
 | `export_png` | Write a PNG file at a given size. |
+| `draw_relation` | Same as `relate`, and adds the helper objects (feet, intersection points, common perpendicular, line of intersection) as new layers. |
 
 Every tool that targets a document takes an optional `document_id`. Leave it out and the frontmost graph window is used.
 
@@ -126,3 +128,12 @@ For implicit kinds write F without `= 0` (`x^2 + y^2 - 4`, not `x^2 + y^2 = 4`).
 - **Only 127.0.0.1.** There is no setting to listen on other interfaces; to reach it from another machine use an SSH tunnel.
 - **If it will not start**, the Settings window shows the reason (usually the port is taken — pick another one).
 - Moving the token: after you regenerate it, update the client config (`claude mcp remove grapher-ng`, then add it again).
+
+### Examples to learn from
+
+**File ▸ Open Example** (and the **Examples** card in the welcome window) lists ready-made graphs grouped by topic. Each one opens in a new window, so you can drag the sliders, change formulas and rotate freely without touching your own work.
+
+- **2D**: curves and regions · parameter sliders · tangents and normals · data and fitting
+- **3D**: surfaces and space curves · intersection curves · points, lines and planes · projections and tangent planes
+
+Hover over an example in the menu for a one-line explanation.

@@ -19,6 +19,20 @@ final class GraphDocument: NSDocument {
     init(dimension: DocumentDimension, example: Bool = false) {
         state = AppState(dimension: dimension, example: example)
         super.init()
+        connectState()
+    }
+
+    /// 从示例目录里的一个示例新建（文件菜单与欢迎窗口的「示例」）。
+    init(demo: Demo) {
+        var document = demo.make()
+        // 和空白新文档一样，跟着系统当前的外观走。
+        if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" { document.theme = .dark }
+        state = AppState(document: document)
+        super.init()
+        connectState()
+    }
+
+    private func connectState() {
         // 撤销栈用 NSDocument 自己的：撤销 / 重做时它自动增减改动计数。
         state.undoManager = undoManager
         // 拖滑块、输入公式这些连续改动要等一串结束才记一步撤销，中途就得先标成已修改。

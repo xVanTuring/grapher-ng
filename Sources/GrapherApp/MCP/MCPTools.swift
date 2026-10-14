@@ -294,6 +294,52 @@ enum MCPTools {
         })
 
         catalog.register(MCPTool(
+            name: "relate",
+            title: "Relation of two points / lines / planes",
+            description: "3D documents: how two layers relate and how far apart they are. A layer counts as a point (a point layer), "
+                + "a straight line (a spaceCurve linear in t) or a plane (an implicitSurface or surface linear in x, y, z, or a tangentPlane). "
+                + "Returns a relation code (e.g. lines_skew, line_meets_plane, planes_intersect, point_off_plane), "
+                + "measures (distance, angle in degrees, dihedral_angle) and the helper objects "
+                + "(foot of the perpendicular, intersection point, common perpendicular segment, line of intersection) with coordinates. "
+                + "Does not change the document; use draw_relation to draw the helper objects.",
+            inputSchema: MCPSchema.object([
+                "document_id": documentIDSchema,
+                "layer_a": MCPSchema.string("Layer id of the first point / line / plane"),
+                "layer_b": MCPSchema.string("Layer id of the second point / line / plane"),
+            ], required: ["layer_a", "layer_b"]),
+            tier: .read
+        ) { args in
+            let document = try await facade.resolve(try args.optionalUUID("document_id"))
+            let relation = try await facade.relation(
+                in: document, a: try args.requiredUUID("layer_a"), b: try args.requiredUUID("layer_b"))
+            let structured = await facade.describe(relation)
+            return MCPToolResult(text: relation.summary, structured: structured)
+        })
+
+        catalog.register(MCPTool(
+            name: "draw_relation",
+            title: "Draw the helper objects of a relation",
+            description: "Same as relate, and also adds the helper objects as new layers: points for feet / intersections, "
+                + "dashed segments for perpendiculars, lines for lines of intersection. They are a snapshot, not linked to the sources. "
+                + "Returns the new layer ids.",
+            inputSchema: MCPSchema.object([
+                "document_id": documentIDSchema,
+                "layer_a": MCPSchema.string("Layer id of the first point / line / plane"),
+                "layer_b": MCPSchema.string("Layer id of the second point / line / plane"),
+            ], required: ["layer_a", "layer_b"]),
+            tier: .write
+        ) { args in
+            let document = try await facade.resolve(try args.optionalUUID("document_id"))
+            let a = try args.requiredUUID("layer_a")
+            let b = try args.requiredUUID("layer_b")
+            let relation = try await facade.relation(in: document, a: a, b: b)
+            let created = try await facade.drawRelation(in: document, a: a, b: b)
+            var structured = await facade.describe(relation)
+            structured["layerIds"] = created.map { $0.id.uuidString }
+            return MCPToolResult(text: "\(relation.summary) Added \(created.count) layer(s).", structured: structured)
+        })
+
+        catalog.register(MCPTool(
             name: "set_parameter",
             title: "Set parameter",
             description: "Create a named parameter (for example a) or change its value and slider range. Formulas can then use it as a constant, and the user can drag its slider.",
@@ -481,5 +527,8 @@ enum MCPTools {
 
     TYPICAL FLOW
       get_state → create_document (or use an open one) → set_parameter (optional) → add_layer … → render_image to check → set_view / save_document.
+      Geometry (3D): add point / line (spaceCurve linear in t) / plane (implicitSurface linear in x,y,z) layers → relate or draw_relation for distances, angles, feet, intersections
+      → projection layers for views and shadows. Hide a source layer (visible = false) to keep only the curve derived from it.
+      Mistakes come back as tool errors that say what is wrong (with the column for formulas); fix and retry, nothing is half-added.
     """
 }

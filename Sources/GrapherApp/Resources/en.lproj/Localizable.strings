@@ -148,7 +148,7 @@
 "Surfaces and space curves" = "Surfaces and space curves";
 "Open a saved graph" = "Open a saved graph";
 "Examples" = "Examples";
-"A ready-made 2D or 3D graph" = "A ready-made 2D or 3D graph";
+"Ready-made graphs to learn from, by topic" = "Ready-made graphs to learn from, by topic";
 "2D Example" = "2D Example";
 "3D Example" = "3D Example";
 "Show this window when Grapher NG starts" = "Show this window when Grapher NG starts";
@@ -236,3 +236,6 @@
 "Need at least two points with different x to fit a line." = "Need at least two points with different x to fit a line.";
 "Change Fit" = "Change Fit";
 "Edit Data" = "Edit Data";
+"Open Example" = "Open Example";
+"2D Graphs" = "2D Graphs";
+"3D Graphs" = "3D Graphs";

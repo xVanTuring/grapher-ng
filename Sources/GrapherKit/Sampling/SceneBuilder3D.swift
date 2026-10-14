@@ -480,7 +480,7 @@ public enum SceneBuilder3D {
         request: SceneBuild3DRequest
     ) -> (meshes: [Mesh3D], lines: [Polyline3D], extent: DataBox3D) {
         let view = request.view
-        let half = 0.2 * view.halfExtent
+        let half = 0.3 * view.halfExtent
         let e1 = simd_normalize(plane.tangentU)
         let e2 = simd_cross(plane.normal, e1)
         let limit = SurfaceMesher.coordinateLimit

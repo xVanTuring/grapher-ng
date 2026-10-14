@@ -34,6 +34,12 @@ public struct GeometryMeasure: Equatable, Sendable {
     public var value: Double
     public var isAngle: Bool
 
+    /// 不随界面语言变的名字：distance / angle / dihedral_angle。
+    public var key: String {
+        if !isAngle { return "distance" }
+        return name == L("Dihedral angle") ? "dihedral_angle" : "angle"
+    }
+
     public init(_ name: String, _ value: Double, isAngle: Bool = false) {
         self.name = name
         self.value = value
@@ -98,6 +104,31 @@ extension GeometryConstruction {
 /// 两个对象之间的关系：一句话结论、几个量、可以画出来的辅助对象。
 public struct GeometryRelation: Equatable, Sendable {
     public var summary: String
+
+    /// 不随界面语言变的关系代码：给 MCP 工具的使用者（AI）判断用。
+    public var code: String {
+        let table: [(String, String)] = [
+            (L("The two points coincide."), "points_coincide"),
+            (L("Two distinct points."), "points_distinct"),
+            (L("The point lies on the line."), "point_on_line"),
+            (L("The point is off the line."), "point_off_line"),
+            (L("The point lies in the plane."), "point_in_plane"),
+            (L("The point is off the plane."), "point_off_plane"),
+            (L("The lines coincide."), "lines_coincide"),
+            (L("The lines are parallel."), "lines_parallel"),
+            (L("The lines intersect."), "lines_intersect"),
+            (L("The lines are skew."), "lines_skew"),
+            (L("The line lies in the plane."), "line_in_plane"),
+            (L("The line is parallel to the plane."), "line_parallel_plane"),
+            (L("The line is perpendicular to the plane."), "line_perpendicular_plane"),
+            (L("The line meets the plane at one point."), "line_meets_plane"),
+            (L("The planes coincide."), "planes_coincide"),
+            (L("The planes are parallel."), "planes_parallel"),
+            (L("The planes are perpendicular."), "planes_perpendicular"),
+            (L("The planes intersect in a line."), "planes_intersect"),
+        ]
+        return table.first { $0.0 == summary }?.1 ?? "unknown"
+    }
     public var measures: [GeometryMeasure]
     public var constructions: [GeometryConstruction]
 }

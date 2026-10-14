@@ -148,7 +148,7 @@
 "Surfaces and space curves" = "曲面与空间曲线";
 "Open a saved graph" = "打开存好的图形文档";
 "Examples" = "示例";
-"A ready-made 2D or 3D graph" = "现成的平面图或立体图";
+"Ready-made graphs to learn from, by topic" = "按功能分类的现成示例，拿来学习";
 "2D Example" = "平面图示例";
 "3D Example" = "立体图示例";
 "Show this window when Grapher NG starts" = "启动 Grapher NG 时显示此窗口";
@@ -236,3 +236,6 @@
 "Need at least two points with different x to fit a line." = "要拟合直线，至少需要两个 x 不同的点。";
 "Change Fit" = "修改拟合";
 "Edit Data" = "修改数据";
+"Open Example" = "打开示例";
+"2D Graphs" = "平面图";
+"3D Graphs" = "立体图";

@@ -17,6 +17,7 @@
 
 - **2D graphs**: explicit functions `y = f(x)`, parametric curves, polar curves, implicit curves `F(x, y) = 0` and
   inequality regions.
+- **Examples**: a catalog of ready-made graphs by topic (File ▸ Open Example) to learn from.
 - **3D graphs**: explicit surfaces, parametric surfaces, space curves and implicit surfaces; 2D curves can be placed in
   3D too. Rotate, pan and zoom freely.
 - **Space geometry**: surface intersection curves, points, orthogonal projections onto coordinate planes or any plane, and

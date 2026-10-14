@@ -295,3 +295,17 @@ Tests/GrapherNGTests/   单元测试
 ## 待定
 
 - **代码注释目前是英文**。Perch / FreeMind / UniReader 的约定是「代码注释用中文」，这个工程还没统一。要改的话是一次全量机械替换（约 8000 行），改之前先确认。
+
+## 示例目录与 Agent 测试
+
+- **示例目录**（`GrapherKit/Model/Demos.swift`）：`Demo`（id、分类、标题、一两句讲解、`make()` 出一份完整文档）按 `DemoCategory`
+  分类——平面图：曲线与区域 / 参数滑块 / 切线与法线 / 数据与拟合；立体图：曲面与空间曲线 / 曲面交线 / 点线面 / 投影与切平面。
+  搭示例用 `DemoBuilder`（`add` / `point` / `tangent` / `intersection` / `projection` / `construct` …）；`construct` 直接调
+  `SpaceGeometry.relation`，把垂足、公垂线、交线、距离文字算出来写进文档，所以示例里的数字不会和内核不一致。
+  菜单入口 `ExamplesMenu`（文件 ▸ 打开示例、欢迎窗口的「示例」共用），点开在**新窗口**里（`GraphDocumentController.newDocument(demo:)`），
+  不改用户正在编辑的图。**新加示例**：在 `Demos.plane` / `Demos.space` 里加一项，标题与讲解补两种语言（`GrapherKit/Resources`）。
+- **`DemoTests`** 守着每个示例：id 不重复、每类有示例、公式没错、引用的图层都在、存取不变、真的画得出东西、渲染出来的图有内容、
+  中文都翻了。想肉眼过一遍：`TEST_RUNNER_GRAPHER_DEMO_DIR=<目录> bash scripts/test.sh`，每个示例会存成 PNG。
+- **`AgentScenarioTests`** 把 AI 当用户，走真实的 MCP 工具目录 + JSON-RPC 画图：交线 + 投影、维维亚尼曲线、位置关系
+  （`relate` / `draw_relation`）、切线 + 散点 + 文字、参数、出错不留半成品、只读权限。测试宿主里最后一扇窗口关掉会让 App 退出，
+  所以测试里留一扇「哨兵」窗口不关。新加 MCP 工具 / 图型时，在这里加一个场景。

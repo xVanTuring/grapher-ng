@@ -130,7 +130,7 @@ private final class WelcomeViewController: NSViewController {
                                      detail: L("Open a saved graph"))
         open.onClick = { NSDocumentController.shared.openDocument(nil) }
         let examples = WelcomeActionView(symbol: "sparkles", title: L("Examples"),
-                                         detail: L("A ready-made 2D or 3D graph"))
+                                         detail: L("Ready-made graphs to learn from, by topic"))
         examples.onClick = { [weak self, weak examples] in
             guard let self, let examples else { return }
             // 卡片不是翻转坐标，y = -4 是卡片下沿再往下一点：菜单从卡片底下弹出，不盖住卡片。
@@ -174,20 +174,9 @@ private final class WelcomeViewController: NSViewController {
         return pane
     }
 
-    /// 「示例」点开的菜单：平面图示例 / 立体图示例，各开一扇新窗口。
+    /// 「示例」点开的菜单：按功能分类的示例目录，各开一扇新窗口（同文件菜单里的「打开示例」）。
     private func examplesMenu() -> NSMenu {
-        let menu = NSMenu()
-        menu.addItem(withTitle: L("2D Example"), action: #selector(openPlaneExample(_:)), keyEquivalent: "").target = self
-        menu.addItem(withTitle: L("3D Example"), action: #selector(openSpaceExample(_:)), keyEquivalent: "").target = self
-        return menu
-    }
-
-    @objc private func openPlaneExample(_ sender: Any?) {
-        GraphDocumentController.graphShared?.newDocument(dimension: .plane, example: true)
-    }
-
-    @objc private func openSpaceExample(_ sender: Any?) {
-        GraphDocumentController.graphShared?.newDocument(dimension: .space, example: true)
+        ExamplesMenu.make(target: NSApp.delegate)
     }
 
     @objc private func toggleShowOnLaunch(_ sender: NSButton) {

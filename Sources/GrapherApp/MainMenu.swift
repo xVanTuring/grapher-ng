@@ -63,6 +63,10 @@ enum MainMenu {
             menu.addItem(item(L("New 3D Graph"), #selector(AppDelegate.newSpaceDocument(_:)), key: "n",
                               modifiers: [.command, .shift]))
             menu.addItem(item(L("Open…"), #selector(NSDocumentController.openDocument(_:)), key: "o"))
+            // 示例目录：按功能分类的一组示例，各在新窗口里打开，拿来学习。
+            let examples = NSMenuItem(title: L("Open Example"), action: nil, keyEquivalent: "")
+            examples.submenu = ExamplesMenu.make(target: NSApp.delegate)
+            menu.addItem(examples)
             menu.addItem(item(L("Load Example"), #selector(DocumentWindowController.loadExample(_:))))
             menu.addItem(.separator())
             menu.addItem(item(L("Save"), #selector(NSDocument.save(_:)), key: "s"))

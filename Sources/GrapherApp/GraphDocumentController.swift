@@ -24,6 +24,18 @@ final class GraphDocumentController: NSDocumentController {
         return document
     }
 
+    /// 从示例目录开一扇新窗口。窗口标题写明是哪个示例，存的时候也以它为默认文件名；不算改动。
+    @discardableResult
+    func newDocument(demo: Demo) -> GraphDocument {
+        let document = GraphDocument(demo: demo)
+        document.fileType = defaultType ?? GraphDocument.typeName
+        document.displayName = demo.title
+        addDocument(document)
+        document.makeWindowControllers()
+        document.showWindows()
+        return document
+    }
+
     /// 当前开着的所有图形文档，按打开顺序。
     var graphDocuments: [GraphDocument] { documents.compactMap { $0 as? GraphDocument } }
 

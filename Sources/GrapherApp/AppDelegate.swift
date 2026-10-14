@@ -101,6 +101,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         GraphDocumentController.graphShared?.newDocument(dimension: .space)
     }
 
+    /// 「示例」菜单里的一项：在新窗口里打开这个示例。
+    @objc func openDemo(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let demo = Demos.demo(id: id) else { return }
+        NSApp.activate()
+        GraphDocumentController.graphShared?.newDocument(demo: demo)
+    }
+
     /// ⌘,：设置窗口（AI 接入）。
     @objc func showSettings(_ sender: Any?) {
         MCPSettingsWindowController.show()

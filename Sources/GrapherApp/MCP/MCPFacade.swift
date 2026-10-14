@@ -557,6 +557,71 @@ final class MCPFacade {
         }
     }
 
+    // MARK: - 位置关系
+
+    /// 两个图层各自认成点 / 直线 / 平面，再算它们的位置关系（同检查器里的「位置关系」面板）。
+    func relation(in document: GraphDocument, a: UUID, b: UUID) throws -> GeometryRelation {
+        let state = document.state
+        guard state.document.dimension == .space else {
+            throw MCPToolError("Relations of points, lines and planes need a 3D document.")
+        }
+        let compiled = LayerCompiler().compile(state.document)
+        func object(_ id: UUID, _ field: String) throws -> SpaceObject {
+            guard let entry = compiled.first(where: { $0.layer.id == id }) else {
+                throw MCPToolError("\(field): no layer with id \(id.uuidString). Call get_document to list layers.")
+            }
+            guard let recognized = SpaceGeometry.recognize(entry, in: compiled) else {
+                throw MCPToolError(
+                    "\(field) is a '\(entry.layer.kind.rawValue)' layer that is not a point, a straight line or a plane. "
+                        + "Use a point layer, a spaceCurve that is linear in t (e.g. 1+t, 2*t, 3-t), "
+                        + "an implicitSurface or surface that is linear in x, y, z, or a tangentPlane."
+                )
+            }
+            return recognized
+        }
+        guard a != b else { throw MCPToolError("layer_a and layer_b must be two different layers.") }
+        return SpaceGeometry.relation(try object(a, "layer_a"), try object(b, "layer_b"))
+    }
+
+    /// 把关系里的辅助对象（垂足、交点、公垂线段、交线）加成新图层，返回新图层。
+    func drawRelation(in document: GraphDocument, a: UUID, b: UUID) throws -> [Layer] {
+        let relation = try self.relation(in: document, a: a, b: b)
+        guard !relation.constructions.isEmpty else { return [] }
+        let state = document.state
+        let box = state.document.view3D
+        let base = state.document.layers.count
+        let created = relation.constructions.enumerated().map { offset, construction -> Layer in
+            let anchor: SIMD3<Double>
+            switch construction {
+            case .point(let p, _): anchor = p
+            case .segment(let p, _, _): anchor = p
+            case .line(let origin, _, _): anchor = origin
+            }
+            let reach = simd_length(anchor - box.center) + 2 * 3.0.squareRoot() * box.halfExtent
+            return construction.makeLayer(index: base + offset, lineExtent: reach)
+        }
+        state.mutateLayers(L("Add Construction")) { $0.layers.append(contentsOf: created) }
+        return created
+    }
+
+    func describe(_ relation: GeometryRelation) -> MCPObject {
+        func vector(_ v: SIMD3<Double>) -> [Double] { [v.x, v.y, v.z] }
+        let constructions: [MCPObject] = relation.constructions.map { construction in
+            switch construction {
+            case .point(let p, let name): return ["type": "point", "name": name, "position": vector(p)]
+            case .segment(let a, let b, let name): return ["type": "segment", "name": name, "from": vector(a), "to": vector(b)]
+            case .line(let origin, let direction, let name):
+                return ["type": "line", "name": name, "origin": vector(origin), "direction": vector(direction)]
+            }
+        }
+        return [
+            "relation": relation.code,
+            "summary": relation.summary,
+            "measures": relation.measures.map { ["name": $0.key, "value": $0.value, "unit": $0.isAngle ? "degrees" : "length"] as MCPObject },
+            "constructions": constructions,
+        ]
+    }
+
     // MARK: - 参数
 
     func setParameter(

@@ -143,12 +143,54 @@ final class Viewport3DViewController: NSViewController {
         statusBar.zoomText = String(format: L("Box ±%.4g · %.2g×"), view.halfExtent, view.cameraZoom)
     }
 
+    // MARK: - Hover read-out
+
+    /// 鼠标停在图形上时状态栏显示的「图层名 · 坐标」；没停在图形上为 nil。
+    private var hoverText: String?
+    private var hoverTimer: Timer?
+
+    /// 命中测试要把整个场景的三角形扫一遍，鼠标动着时不做：停下 80 毫秒后才算一次。
+    fileprivate func handleMouseMoved(_ event: NSEvent) {
+        hoverTimer?.invalidate()
+        if hoverText != nil {
+            hoverText = nil
+            updateStatus()
+        }
+        let location = host.convert(event.locationInWindow, from: nil)
+        hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateHover(at: location) }
+        }
+    }
+
+    fileprivate func handleMouseExited(_ event: NSEvent) {
+        hoverTimer?.invalidate()
+        guard hoverText != nil else { return }
+        hoverText = nil
+        updateStatus()
+    }
+
+    private func updateHover(at point: NSPoint) {
+        guard let built = state.built3D else { return }
+        let scale = backingScale
+        let hit = ScenePicker3D.hit(
+            built.scene, source: built.view, view: state.document.view3D,
+            pixel: SIMD2(Double(point.x) * scale, Double(point.y) * scale))
+        guard let hit, let layer = state.layer(with: hit.layerID) else { return }
+        let p = hit.point
+        // 读数的位数跟着屏幕精度：一个像素约对应多少数据单位。
+        let step = state.document.view3D.halfExtent * state.document.view3D.normalizedPerPixel
+        let decimals = min(max(Int((-log10(max(step, 1e-12))).rounded(.up)) + 1, 1), 8)
+        func number(_ v: Double) -> String { String(format: "%.\(decimals)f", v) }
+        hoverText = "\(layer.name)  ·  x \(number(p.x))   y \(number(p.y))   z \(number(p.z))"
+        updateStatus()
+    }
+
     private func updateStatus() {
         statusBar.update(
             isBuilding: state.isBuilding,
-            message: state.statusMessage.isEmpty
+            message: hoverText ?? (state.statusMessage.isEmpty
                 ? L("Click to select · drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · ⌥-scroll to resize the box · F fit · R reset")
-                : state.statusMessage
+                : state.statusMessage)
         )
     }
 
@@ -299,6 +341,20 @@ final class Viewport3DHostView: NSView {
     override var acceptsFirstResponder: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
 
+    private var trackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea { removeTrackingArea(trackingArea) }
+        let area = NSTrackingArea(
+            rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self, userInfo: nil)
+        addTrackingArea(area)
+        trackingArea = area
+    }
+
+    override func mouseMoved(with event: NSEvent) { controller?.handleMouseMoved(event) }
+    override func mouseExited(with event: NSEvent) { controller?.handleMouseExited(event) }
     override func mouseDown(with event: NSEvent) { controller?.handleMouseDown(event) }
     override func mouseDragged(with event: NSEvent) { controller?.handleMouseDragged(event) }
     override func mouseUp(with event: NSEvent) { controller?.handleMouseUp(event) }

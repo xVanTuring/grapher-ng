@@ -27,6 +27,10 @@ macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**
 - 点选在 CPU 上做（`ScenePicker3D`，纯逻辑）：射线对三角形求交 + 曲线按屏幕像素距离。曲线只被**不透明**曲面挡住，
   贴在曲面上的线（交线、投影）深度差在 `lineDepthSlack` 内算曲线在前。`Viewport3DViewController.handleMouseUp` 里累计拖动
   不到 3 点才当点击；点空白处取消选中。
+- 悬停读数：`Viewport3DHostView` 的 tracking area → 鼠标停 80 毫秒后 `ScenePicker3D.hit`，状态栏显示「图层名 · x y z」
+  （位数跟着屏幕精度）。命中测试扫全部三角形，**鼠标动着时不做**。点图层的名称（A、B、C…）由 `Canvas3DOverlayView` 每帧投影后摆字。
+- 平面图的同类联动：选中图层的曲线在 chrome 层（画在曲线层底下）加一圈橙色光晕（`chromeWithSelectionHalo`，点取自
+  `probeCurves`，按当前视口换成屏幕像素）；点击用现成的 `CurveProbe`（离曲线 8 点以内选中，空白处取消）。
 - 半透明：曲面图层的 `fillStyle.opacity < 1`（与区域填充同一个字段）→ 网格颜色 alpha → `Mesh3D.isTranslucent`。渲染分三轮：
   不透明曲面（写深度）→ 半透明曲面（`glassPipeline`，只测深度、不写、两面都画，批之间不排序）→ 线。
 - `Uniforms3D` / `MeshStyle3D` 改动要同步 `ShaderSource3D`，`Renderer3DTests` 里有偏移量断言守着。

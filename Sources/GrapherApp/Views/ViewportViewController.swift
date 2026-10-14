@@ -15,6 +15,8 @@ final class ViewportViewController: NSViewController {
     private var metalView: MetalView2D?
     private var trackingArea: NSTrackingArea?
     private var lastDragLocation: NSPoint?
+    /// 这次按下后累计拖动了多少点：很小就算点击。
+    private var dragDistance = 0.0
     private var metricsSyncScheduled = false
     private var observerID: UUID?
 
@@ -79,12 +81,12 @@ final class ViewportViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         installMetalView()
-        observerID = state.observe([.scene, .status, .probe, .viewport, .document]) { [weak self] change in
+        observerID = state.observe([.scene, .status, .probe, .viewport, .document, .selection]) { [weak self] change in
             guard let self else { return }
             switch change {
             case .scene:
                 self.pushContent()
-            case .viewport, .document, .probe:
+            case .viewport, .document, .probe, .selection:
                 // 视口一变：网格重画、曲线按新旧视口之差挪过去、刻度数字跟上——都在下一次屏幕
                 // 刷新里一起做（`frameWillDraw`），不等后台采样，也不按事件次数重复画。
                 self.requestFrame()
@@ -137,13 +139,31 @@ final class ViewportViewController: NSViewController {
     /// 叠加层的刻度与读数挪到位。三者同一个事务上屏，彼此不会错开一帧。
     private func frameWillDraw() {
         if let metalView {
-            let chrome = state.chrome().scene
+            let chrome = chromeWithSelectionHalo()
             metalView.background = state.document.theme.background
             if metalView.chrome != chrome { metalView.chrome = chrome }
             metalView.viewport = state.viewport
         }
         overlay.refresh()
         statusBar.zoomText = zoomText
+    }
+
+    /// 网格与坐标轴，再加上选中图层的曲线外面一圈橙色光晕（画在曲线层底下，所以是衬在曲线后面的一圈）。
+    /// 光晕的点来自后台采样留下的数据坐标曲线，按当前视口换成屏幕像素，所以拖动时跟着走。
+    private func chromeWithSelectionHalo() -> Scene2D {
+        var scene = state.chrome().scene
+        guard let id = state.selection, let curve = state.built?.probeCurves.first(where: { $0.layerID == id }) else {
+            return scene
+        }
+        let viewport = state.document.viewport
+        let scale = backingScale
+        let width = (state.layer(with: id)?.lineStyle.width ?? 1.8) * scale + 8 * scale
+        let halo = RGBAColor(1.0, 0.58, 0.05, 0.4)
+        for segment in curve.segments where segment.count >= 2 {
+            let points = segment.map { viewport.toScreen(x: $0.x, y: $0.y) }
+            scene.append(.polyline(PolylinePrimitive(points: points, color: halo, width: width)))
+        }
+        return scene
     }
 
     private var zoomText: String {
@@ -267,6 +287,7 @@ final class ViewportViewController: NSViewController {
     fileprivate func handleMouseDown(_ event: NSEvent) {
         view.window?.makeFirstResponder(host)
         lastDragLocation = host.convert(event.locationInWindow, from: nil)
+        dragDistance = 0
     }
 
     fileprivate func handleMouseDragged(_ event: NSEvent) {
@@ -274,6 +295,7 @@ final class ViewportViewController: NSViewController {
         let current = host.convert(event.locationInWindow, from: nil)
         lastDragLocation = current
         let delta = SIMD2(Double(current.x - last.x), Double(current.y - last.y))
+        dragDistance += (delta.x * delta.x + delta.y * delta.y).squareRoot()
         apply(CanvasInput.drag(delta, modifiers: CanvasInput.Modifiers(event.modifierFlags), space: false,
                                pansFromStart: false, pointScale: backingScale), at: event)
     }
@@ -281,6 +303,15 @@ final class ViewportViewController: NSViewController {
     fileprivate func handleMouseUp(_ event: NSEvent) {
         lastDragLocation = nil
         updateProbe(at: pixelPoint(from: event))
+        // 几乎没拖动：当成点击。离曲线 8 个点以内选中那条，点在空白处取消选中。
+        if dragDistance < 3 {
+            if let hit = state.probe, hit.distancePixels <= 8 * backingScale {
+                state.selection = hit.layerID
+            } else {
+                state.selection = nil
+            }
+        }
+        dragDistance = 0
     }
 
     /// 滚轮：普通滚动 = 平移，⌘+滚动 = 缩放。这是无限画布的通行手感（Figma / Miro / 他们的

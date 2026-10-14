@@ -73,6 +73,17 @@ final class ScenePickerTests: XCTestCase {
         XCTAssertEqual(pick(built, at: SIMD3(r * cos(a), r * sin(a), 1)), cut.id)
     }
 
+    /// 悬停读数用的命中点：落在被点中的曲面上、数据坐标。
+    func testHitReturnsThePointOnTheSurface() throws {
+        let floor = layer(.surface, "1")
+        let built = build([floor])
+        let target = SIMD3<Double>(1.5, -2, 1)
+        let hit = try XCTUnwrap(ScenePicker3D.hit(
+            built.scene, source: built.view, view: .standard, pixel: pixel(target)))
+        XCTAssertEqual(hit.layerID, floor.id)
+        XCTAssertEqual(simd_length(hit.point - target), 0, accuracy: 1e-3)
+    }
+
     func testTranslucencyAndLayerTagsInTheScene() {
         var glass = layer(.surface, "0")
         glass.fillStyle.opacity = 0.3

@@ -27,6 +27,22 @@ public enum ScenePicker3D {
         pixel: SIMD2<Double>,
         tolerance: Double = 5
     ) -> UUID? {
+        hit(scene, source: source, view: view, pixel: pixel, tolerance: tolerance)?.layerID
+    }
+
+    /// 命中的图层，加上命中点（数据坐标）：悬停读数用。
+    public struct Hit: Equatable, Sendable {
+        public var layerID: UUID
+        public var point: SIMD3<Double>
+    }
+
+    public static func hit(
+        _ scene: Scene3D,
+        source: View3D,
+        view: View3D,
+        pixel: SIMD2<Double>,
+        tolerance: Double = 5
+    ) -> Hit? {
         let (scale, translation) = view.boxTransform(from: source)
         let matrix = view.viewProjection()
         let inverse = simd_inverse(matrix)
@@ -65,7 +81,7 @@ public enum ScenePicker3D {
         }
 
         // 曲线：屏幕上离点击处最近的那条（同样近取离相机近的）。
-        var lineHit: (id: UUID, pixelDistance: Double, depth: Double)?
+        var lineHit: (id: UUID, pixelDistance: Double, depth: Double, point: SIMD3<Double>)?
         func toPixels(_ p: SIMD3<Double>) -> SIMD2<Double>? {
             let clip = matrix * SIMD4(p, 1)
             guard clip.w > 1e-9 else { return nil }
@@ -86,19 +102,26 @@ public enum ScenePicker3D {
                 guard insideBox(at) else { continue }
                 let depth = simd_length(at - origin)
                 if let best = lineHit, (distance, depth) >= (best.pixelDistance, best.depth) { continue }
-                lineHit = (id, distance, depth)
+                lineHit = (id, distance, depth, at)
             }
             // 单点的「折线」（极少）不处理。
         }
 
+        func meshResult(_ mesh: (id: UUID, distance: Double)) -> Hit {
+            Hit(layerID: mesh.id, point: view.data(origin + direction * mesh.distance))
+        }
+        func lineResult(_ line: (id: UUID, pixelDistance: Double, depth: Double, point: SIMD3<Double>)) -> Hit {
+            Hit(layerID: line.id, point: view.data(line.point))
+        }
+
         switch (meshHit, lineHit) {
         case (nil, nil): return nil
-        case (let mesh?, nil): return mesh.id
-        case (nil, let line?): return line.id
+        case (let mesh?, nil): return meshResult(mesh)
+        case (nil, let line?): return lineResult(line)
         case (let mesh?, let line?):
             // 被不透明曲面挡住的曲线点不中；其余曲线优先（线细、不容易点，曲面一大片）。
-            if opaqueDistance < line.depth - lineDepthSlack { return mesh.id }
-            return line.id
+            if opaqueDistance < line.depth - lineDepthSlack { return meshResult(mesh) }
+            return lineResult(line)
         }
     }
 

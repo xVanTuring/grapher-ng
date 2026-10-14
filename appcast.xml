@@ -9,6 +9,52 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.3.0</title>
+      <pubDate>Wed, 14 Oct 2026 10:50:59 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.3.0</h3>
+<h4>新功能</h4>
+<ul>
+<li><strong>梯度可视化（立体图）</strong>：新增「梯度场」图层，在显式曲面 z = f(x, y) 上画梯度箭头，沿曲面指向最陡上升方向，也可以把 ∇f 平放在地面；坡越陡箭头越长、越红，峰顶、谷底、鞍点没有箭头；可画下降方向 −∇f。</li>
+<li><strong>梯度流线</strong>：从你列出的起点出发，沿梯度上坡（或下坡）画出路径，路径上有一个小球。起点的每一栏都可以写含参数的公式。</li>
+<li><strong>按坡度上色</strong>：显式曲面可以勾选「按坡度上色」，变成 |∇f| 的热力图（平缓蓝、陡处红）。</li>
+<li><strong>参数播放</strong>：参数面板里每个参数都有播放按钮，滑块自己来回走（或循环），用到它的所有图形实时变化；齿轮菜单设速度和方式。</li>
+<li><strong>让曲线逐渐画出来</strong>：参数范围的端点可以写含参数的公式（如 <code>p<em>2</em>pi</code>），播放 <code>p</code> 曲线或参数曲面就一点点画出来。</li>
+<li><strong>位置也能是公式</strong>：切线 / 法线 / 切平面的切点、文字标注的位置、投影平面的位置都可以写含参数的公式，播放参数切线沿曲线滑动、切平面绕曲面转。</li>
+<li><strong>示例目录扩充到 38 个</strong>：新增「梯度」分类（山丘、向量场、鞍面、随滑块变化、攀向两座山顶、窄谷下降、热力图、起点绕圈）以及「自己画出来的曲线」「沿曲线滑动的切线」「绕抛物面转一圈的切平面」等。</li>
+<li><strong>AI 助手</strong>：新增 <code>gradientField</code>、<code>gradientFlow</code> 图层，<code>color_by_slope</code>，<code>domain_formulas</code>，<code>at</code> / <code>offset</code> 可传公式等参数；每个新能力都有端到端的助手场景测试。</li>
+</ul>
+<h4>改进</h4>
+<ul>
+<li>平面图里点击曲线选中、选中的曲线有光晕；立体图里鼠标停在图形上显示图层与坐标。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.3.0">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.3.0</h3>
+<h4>What's New</h4>
+<ul>
+<li><strong>Gradient visualisation (3D)</strong>: a new Gradient field layer draws gradient arrows on a surface z = f(x, y), along the steepest ascent, or ∇f flat on the floor; steeper means longer and redder, and there are none at peaks, pits and saddles; −∇f is available too.</li>
+<li><strong>Gradient flow lines</strong>: paths that start at the points you list and follow the gradient uphill (or downhill), with a ball on each path. Every column of a starting point can be a formula with parameters.</li>
+<li><strong>Colour by slope</strong>: tick it on an explicit surface to turn it into a heat map of |∇f| (blue where flat, red where steep).</li>
+<li><strong>Parameter playback</strong>: every parameter has a play button; the slider sweeps by itself (back and forth or repeating) and everything that uses it updates live. The gear menu sets speed and mode.</li>
+<li><strong>Curves that draw themselves</strong>: the ends of a parameter range can be formulas with parameters (such as <code>p<em>2</em>pi</code>); play <code>p</code> and the curve or parametric surface is drawn gradually.</li>
+<li><strong>Positions can be formulas too</strong>: the point of tangency of tangents, normals and tangent planes, the position of text labels and of projection planes accept formulas with parameters; play the parameter and the tangent slides along the curve or the tangent plane travels round the surface.</li>
+<li><strong>38 examples</strong>: a new Gradients group (hill, vector field, saddle, slider, two summits, narrow valley, heat map, moving start) plus "A curve that draws itself", "A tangent sliding along a curve", "A tangent plane circling a paraboloid" and more.</li>
+<li><strong>AI assistants</strong>: new <code>gradientField</code> and <code>gradientFlow</code> layers, <code>color_by_slope</code>, <code>domain_formulas</code>, and formulas for <code>at</code> / <code>offset</code>; each new capability has an end-to-end assistant scenario test.</li>
+</ul>
+<h4>Improvements</h4>
+<ul>
+<li>In 2D, clicking a curve selects it and the selected curve glows; in 3D, hovering shows the layer name and coordinates.</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.3.0">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.3.0/GrapherNG-1.3.0.zip" length="3072433" type="application/octet-stream" sparkle:edSignature="IVKQlob+nTJ/ywe4ljEYFG8Q/xnphMIA7XSRPLNKXmYJghdFzv3EUBvXgTmDLZe3YSngK0c39T8PVM9qphTtCw==" />
+    </item>
+    <item>
       <title>v1.2.0</title>
       <pubDate>Wed, 14 Oct 2026 09:48:24 +0000</pubDate>
       <sparkle:version>5</sparkle:version>

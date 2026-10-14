@@ -393,17 +393,6 @@ final class AppState {
         return view
     }
 
-    /// 立体图按导出分辨率重新采样（精细画质），线宽按导出的像素倍率放大。
-    func buildForExport3D(view: View3D, pixelScale: Double) -> BuiltScene3D {
-        SceneBuilder3D.build(SceneBuild3DRequest(
-            document: document,
-            compiled: compiler.compile(document),
-            view: view,
-            quality: .high,
-            backingScale: pixelScale
-        ))
-    }
-
     // MARK: - Document mutation
 
     /// Applies a change and records one undo step for it.

@@ -39,6 +39,8 @@ targets:
         PRODUCT_NAME: GrapherKit
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        # Quick Look 扩展也链接这一层，只许用扩展里能用的 API。
+        APPLICATION_EXTENSION_API_ONLY: YES
       configs:
         # Debug 默认是 -Onone，对这一层是 27 倍的代价（实测网格求值 1.2M vs 32M
         # 点/秒）：停手后重算要等 4 秒、拖动只有 5 帧，开发时没法用。
@@ -64,6 +66,7 @@ targets:
         PRODUCT_NAME: GrapherRender
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
 
   # ── App ───────────────────────────────────────────────────────
   GrapherNG:
@@ -77,6 +80,10 @@ targets:
       - target: GrapherKit
         embed: true
       - target: GrapherRender
+        embed: true
+      - target: GrapherNGQuickLook
+        embed: true
+      - target: GrapherNGThumbnail
         embed: true
     settings:
       base:
@@ -126,9 +133,78 @@ targets:
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: tech.xvanturing.grapherng.graph
             UTTypeDescription: Grapher NG Graph
-            UTTypeConformsTo: [public.json]
+            UTTypeConformsTo: [public.data, public.content]
             UTTypeTagSpecification:
               public.filename-extension: [grapher]
+
+  # ── Quick Look：访达空格预览 / 文件缩略图（同 FreeMind）────────────
+  # 两个扩展都只链接 GrapherKit 与 GrapherRender（不再嵌一份，用 App 里的），画法是 `GraphSnapshot`，
+  # 直接读 .grapher，不依赖 NSDocument。扩展必须开沙盒。
+  GrapherNGQuickLook:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Extensions/QuickLook
+        excludes:
+          - "Info.plist"
+    dependencies:
+      - target: GrapherKit
+        embed: false
+      - target: GrapherRender
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNG.QuickLook
+        CODE_SIGN_ENTITLEMENTS: Extensions/Shared/Extension.entitlements
+        INFOPLIST_FILE: Extensions/QuickLook/Info.plist
+        SKIP_INSTALL: YES
+        # 框架在 App 的 Contents/Frameworks 里：扩展在 Contents/PlugIns/X.appex/Contents/MacOS 下。
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+    info:
+      path: Extensions/QuickLook/Info.plist
+      properties:
+        CFBundleDisplayName: Grapher NG Quick Look
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.preview
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).PreviewProvider
+          NSExtensionAttributes:
+            QLIsDataBasedPreview: true
+            QLSupportsSearchableItems: false
+            QLSupportedContentTypes: [tech.xvanturing.grapherng.graph]
+
+  GrapherNGThumbnail:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: Extensions/Thumbnail
+        excludes:
+          - "Info.plist"
+    dependencies:
+      - target: GrapherKit
+        embed: false
+      - target: GrapherRender
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tech.xvanturing.GrapherNG.Thumbnail
+        CODE_SIGN_ENTITLEMENTS: Extensions/Shared/Extension.entitlements
+        INFOPLIST_FILE: Extensions/Thumbnail/Info.plist
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+    info:
+      path: Extensions/Thumbnail/Info.plist
+      properties:
+        CFBundleDisplayName: Grapher NG Thumbnail
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.quicklook.thumbnail
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ThumbnailProvider
+          NSExtensionAttributes:
+            QLThumbnailMinimumDimension: 0
+            QLSupportedContentTypes: [tech.xvanturing.grapherng.graph]
 
   # ── 测试 ──────────────────────────────────────────────────────
   # 以 App 为宿主运行（同 FreeMind / Perch）：App 检测到自己在测试宿主里就不开窗口，

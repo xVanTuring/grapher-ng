@@ -54,37 +54,10 @@ enum RecentGraphs {
         }
     }
 
-    /// 文档保存时的样子：平面图取当时没被侧栏盖住的那块（铺满缩略图、多出的裁掉），立体图取当时的视角。
-    /// 只画网格、坐标轴与图形，不画刻度文字。
+    /// 文档保存时的样子（`GraphSnapshot`，与 Finder 缩略图同一份画法），只画网格、坐标轴与图形，不画刻度文字。
     nonisolated private static func renderThumbnail(_ url: URL, pixelWidth: Int, pixelHeight: Int) -> CGImage? {
-        guard let document = try? DocumentStore.load(from: url), let context = MetalContext.shared else { return nil }
-        let compiled = LayerCompiler().compile(document)
-
-        if document.dimension == .space {
-            var view = document.view3D
-            view.widthPixels = Double(pixelWidth)
-            view.heightPixels = Double(pixelHeight)
-            view.insetLeft = 0
-            view.insetTop = 0
-            view.insetRight = 0
-            view.insetBottom = 0
-            let built = SceneBuilder3D.build(SceneBuild3DRequest(
-                document: document, compiled: compiled, view: view, quality: .full, backingScale: 1))
-            let chrome = Chrome3D.make(view: view, document: document, backingScale: 1)
-            return OffscreenRenderer3D(context: context, pixelWidth: pixelWidth, pixelHeight: pixelHeight)?
-                .makeImage(content: built.scene, contentView: built.view, chrome: chrome.scene,
-                           view: view, background: document.theme.background)
-        }
-
-        var viewport = document.viewport.unobscured
-        let fill = max(Double(pixelWidth) / viewport.widthPixels, Double(pixelHeight) / viewport.heightPixels)
-        viewport.widthPixels = Double(pixelWidth)
-        viewport.heightPixels = Double(pixelHeight)
-        viewport.scale *= fill
-        let built = SceneBuilder2D.build(SceneBuildRequest(
-            document: document, compiled: compiled, viewport: viewport, quality: .full, backingScale: 1))
-        return OffscreenRenderer2D(context: context, pixelWidth: pixelWidth, pixelHeight: pixelHeight, supersample: 2)?
-            .makeImage(built.scene)
+        guard let document = try? DocumentStore.load(from: url) else { return nil }
+        return GraphSnapshot.image(of: document, pixelWidth: pixelWidth, pixelHeight: pixelHeight, pointScale: 1, labels: false)
     }
 
     // MARK: - Dates

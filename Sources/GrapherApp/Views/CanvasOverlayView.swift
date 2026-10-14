@@ -97,80 +97,31 @@ final class CanvasOverlayView: NSView {
         let bounds = self.bounds
         let labelColor = ControlFactory.nsColor(theme.label)
 
-        // The canvas runs edge to edge under the translucent toolbar and the
-        // glass sidebar, but text must not: a tick label drawn up there is
-        // unreadable. Labels are held inside the unobscured area instead —
-        // 用视口里记的遮挡宽度，不读 `safeAreaInsets`：前者侧栏开合时逐帧更新，
+        // 文字摆在哪由 `PlaneLabels` 算（Quick Look 预览也用它），这里只按角色挑字体。
+        // 遮挡宽度用视口里记的，不读 `safeAreaInsets`：前者侧栏开合时逐帧更新，
         // 后者收起时要等动画完才变（见 `SafeAreaProbeView`）。
-        let insets = obscuredInsets(scale: scale)
-        let labelTop = insets.top + 2
-        let labelBottom = bounds.height - insets.bottom - 2
-        let labelLeft = insets.left
-        let labelRight = bounds.width - insets.right
-
-        func place(_ key: String, _ text: String, _ font: NSFont, at point: CGPoint, anchor: TextAnchor) {
-            labels.place(key, text, font: font, color: labelColor, at: point, anchor: anchor)
-        }
-
         let tickFont = NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .regular)
-        let axisX = chrome.originPixel.x / scale
-        let axisY = chrome.originPixel.y / scale
-        // 竖轴压在侧栏毛玻璃底下时照样画线，但数字按「不在屏上」处理，钉到安全区左缘。
-        let showsVertical = chrome.showsVerticalAxis && axisX >= labelLeft && axisX <= labelRight
-        let showsHorizontal = chrome.showsHorizontalAxis
-
-        // The label row rides the axis when it is on screen, otherwise it pins
-        // to the edge so the numbers never disappear.
-        let onAxis = showsHorizontal && axisY < labelBottom - 26
-        let xLabelY = showsHorizontal ? min(max(axisY + 4, labelTop), labelBottom) : labelBottom
-        let xAnchor: TextAnchor = onAxis ? .top : .bottom
-
-        // With both axes on screen the origin is marked with an "O", so the
-        // zero tick would only collide with it.
-        let originMarked = showsHorizontal && showsVertical
-
-        if state.document.showTickLabels {
-            // 窗口边缘允许半个数字露在外面；贴着侧栏那一边则整个让开，不往毛玻璃底下压。
-            let minLabelX = labelLeft > 0 ? labelLeft + 12 : -24
-            let maxLabelX = labelRight < bounds.width ? labelRight - 12 : bounds.width + 24
-            for tick in chrome.xTicks.major {
-                if originMarked && abs(tick) < 1e-9 { continue }
-                let x = viewport.dataToScreenX(tick) / scale
-                guard x > minLabelX, x < maxLabelX else { continue }
-                place("x", AxisLabelFormat.tick(tick, decimals: chrome.xTicks.labelDecimals), tickFont,
-                      at: CGPoint(x: x, y: xLabelY), anchor: xAnchor)
-            }
-
-            let onAxisY = showsVertical && axisX > labelLeft + 44
-            let yLabelX = showsVertical ? min(max(axisX - 6, labelLeft + 22), labelRight - 4) : labelLeft + 8
-            let yAnchor: TextAnchor = onAxisY ? .trailing : .leading
-            for tick in chrome.yTicks.major where !(originMarked && abs(tick) < 1e-9) {
-                let y = viewport.dataToScreenY(tick) / scale
-                // Anything in the toolbar band or past the bottom edge is dropped
-                // rather than drawn half-hidden.
-                guard y > labelTop, y < labelBottom else { continue }
-                place("y", AxisLabelFormat.tick(tick, decimals: chrome.yTicks.labelDecimals), tickFont,
-                      at: CGPoint(x: yLabelX, y: y), anchor: yAnchor)
-            }
-        }
-
-        if originMarked, axisY > labelTop, axisY < labelBottom {
-            place("origin", "O", .systemFont(ofSize: 10.5, weight: .bold),
-                  at: CGPoint(x: axisX - 9, y: axisY + 9), anchor: .center)
-        }
-
+        let originFont = NSFont.systemFont(ofSize: 10.5, weight: .bold)
         let axisNameFont = NSFont.systemFont(ofSize: 11, weight: .semibold)
-        if showsHorizontal {
-            place("axis", "x", axisNameFont,
-                  at: CGPoint(x: labelRight - 12, y: min(max(axisY + 11, labelTop + 8), labelBottom)),
-                  anchor: .center)
-        }
-        if showsVertical {
-            place("axis", "y", axisNameFont,
-                  at: CGPoint(x: max(axisX + 13, labelLeft + 12), y: labelTop + 8), anchor: .center)
+        for label in PlaneLabels.make(
+            chrome: chrome,
+            viewport: viewport,
+            showTickLabels: state.document.showTickLabels,
+            width: bounds.width,
+            height: bounds.height,
+            pointScale: scale
+        ) {
+            let font: NSFont
+            switch label.role {
+            case .tick: font = tickFont
+            case .origin: font = originFont
+            case .axisName: font = axisNameFont
+            }
+            labels.place(label.key, label.text, font: font, color: labelColor,
+                         at: CGPoint(x: label.point.x, y: label.point.y), anchor: label.anchor)
         }
 
-        placeProbe(state: state, scale: scale, bounds: bounds, insets: insets)
+        placeProbe(state: state, scale: scale, bounds: bounds, insets: obscuredInsets(scale: scale))
     }
 
     // MARK: - Probe read-out
@@ -265,24 +216,3 @@ final class CanvasOverlayView: NSView {
     }
 }
 
-/// 刻度数字与读数的格式，2D、3D 画布共用。
-enum AxisLabelFormat {
-    static func tick(_ value: Double, decimals: Int) -> String {
-        if abs(value) < 1e-12 { return "0" }
-        let magnitude = abs(value)
-        if magnitude >= 1e6 || magnitude < 1e-4 {
-            return String(format: "%.2g", value)
-        }
-        return String(format: "%.\(min(max(decimals, 0), 8))f", value)
-    }
-
-    static func readout(_ value: Double) -> String {
-        guard value.isFinite else { return "—" }
-        if value == 0 { return "0" }
-        let magnitude = abs(value)
-        if magnitude >= 1e6 || magnitude < 1e-4 {
-            return String(format: "%.4g", value)
-        }
-        return String(format: "%.4f", value)
-    }
-}

@@ -1,8 +1,8 @@
 import AppKit
+import GrapherKit
 
-enum TextAnchor {
-    case top, bottom, leading, trailing, center
-}
+/// 定义在 GrapherKit（`PlaneLabels` 与 Quick Look 预览也用）。
+typealias TextAnchor = LabelAnchor
 
 /// 一池文字小图层：同一串字只渲染一次（Core Text 画进位图，字形与 `NSAttributedString.draw` 一样清楚），
 /// 之后只挪图层位置、不重画。2D、3D 画布的刻度文字都用它。

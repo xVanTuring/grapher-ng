@@ -24,10 +24,37 @@ public enum PDFExport {
         heightPoints: Double,
         pixelsPerPoint: Double
     ) throws {
+        guard let consumer = CGDataConsumer(url: url as CFURL) else { throw ExportError.contextCreationFailed }
+        try render(scene: scene, into: consumer, widthPoints: widthPoints, heightPoints: heightPoints,
+                   pixelsPerPoint: pixelsPerPoint, overlay: nil)
+    }
+
+    /// 同 `write`，PDF 直接交回数据（Quick Look 预览用）。`overlay` 在图形画完之后再画一层（刻度文字），
+    /// 坐标与场景相同：像素、左上角原点、y 向下。
+    public static func data(
+        scene: Scene2D,
+        widthPoints: Double,
+        heightPoints: Double,
+        pixelsPerPoint: Double,
+        overlay: ((CGContext) -> Void)? = nil
+    ) throws -> Data {
+        let data = NSMutableData()
+        guard let consumer = CGDataConsumer(data: data as CFMutableData) else { throw ExportError.contextCreationFailed }
+        try render(scene: scene, into: consumer, widthPoints: widthPoints, heightPoints: heightPoints,
+                   pixelsPerPoint: pixelsPerPoint, overlay: overlay)
+        return data as Data
+    }
+
+    private static func render(
+        scene: Scene2D,
+        into consumer: CGDataConsumer,
+        widthPoints: Double,
+        heightPoints: Double,
+        pixelsPerPoint: Double,
+        overlay: ((CGContext) -> Void)?
+    ) throws {
         var mediaBox = CGRect(x: 0, y: 0, width: widthPoints, height: heightPoints)
-        guard let consumer = CGDataConsumer(url: url as CFURL),
-              let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
-        else {
+        guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else {
             throw ExportError.contextCreationFailed
         }
 
@@ -54,6 +81,7 @@ public enum PDFExport {
                 draw(markers: batch, in: context)
             }
         }
+        overlay?(context)
 
         context.endPDFPage()
         context.closePDF()

@@ -66,64 +66,15 @@ enum Exporter {
         }
     }
 
-    /// 立体图渲染成图片（含刻度文字），导出与测试共用。
+    /// 立体图渲染成图片（含刻度文字），导出与测试共用。画法与 Quick Look 预览同一份（`GraphSnapshot`）。
     static func renderImage3D(state: AppState, scale: Double) -> CGImage? {
-        let pixelScale = state.backingScale * scale
-        let view = state.exportView3D(scale: scale)
-        let width = Int(view.widthPixels)
-        let height = Int(view.heightPixels)
-        let built = state.buildForExport3D(view: view, pixelScale: pixelScale)
-        let chrome = Chrome3D.make(view: view, document: state.document, backingScale: pixelScale)
-        guard width > 0, height > 0,
-              let context = MetalContext.shared,
-              let renderer = OffscreenRenderer3D(context: context, pixelWidth: width, pixelHeight: height),
-              let rendered = renderer.makeImage(content: built.scene, contentView: built.view, chrome: chrome.scene,
-                                                view: view, background: state.document.theme.background)
-        else { return nil }
-        return drawLabels(chrome.labels, onto: rendered, view: view, pointScale: pixelScale,
-                          color: ControlFactory.nsColor(state.document.theme.label))
-    }
-
-    /// 在渲染好的图上画刻度文字。图是像素口径，字号按 `pointScale`（像素 / 点）放大。
-    private static func drawLabels(
-        _ labels: [AxisLabel3D],
-        onto image: CGImage,
-        view: View3D,
-        pointScale: Double,
-        color: NSColor
-    ) -> CGImage? {
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let context = CGContext(
-                data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0,
-                space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-              )
-        else { return nil }
-        let height = CGFloat(image.height)
-        context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        let tickFont = NSFont.monospacedDigitSystemFont(ofSize: 10.5 * pointScale, weight: .regular)
-        let nameFont = NSFont.systemFont(ofSize: 12 * pointScale, weight: .semibold)
-        for label in labels {
-            guard let screen = view.project(label.position) else { continue }
-            let text: String
-            let font: NSFont
-            switch label.kind {
-            case .tick(let value, let decimals):
-                text = AxisLabelFormat.tick(value, decimals: decimals)
-                font = tickFont
-            case .axisName(let name):
-                text = name
-                font = nameFont
-            }
-            let string = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: color])
-            let size = string.size()
-            // 投影给的是左上角原点的像素坐标；位图上下文是左下角原点。
-            string.draw(at: CGPoint(x: screen.x - size.width / 2, y: height - screen.y - size.height / 2))
-        }
-        NSGraphicsContext.restoreGraphicsState()
-        return context.makeImage()
+        GraphSnapshot.spaceImage(
+            of: state.document,
+            view: state.exportView3D(scale: scale),
+            pointScale: state.backingScale * scale,
+            quality: .high,
+            labels: true
+        )
     }
 
     static func exportPDF(state: AppState, window: NSWindow?) {

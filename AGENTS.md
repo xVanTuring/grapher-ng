@@ -54,7 +54,9 @@ Tests/GrapherNGTests/   单元测试
 - 每扇窗口一份 `GraphDocument`（`NSDocument` 子类），持有该窗口的 `AppState`。新建、打开、保存、另存为、窗口标题与代理图标、
   关闭按钮里的小圆点、关窗 / 退出时的「是否保存」提示，全走 AppKit 的标准流程——**不要再手写打开 / 保存面板或窗口标题**。
 - **文件是 `.grapher`**（内容是 `DocumentStore` 写的 JSON）：project.yml 导出类型 `tech.xvanturing.grapherng.graph`
-  （`UTExportedTypeDeclarations`，遵从 `public.json`），`CFBundleDocumentTypes` 里登记为 Editor，双击就用本 App 打开。
+  （`UTExportedTypeDeclarations`），`CFBundleDocumentTypes` 里登记为 Editor，双击就用本 App 打开。
+  类型只遵从 `public.data` / `public.content`，**故意不遵从 `public.json`**：系统自带 JSON / 文本的缩略图与预览，
+  遵从了它就可能和下面的 Quick Look 扩展抢（FreeMind 的 .fmind 同样不遵从文本类型）。
   `LSHandlerRank` 取构建设置 `GRAPHER_HANDLER_RANK`：**Debug 为 Alternate、Release 为 Owner**（同 FreeMind），
   装了正式版时双击不会被开发用的 Debug 版抢走；没装正式版时 Debug 版照样能打开。
 - 早先存的 `.json` 登记为 `public.json` 的 **Viewer**（Alternate，不抢 .json 的默认程序）：能打开，⌘S 弹存储面板另存成
@@ -89,6 +91,26 @@ Tests/GrapherNGTests/   单元测试
   正式签名的版本不受影响，别当成代码 bug 去查。
 - `read(from:ofType:)` 在 SDK 里是 nonisolated；没开并发读（`canConcurrentlyReadDocuments` 默认 false），AppKit 在主线程调它，
   所以里面用 `MainActor.assumeIsolated` 把内容交给 `AppState`。
+
+## Quick Look 扩展（访达空格预览 / 文件缩略图，同 FreeMind）
+
+- `GrapherNGQuickLook`（空格预览，数据型）和 `GrapherNGThumbnail`（缩略图）两个 app-extension，源码在 `Extensions/`，
+  只链接 GrapherKit 与 GrapherRender，用 App 里那份（`embed: false`，rpath 指到 `../../../../Frameworks`），开沙盒。
+  两个框架因此开了 `APPLICATION_EXTENSION_API_ONLY`：**别在 GrapherKit / GrapherRender 里用扩展不能用的 API**（如 `NSApplication`）。
+- 画法只有一份 `GraphSnapshot`（GrapherRender，只用 Core Graphics / Core Text / Metal，不碰 AppKit）：预览、缩略图、
+  欢迎窗口的最近文档、立体图导出 PNG 共用。取景是文档存下时没被侧栏盖住的那块（立体图是当时的视角）。
+  平面图预览出**矢量 PDF**（`PDFExport.data` + 刻度文字），立体图出 PNG；缩略图不画刻度文字。
+- 平面图坐标轴文字的位置只有一份 `PlaneLabels`（GrapherKit）：画布叠加层与预览共用，字体由画的一方按角色挑。
+- 缩略图回调里交来的 `CGContext` 是**像素**口径（Retina 下是 `contextSize` 的两倍），按点画只占左下四分之一；
+  要铺满 `context.boundingBoxOfClipPath`。
+- 验证缩略图：`qlmanage -x -t -s 200 -f 2 -o <目录> 某个.grapher`（**一定带 `-f 2`**：访达要的是 2 倍图，
+  不带的话是 1 倍，上面那个四分之一的问题看不出来）；渲染本身由 `SnapshotTests` 覆盖。
+  **实测遇到过：重新编译、`lsregister -f` 重新登记之后，常驻的 `com.apple.quicklook.ThumbnailsAgent` 仍用旧记录**
+  （日志里是 "Unable to find this application extension record"），继续出系统的文本缩略图。要重启它：
+  `kill -9 $(pgrep -f com.apple.quicklook.ThumbnailsAgent); qlmanage -r cache; killall Finder`。
+  这几种都**不管用**：`killall`（进程名超过 16 个字符，匹配不上）、`pkill -f`（它不理会普通的结束信号）、
+  `launchctl kickstart -k`（系统完整性保护拦下）、`qlmanage -r`（只重置 quicklookd，不是这个服务）。
+  空格预览只能在访达里按空格验证（FreeMind 的记录：`qlmanage -p` 调预览扩展会崩在 qlmanage 自己身上）。
 
 ## 无限画布（照 UniReader 的画板抄的）
 

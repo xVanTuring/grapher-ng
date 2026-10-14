@@ -9,11 +9,23 @@
   <a href="README.md">English</a> · <b>简体中文</b>
 </p>
 
-![界面](docs/screenshot.png)
+![平面图](docs/screenshot.png)
 
-**平面图**覆盖 2D 的全部图型（显函数、参数方程、极坐标、隐函数、不等式区域）；**立体图**有显式曲面、参数曲面、
-空间曲线、隐式曲面，平面曲线也能放进立体图。界面中英双语，跟随系统语言。原生 Swift + AppKit + Metal，
-唯一的第三方包是自动更新用的 Sparkle。
+![立体图](docs/screenshot-3d.png)
+
+## 功能
+
+- **平面图**：显函数 `y = f(x)`、参数方程、极坐标、隐函数 `F(x, y) = 0`、不等式区域。
+- **立体图**：显式曲面、参数曲面、空间曲线、隐式曲面；平面曲线也能放进立体图。可自由旋转、平移、缩放。
+- **参数滑块**：定义参数（如 `a`），在任意公式里当常量用，拖动滑块图形实时变化。
+- **好写的公式**：支持隐式乘法（`2x`、`3sin(x)`）、常用数学函数与常量、`if(...)` 分段函数；写错时会指出出错的位置。
+- **画质**：Metal 绘制，边缘清晰，任何缩放下线宽恒定。
+- **读数**：鼠标移到平面曲线上，显示最近的点、坐标和斜率。
+- **文件与导出**：存成 `.grapher` 文档；导出 PNG（1×/2×/4× 重新采样）、矢量 PDF、采样点 CSV。
+- **访达集成**：文件图标就是图形缩略图，按空格可交互预览。
+- **让 AI 帮你画**：内置 MCP 服务，Claude Code 等助手可以新建文档、插入曲线、区域和曲面，并查看结果。默认关闭，
+  用法见 [docs/usage.zh-CN.md](docs/usage.zh-CN.md)。
+- **语言**：中英双语，跟随系统语言。
 
 ## 下载
 
@@ -21,174 +33,23 @@
 拖进「应用程序」。App 已用 Developer ID 签名并经过 Apple 公证，需要 macOS 14 或更高版本。
 装好之后会每天自动检查一次更新，也可以在「Grapher NG ▸ 检查更新…」里手动检查。
 
-## 五种图型
+## 快速上手
 
-| 类型 | 公式写法 | 说明 |
-|---|---|---|
-| 显函数 | `y = f(x)`，只填 `f(x)` | 例如 `a*sin(x)/x` |
-| 参数方程 | `x(t) =` 与 `y(t) =` 两栏 | 例如 `16*sin(t)^3` 与 `13*cos(t)-5*cos(2*t)-2*cos(3*t)-cos(4*t)` |
-| 极坐标 | `r(θ) =`，变量写 `theta` 或 `t` | 例如 `1 + cos(theta)` |
-| 隐函数 | `F(x, y) = 0`，只填 `F` | 例如 `x^3 + y^3 - 3*x*y` |
-| 不等式区域 | `F(x, y) ≤ 0` 等，只填 `F`，再选关系 | 例如 `x^2 + y^2 - 1` 配 `≤` |
-
-## 公式语法
-
-- **变量**：显函数用 `x`；参数方程与极坐标用 `t`（极坐标也可写 `theta`）；隐函数与区域用 `x`、`y`。
-- **常量**：`pi`、`π`、`e`、`tau`、`τ`。
-- **运算符**：`+ - * / % ^`，比较 `< <= > >= == !=`，逻辑 `&& || !`，三元 `? :`。
-  `^` 右结合且优先于负号：`-x^2` 是 `-(x^2)`，`2^-3` 是 0.125。
-  比较和逻辑的结果是 0 或 1，可以当数值继续参与运算。
-- **隐式乘法**：`2x`、`3sin(x)`、`2(x+1)`、`2x^2`、`xy`、`2xy` 都能用。
-  `1/2x` 按 `(1/2)*x` 理解。
-- **函数**：
-  `sin cos tan cot sec csc asin acos atan atan2 sinh cosh tanh asinh acosh atanh
-  exp ln log log2 log10 sqrt cbrt abs sign floor ceil round trunc erf gamma
-  mod pow hypot min max clamp step smoothstep if`
-  （`log` 就是自然对数；`if(条件, 真值, 假值)` 用来写分段函数。）
-
-几个容易踩的点：
-
-- 名字后面紧跟 `(` 一律当函数调用，所以 `x(x+1)` 会报「未知的函数 x」，要写 `x*(x+1)`。
-- 多字母标识符会先当整体查一遍，查不到再拆成单字母变量连乘：`xy` 是 `x*y`，`sinx` 报错。
-  常量不参与拆分，所以 `xe` 要写成 `x*e`。
-- 任何位置出现 NaN 都按「假」处理，`&&` 和 `||` 真短路，所以 `x>0 && log(x)>1` 在 `x=-1` 处安全地得到 0。
-- 公式写错时输入框下面会显示具体列号和 `^` 指示，图形保持上一次的正确结果不变。
-
-## 参数滑块
-
-侧栏「参数」里新建一个参数（比如 `a`），公式里就能当常量用。拖动滑块时图形实时重算，这是看参数怎么影响形状最方便的办法。
-
-## 立体图
-
-「文件 → 新建立体图」（⇧⌘N）开一扇空白的立体图窗口，「文件 → 加载示例」可以载入曲面、环面、螺旋线和球面的示例。
-图形画在一个坐标盒里，盒外的部分裁掉。缩放有两种：缩放图形改的是盒子框住的范围（盒子在屏幕上大小不变）；
-放大盒子则让盒子连同图形一起在屏幕上变大。
-
-| 类型 | 公式写法 | 说明 |
-|---|---|---|
-| 显式曲面 | `z = f(x, y)`，只填 `f` | 例如 `a*sin(x)*cos(y)`，在坐标盒的 x、y 范围上画 |
-| 参数曲面 | `x(u,v)`、`y(u,v)`、`z(u,v)` 三栏，加 u、v 的范围 | 例如环面 `(2.4+0.7cos(v))cos(u)` … |
-| 空间曲线 | `x(t)`、`y(t)`、`z(t)` 三栏，加 t 的范围 | 例如螺旋线 `3.3cos(t)`、`3.3sin(t)`、`t/4` |
-| 隐式曲面 | `F(x, y, z) = 0`，只填 `F` | 例如球面 `x^2 + y^2 + z^2 - 4` |
-
-平面的四种曲线（显函数、参数方程、极坐标、隐函数）也能加进立体图：默认画在 z = 0 平面上；勾上「延伸到 3D」，
-就沿 z 方向拉成一张贯穿坐标盒的竖直曲面，比如 `y = x` 成一面斜墙、`x^2 + y^2 - 4` 成一个圆柱面。
-
-| 动作 | 快捷方式 |
+| 类型 | 示例 |
 |---|---|
-| 旋转 | 拖动 / 方向键（每次 10°） |
-| 平移 | `⇧` + 拖动 / 双指滚动 |
-| 缩放图形（改范围） | `⌘` + 滚动，或触控板捏合；`=` / `-` |
-| 放大盒子 | `⌥` + 滚动，或 `⌥` + 捏合；`⌥=` / `⌥-` |
-| 适应内容 / 回到默认视角 | `F` / `R` |
+| 显函数 | `a*sin(x)/x` |
+| 极坐标 | `1 + cos(theta)` |
+| 隐函数 | `x^3 + y^3 - 3*x*y` |
+| 不等式区域 | `x^2 + y^2 - 1` 配 `≤` |
+| 立体图隐式曲面（球面） | `x^2 + y^2 + z^2 - 4` |
 
-立体图导出 PNG（按目标分辨率重新采样，刻度文字一并画进图里）；矢量 PDF 与采样点 CSV 只对平面图提供。
-
-## 平面图操作
-
-| 动作 | 快捷方式 |
-|---|---|
-| 平移 | 拖动 / 双指滚动 |
-| 缩放 | `⌘` + 滚动，或触控板捏合（都以光标位置为锚点） |
-| 读数 | 移动鼠标，显示最近的曲线上的点、坐标和斜率 |
-| 适应内容 | `F` |
-| 重置视图（回原点） | `R` |
-| 放大 / 缩小 | `⌘=` / `⌘-` |
-| 撤销 / 重做 | `⌘Z` / `⇧⌘Z` |
-
-画布是「无限」的：可以一直平移和缩放下去，但有一条**软边界**——可见区必须与「所有曲线包围盒外扩 1.5 个视口」相交，越界会被拉回。真无限会让人一路滚进空无一物的远方再也找不回来。
-
-## 文件与导出
-
-- **文档**：`⌘S` 存成 `.grapher` 文件（内容是 JSON），在访达里双击就能打开，`⌘O` 也行。用的是 macOS 标准的文档模型：
-  每份文档一扇窗口，改过没存时标题下显示「已编辑」，关窗或退出时弹系统的保存提示。早先存的 `.json` 仍能打开，保存时另存成 `.grapher`。
-- **访达**：文件图标是图形本身的缩略图；选中按空格能预览，预览里能直接拖动、缩放（立体图能转），手势同 App，双击回到保存时的取景。
-- **欢迎窗口**：启动时显示（⇧⌘1 随时打开）。左边新建平面图 / 立体图、打开文件、打开示例，右边是最近打开的文档，带缩略图，
-  单击即可打开。不想要的话取消窗口底部的「启动时显示此窗口」，以后启动直接新建空白平面图。右键 Dock 图标也能新建、打开。
-- **PNG**：1× / 2× / 4×。按目标分辨率**重新采样**，不是把屏幕上的图放大，所以 4× 的曲线本身就有 4 倍的细节。
-- **PDF**：真矢量，放大到任意倍数都不糊。
-- **CSV**：所有可见曲线的采样点，`layer,x,y` 三列，可以直接喂给别的脚本。
-
-## 画质是怎么保证的
-
-「曲线要光滑」是这个项目的硬指标，不是靠调 MSAA 级别实现的：
-
-- **线**在线段级别展开成屏幕空间的四边形，片元着色器计算像素中心到线段的精确距离，按距离给出覆盖率。所以边缘是精确的 1 像素灰阶过渡，线宽在任何缩放下恒定，端点是圆头、拐角是圆角。
-- **填充区域**的边界逐像素计算子像素覆盖率（对网格的双线性插值做 8×8 子采样），和描边是同一档质量。
-- **曲线采样**做曲率自适应细分，弦高误差超过 0.14 像素就二分，参数方程还会额外检查转角。
-- 隐函数用 marching squares 求等值线，并把散落的格子线段拼接成连续折线，避免用一堆短线段去画一条曲线。
-- 采样在 CPU 上用 `Double` 完成（Apple GPU 没有双精度），拖动时降到约 1/3 分辨率、停手 200 毫秒后自动重算精细版本。
-
-回归证据在测试里：`Renderer2DTests` 直接断言导出的像素值（45° 边缘的覆盖率、线宽在缩放下的稳定性、通道序、图层顺序、圆头端点），`SamplingTests` 断言填充区域的墨量等于 πr²、1/x 不会画出竖直连线之类。
-
-立体图的曲面边缘靠 4× MSAA（三角形边缘没法解析地算覆盖率），空间曲线与坐标盒的线照旧按像素距离算覆盖率；盒外的部分用
-六个裁剪平面在 GPU 上精确裁掉。`Sampling3DTests` 断言隐式球面的顶点都落在球面上、拼出的面积等于 4πr²，`Renderer3DTests`
-断言盒外的面一个像素都不画、近处的面挡住远处的面。
+「文件 ▸ 加载示例」可以直接载入平面和立体的示例。常用操作：拖动平移（立体图里是旋转），`⌘` + 滚动或捏合缩放，
+`F` 适应内容，`R` 重置视图，`⌘Z` / `⇧⌘Z` 撤销 / 重做，`⇧⌘N` 新建立体图。
 
 ## 开发
 
-```bash
-xcodegen generate                          # 工程由 project.yml 生成，GrapherNG.xcodeproj 是生成物、不入库
-xcodebuild -project GrapherNG.xcodeproj -scheme GrapherNG \
-  -derivedDataPath build/DerivedData -resolvePackageDependencies   # 第一次编译前解析 Sparkle
-bash scripts/build.sh                      # 等价于 xcodebuild … -derivedDataPath build/DerivedData build
-open build/DerivedData/Build/Products/Debug/GrapherNG.app
+构建、代码结构、画质实现见 [DEV.zh-CN.md](DEV.zh-CN.md)；发布流程见 [docs/release.md](docs/release.md)。
 
-bash scripts/run.sh                        # 构建并直接跑，日志输出到终端
-bash scripts/test.sh                       # 跑单元测试
-```
+## 许可协议
 
-需要 Xcode 和 `xcodegen`（`brew install xcodegen`）。工程管理方式与 Perch / FreeMind / UniReader 一致。
-签名、公证、打包与发布见 [docs/release.md](docs/release.md)。
-
-图标可以重新生成：`bash scripts/make-icon.sh`（需要带 Pillow 的 Python），产物是 `Sources/GrapherApp/Resources/Assets.xcassets/AppIcon.appiconset`。
-
-### 无界面模式
-
-调试和造图用得上：
-
-```bash
-# 渲染一张图，不打开窗口
-build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG \
-  --render out.png --doc doc.grapher --width 1600 --height 1200 --quality high
-
-# 渲染立体图示例（立体图文件用 --doc 指定即可），可以换个角度
-build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG \
-  --render out.png --space --azimuth 1.2 --elevation 0.3
-
-# 采样与求值的性能
-build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG --benchmark
-```
-
-### 代码结构
-
-```
-project.yml          xcodegen 工程定义（GrapherNG.xcodeproj 是生成物）
-Sources/
-  GrapherKit/        纯逻辑，不依赖界面框架（framework target）
-    Expr/            词法 → 语法 → 字节码 → 栈式虚拟机求值
-    Sampling/        自适应细分、marching squares、区域填充、探针、场景组装、坐标轴文字摆放；
-                     3D 的曲面网格、marching tetrahedra、空间曲线、坐标盒线框
-    Model/           文档、图层、视口变换（2D 视口、3D 坐标盒与相机）、刻度、画布手感
-    IO/              PDF / CSV 导出
-  GrapherRender/     Metal 渲染（framework target）：2D 描边与填充、3D 曲面与线、离屏导出、缩略图、MTKView 封装
-  GrapherApp/        AppKit 界面与事件处理、文档模型、欢迎窗口、自动更新、命令行模式
-Extensions/
-  QuickLook/         访达空格预览（可交互的只读画布）
-  Thumbnail/         访达文件缩略图
-Tests/
-  GrapherNGTests/    表达式（含模糊测试与基准）、采样与几何、整条流水线、离屏渲染像素断言
-```
-
-分成三个 target 而不是全合进 App，是为了让编译器守住一条边界：**GrapherKit 不许 import AppKit**。整套单元测试主要跑在它上面。
-
-`GrapherKit` 在 Debug 下单独开了 `-O` + 整模块优化：这一层是数值密集的，`-Onone` 会让网格求值慢 27 倍（实测 1.2M vs 32M 点/秒），拖动只剩 5 帧。界面层仍是 `-Onone`，照常单步。
-
-界面全部是 AppKit：`NSSplitViewController` 三栏、`NSTableView` 图层列表、`NSStackView` 表单、`NSColorWell` 取色、`NSToolbar` 工具栏、手写 `NSMenu` 菜单栏。刻度数字和光标读数是一层 `NSView`，用 Core Graphics 和 Core Text 画在 Metal 画布之上。`AppState` 用一个极简的观察者回调广播变更，不依赖 Combine 或任何绑定框架——界面这一段没有任何声明式框架参与。
-
-## 还没做的
-
-- **两曲面交线**（`z=f ∩ z=g` 降维求交、隐式 ∩ 隐式网格切片加牛顿投影细化、参数曲面 ∩ 隐式在 uv 平面上求交）。
-- 立体图：半透明曲面、悬停读数、矢量导出。
-- 切线、法线、自由标注文字。
-- 数据散点与统计图表。
+本项目以 [GNU 通用公共许可证 第 3 版或更新版本](LICENSE)（GPL-3.0-or-later）发布。

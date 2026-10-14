@@ -10,7 +10,8 @@ final class GraphDocumentController: NSDocumentController {
 
     /// ⇧⌘N 与欢迎窗口的「示例」。自带的 `newDocument:` 只会建默认的空白平面图，其余的在这里建，
     /// 流程同 `openUntitledDocumentAndDisplay`。示例不算改动：原样关掉不提示保存。
-    func newDocument(dimension: DocumentDimension, example: Bool = false) {
+    @discardableResult
+    func newDocument(dimension: DocumentDimension, example: Bool = false) -> GraphDocument {
         let document = GraphDocument(dimension: dimension, example: example)
         document.fileType = defaultType ?? GraphDocument.typeName
         // 示例窗口标题写明是哪个示例，存的时候也以它为默认文件名。
@@ -20,7 +21,11 @@ final class GraphDocumentController: NSDocumentController {
         addDocument(document)
         document.makeWindowControllers()
         document.showWindows()
+        return document
     }
+
+    /// 当前开着的所有图形文档，按打开顺序。
+    var graphDocuments: [GraphDocument] { documents.compactMap { $0 as? GraphDocument } }
 
     /// 只开着一扇刚建出来、没动过的空白窗口时打开文件，文件接替这扇窗口（同「文本编辑」）：
     /// 新窗口摆到它的位置上，再把它关掉。顺序不能反：先关空白窗口的话，那一刻一扇窗口都没有，

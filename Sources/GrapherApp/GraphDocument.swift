@@ -11,6 +11,9 @@ final class GraphDocument: NSDocument {
 
     let state: AppState
 
+    /// MCP 里指代这份文档的稳定 id：`NSDocument` 没有这种东西，文件路径又会变（另存为）、未命名时没有。
+    let mcpID = UUID()
+
     /// 新建文档：平面图或立体图（⌘N / ⇧⌘N），`example` 为真时装着示例（欢迎窗口的「示例」）。
     /// 打开文件时也先建一份空白的，再由 `read` 换上内容。
     init(dimension: DocumentDimension, example: Bool = false) {

@@ -153,3 +153,26 @@
 "Show in Finder" = "Show in Finder";
 "Remove from Recent Graphs" = "Remove from Recent Graphs";
 "Clear Recent Graphs" = "Clear Recent Graphs";
+
+/* Settings (AI access) */
+"Settings…" = "Settings…";
+"Settings" = "Settings";
+"Enable MCP server" = "Enable MCP server";
+"Allow AI to modify graphs" = "Allow AI to modify graphs";
+"Port" = "Port";
+"Copy Token" = "Copy Token";
+"Regenerate Token" = "Regenerate Token";
+"Copy Command" = "Copy Command";
+"Copy JSON" = "Copy JSON";
+"Copied" = "Copied";
+"Access Token" = "Access Token";
+"Claude Code" = "Claude Code";
+"Other clients (JSON)" = "Other clients (JSON)";
+"Stopped" = "Stopped";
+"Not running: %@" = "Not running: %@";
+"Running on 127.0.0.1:%ld" = "Running on 127.0.0.1:%ld";
+"Lets an AI assistant such as Claude Code draw graphs in your documents. Only this Mac can connect." = "Lets an AI assistant such as Claude Code draw graphs in your documents. Only this Mac can connect.";
+"When off, the AI can only read documents and render images. Changes it makes can be undone with ⌘Z." = "When off, the AI can only read documents and render images. Changes it makes can be undone with ⌘Z.";
+"Every request must carry this token. Regenerating it disconnects clients that use the old one." = "Every request must carry this token. Regenerating it disconnects clients that use the old one.";
+"Edit Layer" = "Edit Layer";
+"Change Appearance" = "Change Appearance";

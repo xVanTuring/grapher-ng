@@ -44,6 +44,8 @@ enum MainMenu {
             menu.addItem(item(L("Check for Updates…"), #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
                               target: UpdaterService.controller))
             menu.addItem(.separator())
+            menu.addItem(item(L("Settings…"), #selector(AppDelegate.showSettings(_:)), key: ","))
+            menu.addItem(.separator())
             menu.addItem(item(L("Hide Grapher NG"), #selector(NSApplication.hide(_:)), key: "h", target: NSApp))
             let hideOthers = item(L("Hide Others"), #selector(NSApplication.hideOtherApplications(_:)), key: "h",
                                   modifiers: [.command, .option], target: NSApp)

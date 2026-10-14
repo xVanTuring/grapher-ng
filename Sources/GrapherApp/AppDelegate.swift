@@ -10,6 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
+    private var mcpServer: MCPServer?
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         // 第一个建出来的 NSDocumentController 就是 `shared`，必须赶在 AppKit 自己建默认的那个之前。
         _ = GraphDocumentController()
@@ -25,6 +27,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             object: nil
         )
         NSApp.activate()
+
+        // MCP：工具表总是注册，是否真的监听端口由设置里的开关决定。
+        let server = MCPServer(facade: MCPFacade())
+        mcpServer = server
+        MCPSettingsWindowController.shared.server = server
+        if MCPSettings.isEnabled { server.start() }
     }
 
     /// 测试宿主里不开任何窗口。
@@ -91,6 +99,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func newSpaceDocument(_ sender: Any?) {
         NSApp.activate()
         GraphDocumentController.graphShared?.newDocument(dimension: .space)
+    }
+
+    /// ⌘,：设置窗口（AI 接入）。
+    @objc func showSettings(_ sender: Any?) {
+        MCPSettingsWindowController.show()
     }
 
     /// ⇧⌘1：欢迎窗口（最近打开的文档）。

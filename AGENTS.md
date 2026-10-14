@@ -38,7 +38,7 @@ Sources/GrapherApp/     AppKit 界面、事件处理、命令行模式
 Tests/GrapherNGTests/   单元测试
 ```
 
-- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；测试主要跑在它和 GrapherRender 上（全部共 131 项）。
+- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；测试主要跑在它和 GrapherRender 上（全部共 164 项）。
 - 界面**不许用 SwiftUI**。`AppState` 用极简观察者回调广播变更（`observe(_:_:)`），不引入 Combine。
 - `GrapherRender` 的着色器是**运行期**从 `ShaderSource.swift` 里的内嵌字符串编译的，没有 `.metal` 编译阶段——别去加 build phase。
 - `GrapherKit` 在 Debug 下单独开 `-O` + `wholemodule`：这一层数值密集，`-Onone` 让网格求值慢 27 倍（1.2M vs 32M 点/秒）。界面层保持 `-Onone`。
@@ -52,6 +52,16 @@ Tests/GrapherNGTests/   单元测试
 - **求值是字节码栈式虚拟机**，必须**可重入且线程安全**（`evaluate` 内部用 `withUnsafeTemporaryAllocation` 在栈上开求值栈，无共享可变状态）。网格求值走 `evaluateBatch`，不要退化成逐点调 `evaluate`。
 - **间断必须断开**：`1/x`、`tan(x)` 不能画出竖直连线。判定在 `CurveSampler.sampleExplicit`（跳变超过半屏高且横向跨度小于 4 像素即为极点）。
 - 画质常数别随手调：弦高容差 0.14 像素、`tolerancePixels` 分档在 `CurveSampler.options(for:)`；屏幕坐标进 GPU 前在 `SceneBuilder2D.screenClamped` 夹到 ±1e7，否则极点会把 float32 变成 inf。
+
+## MCP（让 AI 插入图形）
+
+`Sources/GrapherApp/MCP/`：手写 JSON-RPC over HTTP（`Network.framework`，不依赖 MCP SDK，与 Perch / UniReader 同构），
+只监听 127.0.0.1，默认关闭，设置在「Grapher NG ▸ 设置…」。用户文档 `docs/usage.md` / `docs/usage.zh-CN.md`，实现说明见 `DEV.md`。
+
+- **改文档只许经 `MCPFacade`，且一律走 `AppState.mutate`**（和界面同一条路径），这样 AI 的改动能撤销、会标成已编辑。不要绕过它直接改 `document`。
+- **写权限闸门只在 `MCPCatalog.call` 一处**：新工具注册时标 `.read` / `.write`，别在各 handler 里自己判断。
+- **公式先编译再插入**（`MCPFacade.validate`）：有错就什么都不改，错误信息带列号，模型据此重试。
+- 新增 / 改动工具要同步：`MCPTests`、两份用法文档、设置窗口新增文字的两份 `Localizable.strings`。
 
 ## 文档模型（NSDocument）
 

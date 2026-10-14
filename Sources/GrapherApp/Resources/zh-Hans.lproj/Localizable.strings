@@ -153,3 +153,26 @@
 "Show in Finder" = "在访达中显示";
 "Remove from Recent Graphs" = "从最近打开中移除";
 "Clear Recent Graphs" = "清空最近打开";
+
+/* Settings (AI access) */
+"Settings…" = "设置…";
+"Settings" = "设置";
+"Enable MCP server" = "启用 MCP 服务";
+"Allow AI to modify graphs" = "允许 AI 修改图形";
+"Port" = "端口";
+"Copy Token" = "复制令牌";
+"Regenerate Token" = "重新生成令牌";
+"Copy Command" = "复制命令";
+"Copy JSON" = "复制 JSON";
+"Copied" = "已复制";
+"Access Token" = "访问令牌";
+"Claude Code" = "Claude Code";
+"Other clients (JSON)" = "其他客户端（JSON）";
+"Stopped" = "已停止";
+"Not running: %@" = "未运行：%@";
+"Running on 127.0.0.1:%ld" = "运行中：127.0.0.1:%ld";
+"Lets an AI assistant such as Claude Code draw graphs in your documents. Only this Mac can connect." = "让 Claude Code 这类 AI 助手在你的文档里画图。只有这台 Mac 本机能连接。";
+"When off, the AI can only read documents and render images. Changes it makes can be undone with ⌘Z." = "关闭时，AI 只能读取文档、生成图片。它做的改动可以用 ⌘Z 撤销。";
+"Every request must carry this token. Regenerating it disconnects clients that use the old one." = "每个请求都必须带上这个令牌。重新生成后，使用旧令牌的客户端会断开。";
+"Edit Layer" = "编辑图层";
+"Change Appearance" = "修改外观";

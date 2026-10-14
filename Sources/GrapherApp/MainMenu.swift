@@ -1,4 +1,5 @@
 import AppKit
+import Sparkle
 
 /// The menu bar, built in code. Items with a nil target travel the responder
 /// chain, so the actions land on whichever window is frontmost.
@@ -40,6 +41,8 @@ enum MainMenu {
     private static func applicationMenu() -> NSMenuItem {
         submenu("Grapher NG") { menu in
             menu.addItem(item(L("About Grapher NG"), #selector(NSApplication.orderFrontStandardAboutPanel(_:)), target: NSApp))
+            menu.addItem(item(L("Check for Updates…"), #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+                              target: UpdaterService.controller))
             menu.addItem(.separator())
             menu.addItem(item(L("Hide Grapher NG"), #selector(NSApplication.hide(_:)), key: "h", target: NSApp))
             let hideOthers = item(L("Hide Others"), #selector(NSApplication.hideOtherApplications(_:)), key: "h",

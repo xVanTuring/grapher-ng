@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Developer ID 直接分发的导出选项，scripts/package.sh 里 `xcodebuild -exportArchive` 用。
+
+  signingStyle=manual：直接用本机钥匙串里的 Developer ID Application 证书，不走 Apple 的云端证书流程
+  （云端管理的 Developer ID 证书要 Account Holder / Admin 权限，普通成员走 automatic 会被拒）。
+  Grapher NG 没有用到 iCloud、推送这类受限能力，所以不需要 Developer ID 描述文件（同 FreeMind）。
+-->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>developer-id</string>
+    <key>teamID</key>
+    <string>T8F5T6HKG8</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>signingCertificate</key>
+    <string>Developer ID Application</string>
+</dict>
+</plist>

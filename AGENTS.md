@@ -1,6 +1,7 @@
 # AGENTS.md — GrapherNG
 
-macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**纯 AppKit + Metal，零第三方依赖**；xcodegen 管理工程
+macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**纯 AppKit + Metal**，唯一的第三方包是自动更新用的 Sparkle
+（只链接到 App target，见 `docs/release.md`），**别再加别的依赖**；xcodegen 管理工程
 （`GrapherNG.xcodeproj` 由 `project.yml` 生成，不要手改），macOS 14+，Swift 5 语言模式，ad-hoc 签名。
 
 文档分**平面图**与**立体图**两种（新建时定下，`GrapherDocument.dimension`）：平面图有 2D 全部图型（显函数 / 参数方程 /
@@ -14,9 +15,12 @@ xcodegen generate
 bash scripts/build.sh    # xcodebuild … -derivedDataPath build/DerivedData build
 bash scripts/test.sh     # 单元测试，以 App 为宿主
 bash scripts/run.sh      # 构建并直接运行，日志输出到终端
+scripts/package.sh       # Developer ID 签名 + 公证，出 build/dist 下的 zip / dmg（不发布）
+scripts/release.sh <版本> --notes-file release-notes/v<版本>.md [--dry-run]   # 正式发布（公开），见 docs/release.md
 ```
 
 产物在 `build/DerivedData/Build/Products/Debug/GrapherNG.app`。图标：`bash scripts/make-icon.sh`。
+Sparkle 是 SPM 包，第一次编译前要先解析（`xcodebuild … -resolvePackageDependencies`，完整命令见 `docs/release.md`）。
 
 无界面模式（调试与造图用，不开窗口）：
 

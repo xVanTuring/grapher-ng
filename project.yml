@@ -8,6 +8,14 @@ options:
   # 界面文字的 key 用英文原文（`L("…")`），缺翻译时退回英文；中文在 zh-Hans.lproj。
   developmentLanguage: en
 
+packages:
+  # Sparkle 2 自动更新（同 FreeMind / Perch / UniReader），是本工程唯一的第三方包，只链接到 App target。
+  # `UpdaterService.swift` 用 SPUStandardUpdaterController 跑整个流程（拉 appcast、EdDSA 校验、下载、安装、重启）；
+  # `scripts/release.sh` 用这个包里的 sign_update 给发布的 zip 签名。App 没有开沙盒，不需要 Installer XPC。
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle.git
+    from: "2.9.1"
+
 settings:
   base:
     # 版本号只在这里改，各 target 的 Info.plist 都引用这两个值。
@@ -85,6 +93,7 @@ targets:
         embed: true
       - target: GrapherNGThumbnail
         embed: true
+      - package: Sparkle
     settings:
       base:
         PRODUCT_NAME: GrapherNG
@@ -115,6 +124,15 @@ targets:
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         CFBundleIconName: AppIcon
+        # ── Sparkle 自动更新（见 docs/release.md）─────────────────────
+        # appcast 放在仓库 main 分支根目录，scripts/release.sh 每次发布后提交并推送，所以仓库必须保持公开。
+        SUFeedURL: "https://raw.githubusercontent.com/xVanTuring/grapher-ng/main/appcast.xml"
+        # EdDSA 公钥，用来校验下载的更新包；私钥在发布机的登录钥匙串里（与 FreeMind / Perch / UniReader 共用一对）。
+        # ⚠️ 第一次发布之后严禁更换，否则已安装的版本会拒绝以后所有的更新。
+        SUPublicEDKey: "g3SCjADYsXhMN5/4hnQZ7eOawvtVoGJJsS5CFew15WQ="
+        # 默认每天自动检查一次（不在第二次启动时弹窗询问）。
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
         # NSDocument 文档模型：新建 / 打开 / 保存 / 关窗与退出时的保存提示都靠这里登记。
         # 本 App 的文档是 .grapher（内容是 JSON），双击就用本 App 打开。
         # 早先存的 .json 仍能打开，但只读（Viewer）：⌘S 会弹存储面板另存成 .grapher；

@@ -65,6 +65,14 @@
 	<string>© 2026 xVanTuring</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/xVanTuring/grapher-ng/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>g3SCjADYsXhMN5/4hnQZ7eOawvtVoGJJsS5CFew15WQ=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

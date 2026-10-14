@@ -10,7 +10,7 @@ import XCTest
 final class SpaceExportTests: XCTestCase {
 
     func testSpaceDocumentExportsAtTheRequestedSize() throws {
-        let state = AppState(dimension: .space)
+        let state = AppState(document: .sample3D())
         state.setViewportMetrics(pixelWidth: 900, pixelHeight: 600,
                                  insets: NSEdgeInsets(top: 0, left: 50, bottom: 0, right: 0), backingScale: 2)
         let image = try XCTUnwrap(Exporter.renderImage3D(state: state, scale: 2))

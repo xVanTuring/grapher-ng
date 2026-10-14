@@ -3,7 +3,6 @@ import GrapherKit
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var windowControllers: [DocumentWindowController] = []
 
     /// 以测试宿主身份启动时（`GrapherNGTests` 的 `TEST_HOST`）不建窗口、不抢焦点，
     /// 免得跑测试时弹出界面打断正在用的实例。
@@ -12,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // 第一个建出来的 NSDocumentController 就是 `shared`，必须赶在 AppKit 自己建默认的那个之前。
+        _ = GraphDocumentController()
         NSApp.mainMenu = MainMenu.build()
     }
 
@@ -23,8 +24,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: SingleInstanceLock.secondLaunchNotification,
             object: nil
         )
-        newWindow()
         NSApp.activate()
+    }
+
+    /// 启动时没有要打开的文件，AppKit 会自己开一份未命名的空白平面图；测试宿主里不开。
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        !Self.isRunningTests
     }
 
     /// 用户又打开了一次 GrapherNG（那个进程抢不到单实例锁，已经退出）：调到前面；
@@ -33,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.unhide(nil)
         NSApp.activate()
         if !NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) {
-            newWindow()
+            NSDocumentController.shared.newDocument(nil)
         }
     }
 
@@ -45,46 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Documents
 
-    @discardableResult
-    private func newWindow(dimension: DocumentDimension = .plane) -> DocumentWindowController {
-        let controller = DocumentWindowController(state: AppState(dimension: dimension))
-        controller.onClose = { [weak self] closed in
-            self?.windowControllers.removeAll { $0 === closed }
-        }
-        windowControllers.append(controller)
-        controller.showWindow(nil)
-        return controller
-    }
-
-    /// The window that menu commands without an explicit target apply to.
-    private var activeController: DocumentWindowController? {
-        if let controller = NSApp.keyWindow?.windowController as? DocumentWindowController {
-            return controller
-        }
-        if let controller = NSApp.mainWindow?.windowController as? DocumentWindowController {
-            return controller
-        }
-        return windowControllers.last
-    }
-
-    @objc func openDocument(_ sender: Any?) {
-        guard let controller = activeController else { return }
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        panel.title = L("Open Graph Document")
-        panel.beginSheetModal(for: controller.window!) { response in
-            guard response == .OK, let url = panel.url else { return }
-            controller.state.open(url: url)
-        }
-    }
-
-    @objc func newDocumentFromMenu(_ sender: Any?) {
-        newWindow()
-    }
-
-    /// 新建立体图：开一扇新窗口，装着立体图的示例文档。
-    @objc func newSpaceDocumentFromMenu(_ sender: Any?) {
-        newWindow(dimension: .space)
+    /// 新建立体图：开一扇新窗口，装着空白的立体图。
+    @objc func newSpaceDocument(_ sender: Any?) {
+        (NSDocumentController.shared as? GraphDocumentController)?.newDocument(dimension: .space)
     }
 }

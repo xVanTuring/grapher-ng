@@ -53,13 +53,15 @@ enum MainMenu {
 
     private static func fileMenu() -> NSMenuItem {
         submenu(L("File")) { menu in
-            menu.addItem(item(L("New 2D Graph"), #selector(DocumentWindowController.newDocument(_:)), key: "n"))
-            menu.addItem(item(L("New 3D Graph"), #selector(AppDelegate.newSpaceDocumentFromMenu(_:)), key: "n",
+            // 新建、打开落到响应链末端的 NSDocumentController，保存、另存为落到窗口的 NSDocument。
+            menu.addItem(item(L("New 2D Graph"), #selector(NSDocumentController.newDocument(_:)), key: "n"))
+            menu.addItem(item(L("New 3D Graph"), #selector(AppDelegate.newSpaceDocument(_:)), key: "n",
                               modifiers: [.command, .shift]))
-            menu.addItem(item(L("Open…"), #selector(DocumentWindowController.openDocumentAction(_:)), key: "o"))
+            menu.addItem(item(L("Open…"), #selector(NSDocumentController.openDocument(_:)), key: "o"))
+            menu.addItem(item(L("Load Example"), #selector(DocumentWindowController.loadExample(_:))))
             menu.addItem(.separator())
-            menu.addItem(item(L("Save"), #selector(DocumentWindowController.saveDocumentAction(_:)), key: "s"))
-            menu.addItem(item(L("Save As…"), #selector(DocumentWindowController.saveDocumentAsAction(_:)),
+            menu.addItem(item(L("Save"), #selector(NSDocument.save(_:)), key: "s"))
+            menu.addItem(item(L("Save As…"), #selector(NSDocument.saveAs(_:)),
                               key: "s", modifiers: [.command, .shift]))
             menu.addItem(.separator())
             menu.addItem(item(L("Export PNG 1×"), #selector(DocumentWindowController.exportPNG1x(_:))))

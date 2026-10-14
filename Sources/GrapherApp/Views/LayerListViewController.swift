@@ -33,6 +33,16 @@ final class LayerListViewController: NSViewController {
         accessibility: L("Delete Selected Layer")
     )
 
+    /// 没有图层时盖在列表上的提示：新窗口默认是空白文档，这里给「加载示例」一个入口（菜单「文件」里也有）。
+    private lazy var emptyHint: NSStackView = {
+        let caption = ControlFactory.caption(L("No graphs yet. Click + to add one, or load the example."))
+        caption.alignment = .center
+        let button = ControlFactory.pushButton(L("Load Example"), target: self, action: #selector(loadExample(_:)))
+        let stack = ControlFactory.stack([caption, button], spacing: 10, alignment: .centerX)
+        caption.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return stack
+    }()
+
     /// 「＋」点开的图型菜单：只列当前文档（平面图 / 立体图）能用的图型，每次点开现建。
     private func makeAddMenu() -> NSMenu {
         let menu = NSMenu()
@@ -84,6 +94,7 @@ final class LayerListViewController: NSViewController {
 
         configureTable()
         root.addSubview(scrollView)
+        root.addSubview(emptyHint)
 
         let gutter = ControlFactory.Metric.gutter
         // The split view sizes this pane to its fitting height, so the list
@@ -100,6 +111,10 @@ final class LayerListViewController: NSViewController {
             scrollView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: root.bottomAnchor, constant: -6),
+
+            emptyHint.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 24),
+            emptyHint.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: gutter),
+            emptyHint.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -gutter),
         ])
 
         view = root
@@ -167,6 +182,7 @@ final class LayerListViewController: NSViewController {
         tableView.reloadData()
         isSyncingSelection = false
         syncSelection()
+        emptyHint.isHidden = !state.document.layers.isEmpty
     }
 
     private func syncSelection() {
@@ -240,6 +256,10 @@ final class LayerListViewController: NSViewController {
     @objc private func duplicateSelectedLayer(_ sender: Any?) {
         guard let id = state.selection else { return }
         state.duplicateLayer(id: id)
+    }
+
+    @objc private func loadExample(_ sender: Any?) {
+        state.loadExample()
     }
 }
 

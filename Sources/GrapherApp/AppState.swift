@@ -74,8 +74,9 @@ final class AppState {
     private(set) var isBuilding = false
     private(set) var backingScale: Double = 2
 
-    /// Drives the dot in the close button and the title bar's edited state.
-    private(set) var isDocumentEdited = false
+    /// 文档内容有了改动（`GraphDocument` 接到 `NSDocument.updateChangeCount`）：关闭按钮里的小圆点、
+    /// 关窗 / 退出时「是否保存」的提示都看它。
+    var onEdit: (() -> Void)?
 
     var selection: UUID? {
         didSet {
@@ -91,8 +92,6 @@ final class AppState {
     var statusMessage: String = "" {
         didSet { notify(.status) }
     }
-
-    var documentURL: URL?
 
     let compiler = LayerCompiler()
     var undoManager: UndoManager?
@@ -112,18 +111,18 @@ final class AppState {
     private var chromeCache: (key: ChromeKey, scene: Scene2D, layout: ChromeLayout)?
     private var chrome3DCache: (key: Chrome3DKey, result: Chrome3D.Result)?
 
-    /// 不给文档时按 `dimension` 开一份示例：平面图或立体图。
+    /// 不给文档时按 `dimension` 开一份空白的平面图或立体图；示例由「加载示例」（`loadExample`）载入。
     init(document: GrapherDocument? = nil, dimension: DocumentDimension = .plane) {
         if let document {
             self.document = document
         } else {
-            var sample = dimension == .space ? GrapherDocument.sample3D() : GrapherDocument.sample()
+            var blank = GrapherDocument(dimension: dimension)
             // First impressions matter: follow whatever appearance the machine
             // is in rather than assuming a white sheet.
             if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
-                sample.theme = .dark
+                blank.theme = .dark
             }
-            self.document = sample
+            self.document = blank
         }
         self.selection = self.document.layers.first?.id
     }
@@ -455,15 +454,7 @@ final class AppState {
     }
 
     private func markEdited() {
-        guard !isDocumentEdited else { return }
-        isDocumentEdited = true
-        notify(.status)
-    }
-
-    private func markSaved() {
-        guard isDocumentEdited else { return }
-        isDocumentEdited = false
-        notify(.status)
+        onEdit?()
     }
 
     /// Starts a run of live edits (typing in a formula field, dragging a
@@ -657,50 +648,41 @@ final class AppState {
         requestRebuild(interactive: false)
     }
 
-    // MARK: - Files
+    // MARK: - Documents
 
-    func newDocument() {
-        var fresh = GrapherDocument()
-        adoptCanvasMetrics(&fresh)
-        document = fresh
-        selection = nil
-        documentURL = nil
-        markSaved()
-        statusMessage = L("Created a blank document")
+    /// 换上从文件读进来的文档（`GraphDocument.read`）。读写文件、文件名、是否改过都归 `NSDocument` 管，
+    /// 这里只换内容。
+    func replaceDocument(with loaded: GrapherDocument) {
+        var loaded = loaded
+        adoptCanvasMetrics(&loaded)
+        document = loaded
+        selection = loaded.layers.first?.id
         requestRebuild(interactive: false)
         notify(.document)
         notify(.layers)
         notify(.parameters)
     }
 
-    func open(url: URL) {
-        do {
-            var loaded = try DocumentStore.load(from: url)
-            adoptCanvasMetrics(&loaded)
-            document = loaded
-            selection = loaded.layers.first?.id
-            documentURL = url
-            markSaved()
-            statusMessage = String(format: L("Opened %@"), url.lastPathComponent)
-            requestRebuild(interactive: false)
-            notify(.document)
-            notify(.layers)
-            notify(.parameters)
-        } catch {
-            presentError(L("Could not open the file"), error.localizedDescription)
+    /// 「加载示例」：图层、参数和视角换成示例（平面图 / 立体图各一份），主题与网格等显示设置不动。
+    /// 算一次普通改动，能撤销，文档也随之标成已修改。
+    func loadExample() {
+        let sample = document.dimension == .space ? GrapherDocument.sample3D() : GrapherDocument.sample()
+        mutate(L("Load Example")) { document in
+            document.layers = sample.layers
+            document.parameters = sample.parameters
+            if document.dimension == .space {
+                document.view3D.center = sample.view3D.center
+                document.view3D.halfExtent = sample.view3D.halfExtent
+                document.view3D.azimuth = sample.view3D.azimuth
+                document.view3D.elevation = sample.view3D.elevation
+                document.view3D.cameraZoom = sample.view3D.cameraZoom
+            } else {
+                document.viewport.centerX = sample.viewport.centerX
+                document.viewport.centerY = sample.viewport.centerY
+                document.viewport.scale = sample.viewport.scale
+            }
         }
-    }
-
-    func save(to url: URL?) {
-        guard let url else { return }
-        do {
-            try DocumentStore.save(document, to: url)
-            documentURL = url
-            markSaved()
-            statusMessage = String(format: L("Saved to %@"), url.lastPathComponent)
-        } catch {
-            presentError(L("Could not save the file"), error.localizedDescription)
-        }
+        selection = document.layers.first?.id
     }
 
     func presentError(_ title: String, _ message: String) {

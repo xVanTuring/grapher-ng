@@ -101,6 +101,14 @@ targets:
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         CFBundleIconName: AppIcon
+        # NSDocument 文档模型：新建 / 打开 / 保存 / 关窗与退出时的保存提示都靠这一条登记。
+        # 文件仍是 JSON；`Alternate` 只是「打开方式」里列出本 App，不抢 .json 的默认打开程序。
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Grapher NG Graph
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.json]
+            NSDocumentClass: "$(PRODUCT_MODULE_NAME).GraphDocument"
 
   # ── 测试 ──────────────────────────────────────────────────────
   # 以 App 为宿主运行（同 FreeMind / Perch）：App 检测到自己在测试宿主里就不开窗口，

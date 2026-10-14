@@ -8,6 +8,7 @@
 "New 2D Graph" = "新建平面图";
 "New 3D Graph" = "新建立体图";
 "Open…" = "打开…";
+"Load Example" = "加载示例";
 "Save" = "保存";
 "Save As…" = "另存为…";
 "Export PNG 1×" = "导出 PNG 1×";
@@ -49,8 +50,6 @@
 "Show/hide the inspector (⌥⌘I)" = "显示/隐藏检查器（⌥⌘I）";
 
 /* 文件与导出 */
-"Open Graph Document" = "打开图形文档";
-"Save Graph Document" = "保存图形文档";
 "Export PNG" = "导出 PNG";
 "Export Vector PDF" = "导出矢量 PDF";
 "Export Sample Points" = "导出采样点";
@@ -59,11 +58,6 @@
 "Exported %@ (%ld×%ld)" = "已导出 %@（%ld×%ld）";
 "Exported vector %@" = "已导出矢量 %@";
 "Exported sample points %@" = "已导出采样点 %@";
-"Created a blank document" = "已新建空白文档";
-"Opened %@" = "已打开 %@";
-"Could not open the file" = "打开失败";
-"Saved to %@" = "已保存到 %@";
-"Could not save the file" = "保存失败";
 "%@: %@" = "%@：%@";
 "OK" = "好";
 
@@ -81,6 +75,7 @@
 "Delete" = "删除";
 "Show/Hide" = "显示/隐藏";
 "The formula has a syntax error" = "公式有语法错误";
+"No graphs yet. Click + to add one, or load the example." = "还没有图形。点「＋」新建一个，或者加载示例。";
 
 /* 侧栏：参数 */
 "Parameters" = "参数";

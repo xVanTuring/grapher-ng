@@ -8,6 +8,7 @@
 "New 2D Graph" = "New 2D Graph";
 "New 3D Graph" = "New 3D Graph";
 "Open…" = "Open…";
+"Load Example" = "Load Example";
 "Save" = "Save";
 "Save As…" = "Save As…";
 "Export PNG 1×" = "Export PNG 1×";
@@ -49,8 +50,6 @@
 "Show/hide the inspector (⌥⌘I)" = "Show/hide the inspector (⌥⌘I)";
 
 /* Files and export */
-"Open Graph Document" = "Open Graph Document";
-"Save Graph Document" = "Save Graph Document";
 "Export PNG" = "Export PNG";
 "Export Vector PDF" = "Export Vector PDF";
 "Export Sample Points" = "Export Sample Points";
@@ -59,11 +58,6 @@
 "Exported %@ (%ld×%ld)" = "Exported %@ (%ld×%ld)";
 "Exported vector %@" = "Exported vector %@";
 "Exported sample points %@" = "Exported sample points %@";
-"Created a blank document" = "Created a blank document";
-"Opened %@" = "Opened %@";
-"Could not open the file" = "Could not open the file";
-"Saved to %@" = "Saved to %@";
-"Could not save the file" = "Could not save the file";
 "%@: %@" = "%@: %@";
 "OK" = "OK";
 
@@ -81,6 +75,7 @@
 "Delete" = "Delete";
 "Show/Hide" = "Show/Hide";
 "The formula has a syntax error" = "The formula has a syntax error";
+"No graphs yet. Click + to add one, or load the example." = "No graphs yet. Click + to add one, or load the example.";
 
 /* Sidebar: parameters */
 "Parameters" = "Parameters";

@@ -106,7 +106,8 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         layers.filter(\.isVisible)
     }
 
-    /// A document that shows off each plot kind, used on first launch.
+    /// A document that shows off each plot kind, used by Load Example and the
+    /// headless renderer.
     public static func sample() -> GrapherDocument {
         var document = GrapherDocument()
         document.parameters = [
@@ -148,7 +149,7 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         return document
     }
 
-    /// 新建立体图时的示例：四种 3D 图型各一个，错开摆在默认坐标盒（±4）里。
+    /// 立体图的示例（「加载示例」与无界面渲染用）：四种 3D 图型各一个，错开摆在默认坐标盒（±4）里。
     public static func sample3D() -> GrapherDocument {
         var document = GrapherDocument(dimension: .space)
         document.parameters = [

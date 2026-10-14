@@ -1,6 +1,5 @@
 import AppKit
 import GrapherKit
-import UniformTypeIdentifiers
 
 extension NSToolbarItem.Identifier {
     static let fitContent = NSToolbarItem.Identifier("GrapherNG.fitContent")
@@ -12,23 +11,21 @@ extension NSToolbarItem.Identifier {
     static let toggleInspector = NSToolbarItem.Identifier("GrapherNG.toggleInspector")
 }
 
-/// One document window: the split view, the toolbar, the undo stack, and every
-/// menu action that operates on a document.
+/// One document window: the split view, the toolbar, and the menu actions that
+/// operate on what the window shows. Opening, saving, the title and the
+/// edited dot belong to the window's `GraphDocument`.
 @MainActor
 final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
 
     let state: AppState
-    var onClose: ((DocumentWindowController) -> Void)?
 
-    private let undo = UndoManager()
     private let splitViewController = NSSplitViewController()
     private let sidebarViewController: SidebarViewController
     private let canvasViewController: CanvasContainerViewController
     private let inspectorViewController: InspectorViewController
     private var inspectorItem: NSSplitViewItem?
 
-    init(state: AppState? = nil) {
-        let state = state ?? AppState()
+    init(state: AppState) {
         self.state = state
         self.sidebarViewController = SidebarViewController(state: state)
         self.canvasViewController = CanvasContainerViewController(state: state)
@@ -57,20 +54,9 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         // 记忆就该把它关掉）。
         shouldCascadeWindows = false
         window.center()
-        state.undoManager = undo
 
         buildSplitView()
         buildToolbar()
-        updateTitle()
-        state.observe { [weak self] change in
-            guard let self else { return }
-            switch change {
-            case .document, .layers, .status:
-                self.updateTitle()
-            default:
-                break
-            }
-        }
     }
 
     @available(*, unavailable)
@@ -149,15 +135,6 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         item.action = action
         item.isBordered = true
         return item
-    }
-
-    private func updateTitle() {
-        let name = state.documentURL?.deletingPathExtension().lastPathComponent
-        window?.title = name.map { "Grapher NG — \($0)" } ?? "Grapher NG"
-        // Gives the title bar its proxy icon and ⌘-click path menu, and lights
-        // up the dot in the close button when there are unsaved edits.
-        window?.representedURL = state.documentURL
-        window?.isDocumentEdited = state.isDocumentEdited
     }
 
     // MARK: - Toolbar
@@ -279,62 +256,16 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
     }
 
     // MARK: - File actions
+    //
+    // 新建、打开、保存、另存为走 NSDocumentController / NSDocument 自带的动作（见 MainMenu），这里没有。
 
-    @objc func newDocument(_ sender: Any?) {
-        (NSApp.delegate as? AppDelegate)?.newDocumentFromMenu(sender)
-    }
-
-    @objc func openDocumentAction(_ sender: Any?) {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.json]
-        panel.allowsMultipleSelection = false
-        panel.title = L("Open Graph Document")
-        present(panel) { [weak self] url in
-            self?.state.open(url: url)
-        }
-    }
-
-    @objc func saveDocumentAction(_ sender: Any?) {
-        if let url = state.documentURL {
-            state.save(to: url)
-            updateTitle()
-        } else {
-            saveDocumentAsAction(sender)
-        }
-    }
-
-    @objc func saveDocumentAsAction(_ sender: Any?) {
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.json]
-        panel.nameFieldStringValue = (state.documentURL?.lastPathComponent) ?? "graph.grapher.json"
-        panel.title = L("Save Graph Document")
-        present(panel) { [weak self] url in
-            self?.state.save(to: url)
-            self?.updateTitle()
-        }
-    }
+    @objc func loadExample(_ sender: Any?) { state.loadExample() }
 
     @objc func exportPNG1x(_ sender: Any?) { Exporter.exportPNG(state: state, scale: 1, window: window) }
     @objc func exportPNG2x(_ sender: Any?) { Exporter.exportPNG(state: state, scale: 2, window: window) }
     @objc func exportPNG4x(_ sender: Any?) { Exporter.exportPNG(state: state, scale: 4, window: window) }
     @objc func exportPDFAction(_ sender: Any?) { Exporter.exportPDF(state: state, window: window) }
     @objc func exportCSVAction(_ sender: Any?) { Exporter.exportCSV(state: state, window: window) }
-
-    private func present(_ panel: NSSavePanel, then handle: @escaping (URL) -> Void) {
-        guard let window else { return }
-        panel.beginSheetModal(for: window) { response in
-            guard response == .OK, let url = panel.url else { return }
-            handle(url)
-        }
-    }
-
-    private func present(_ panel: NSOpenPanel, then handle: @escaping (URL) -> Void) {
-        guard let window else { return }
-        panel.beginSheetModal(for: window) { response in
-            guard response == .OK, let url = panel.url else { return }
-            handle(url)
-        }
-    }
 
     // MARK: - View actions
 
@@ -361,11 +292,8 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
 
     // MARK: - Window delegate
 
+    /// 文档自己的撤销栈（`GraphDocument` 交给了 `state`）。
     func windowWillReturnUndoManager(_ window: NSWindow) -> UndoManager? {
-        undo
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        onClose?(self)
+        state.undoManager
     }
 }

@@ -34,7 +34,7 @@ Sources/GrapherApp/     AppKit 界面、事件处理、命令行模式
 Tests/GrapherNGTests/   单元测试
 ```
 
-- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；测试主要跑在它和 GrapherRender 上（共 122 项）。
+- **GrapherKit 不许 import 任何界面框架**。拆成三个 target 就是为了让编译器守住这条边界；测试主要跑在它和 GrapherRender 上（全部共 131 项）。
 - 界面**不许用 SwiftUI**。`AppState` 用极简观察者回调广播变更（`observe(_:_:)`），不引入 Combine。
 - `GrapherRender` 的着色器是**运行期**从 `ShaderSource.swift` 里的内嵌字符串编译的，没有 `.metal` 编译阶段——别去加 build phase。
 - `GrapherKit` 在 Debug 下单独开 `-O` + `wholemodule`：这一层数值密集，`-Onone` 让网格求值慢 27 倍（1.2M vs 32M 点/秒）。界面层保持 `-Onone`。
@@ -48,6 +48,25 @@ Tests/GrapherNGTests/   单元测试
 - **求值是字节码栈式虚拟机**，必须**可重入且线程安全**（`evaluate` 内部用 `withUnsafeTemporaryAllocation` 在栈上开求值栈，无共享可变状态）。网格求值走 `evaluateBatch`，不要退化成逐点调 `evaluate`。
 - **间断必须断开**：`1/x`、`tan(x)` 不能画出竖直连线。判定在 `CurveSampler.sampleExplicit`（跳变超过半屏高且横向跨度小于 4 像素即为极点）。
 - 画质常数别随手调：弦高容差 0.14 像素、`tolerancePixels` 分档在 `CurveSampler.options(for:)`；屏幕坐标进 GPU 前在 `SceneBuilder2D.screenClamped` 夹到 ±1e7，否则极点会把 float32 变成 inf。
+
+## 文档模型（NSDocument）
+
+- 每扇窗口一份 `GraphDocument`（`NSDocument` 子类），持有该窗口的 `AppState`。新建、打开、保存、另存为、窗口标题与代理图标、
+  关闭按钮里的小圆点、关窗 / 退出时的「是否保存」提示，全走 AppKit 的标准流程——**不要再手写打开 / 保存面板或窗口标题**。
+- 文档类型登记在 project.yml 的 `CFBundleDocumentTypes`：`public.json`、`LSHandlerRank = Alternate`（只进「打开方式」，
+  不抢 .json 的默认程序），`NSDocumentClass` 指向 `GraphDocument`。文件格式没变，仍是 `DocumentStore` 的 JSON。
+- `autosavesInPlace = false`：改过的文档关窗、退出都弹标准的保存提示，不悄悄写回文件。
+- **改动计数**：撤销栈用 NSDocument 自己的 `undoManager`，撤销 / 重做自动增减计数；另外 `AppState.markEdited` 经 `onEdit`
+  调 `updateChangeCount(.changeDone)`——拖滑块、输入公式要等一串结束才记一步撤销，中途就得先标成已修改。
+  新的改文档路径要么走 `mutate`，要么调 `markEdited`，否则关窗时不会提示保存。平移、缩放视口不算改动。
+- `GraphDocumentController` 必须在 `applicationWillFinishLaunching` 里最先建出来才会成为 `shared`。它只补两件事：
+  ⇧⌘N 新建立体图；只开着一扇没动过的空白窗口时打开文件，文件接替这扇窗口（同「文本编辑」）。接替时**先显示新窗口再关空白的**，
+  反过来的话那一刻一扇窗口都没有，`applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
+- 新窗口默认是空白文档。「文件 → 加载示例」和图层列表空白时的按钮走 `AppState.loadExample`：图层、参数、视角换成示例，
+  主题与网格不动，可撤销。示例本身仍是 `GrapherDocument.sample()` / `sample3D()`，无界面渲染也用它们。
+- 启动时没有文件要打开，AppKit 自己开一份未命名平面图（`applicationShouldOpenUntitledFile`，测试宿主里返回 false）。
+- `read(from:ofType:)` 在 SDK 里是 nonisolated；没开并发读（`canConcurrentlyReadDocuments` 默认 false），AppKit 在主线程调它，
+  所以里面用 `MainActor.assumeIsolated` 把内容交给 `AppState`。
 
 ## 无限画布（照 UniReader 的画板抄的）
 

@@ -11,7 +11,7 @@ MainActor.assumeIsolated {
         exit(0)
     }
 
-    // 第一个创建的 NSWindowController 由 delegate 持有，所以在 NSApp 启动前先建好 delegate。
+    // delegate 要在 NSApp 启动前装好：文档控制器得在 `applicationWillFinishLaunching` 里抢先建出来。
     let app = NSApplication.shared
     let delegate = AppDelegate()
     app.delegate = delegate

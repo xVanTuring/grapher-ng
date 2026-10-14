@@ -100,3 +100,7 @@
 "Tangent / normal line" = "切线 / 法线";
 "Tangent" = "切线";
 "Tangent plane" = "切平面";
+
+/* GrapherKit: text labels */
+"Text label" = "文字标注";
+"Text" = "文字";

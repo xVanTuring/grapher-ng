@@ -59,6 +59,9 @@ final class LayerEditorViewController: NSViewController {
     private var obliqueCheckbox: NSButton?
     private var directionFields: [NSTextField] = []
     private var directionRowView: NSView?
+    private var textContentField: NSTextField?
+    private var textPositionFields: [NSTextField] = []
+    private var fontSizeField: NSTextField?
     private var tangentSourcePopUp: NSPopUpButton?
     private var anchorUField: NSTextField?
     private var anchorVField: NSTextField?
@@ -135,7 +138,7 @@ final class LayerEditorViewController: NSViewController {
         case .surface, .parametricSurface, .implicitSurface: return true
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
-        case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane: return false
+        case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text: return false
         }
     }
 
@@ -211,6 +214,24 @@ final class LayerEditorViewController: NSViewController {
             rows.append(projectors)
             rows.append(ControlFactory.caption(
                 L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
+        }
+
+        if layer.kind == .text {
+            let content = ControlFactory.textField(layer.formula, target: self, action: #selector(textContentEdited(_:)))
+            content.cell?.sendsActionOnEndEditing = true
+            textContentField = content
+            rows.append(ControlFactory.formRow(L("Text"), content))
+            let isSpace = state.document.dimension == .space
+            let axes = isSpace ? ["x", "y", "z"] : ["x", "y"]
+            textPositionFields = axes.map { _ in
+                ControlFactory.numberField(0, target: self, action: #selector(textPositionEdited(_:)))
+            }
+            for (name, field) in zip(axes, textPositionFields) {
+                rows.append(ControlFactory.formRow(name, field))
+            }
+            let size = ControlFactory.numberField(layer.fontSize, target: self, action: #selector(fontSizeEdited(_:)))
+            fontSizeField = size
+            rows.append(ControlFactory.formRow(L("Font size"), size))
         }
 
         if layer.kind == .tangent || layer.kind == .tangentPlane {
@@ -325,6 +346,7 @@ final class LayerEditorViewController: NSViewController {
         refreshSourcePopUps(layer)
         refreshProjection(layer)
         refreshTangent(layer)
+        refreshText(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -362,6 +384,41 @@ final class LayerEditorViewController: NSViewController {
         sourceHint?.stringValue = ready
             ? L("The curve where the two surfaces meet. Hide the surfaces to keep only the curve.")
             : L("Pick two different surface layers. Add surfaces first if the lists are empty.")
+    }
+
+    // MARK: - Text rows
+
+    private func refreshText(_ layer: Layer) {
+        if let field = textContentField, field.currentEditor() == nil { field.stringValue = layer.formula }
+        let values = [layer.anchorU, layer.anchorV, layer.anchorW]
+        for (field, value) in zip(textPositionFields, values) where field.currentEditor() == nil {
+            field.stringValue = ControlFactory.format(value)
+        }
+        if let field = fontSizeField, field.currentEditor() == nil { field.stringValue = ControlFactory.format(layer.fontSize) }
+    }
+
+    @objc private func textContentEdited(_ sender: NSTextField) {
+        let text = sender.stringValue
+        editLayer(L("Edit Text")) { $0.formula = text }
+    }
+
+    @objc private func textPositionEdited(_ sender: NSTextField) {
+        guard let layer = state.selectedLayer else { return }
+        var values = [layer.anchorU, layer.anchorV, layer.anchorW]
+        for (index, field) in textPositionFields.enumerated() {
+            values[index] = ControlFactory.parse(field.stringValue) ?? values[index]
+        }
+        editLayer(L("Move Text")) {
+            $0.anchorU = values[0]
+            $0.anchorV = values[1]
+            $0.anchorW = values[2]
+        }
+    }
+
+    @objc private func fontSizeEdited(_ sender: NSTextField) {
+        guard let layer = state.selectedLayer else { return }
+        let size = min(max(ControlFactory.parse(sender.stringValue) ?? layer.fontSize, 6), 96)
+        editLayer(L("Change Font Size")) { $0.fontSize = size }
     }
 
     // MARK: - Tangent rows
@@ -574,6 +631,9 @@ final class LayerEditorViewController: NSViewController {
         obliqueCheckbox = nil
         directionFields = []
         directionRowView = nil
+        textContentField = nil
+        textPositionFields = []
+        fontSizeField = nil
         tangentSourcePopUp = nil
         anchorUField = nil
         anchorVField = nil
@@ -620,7 +680,7 @@ final class LayerEditorViewController: NSViewController {
             return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane: return []
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text: return []
         case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }

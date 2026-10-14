@@ -440,6 +440,15 @@ final class Canvas3DOverlayView: NSView {
             }
         }
 
+        // 自由文字：写在 (x, y, z) 投到屏幕上的位置，不管在不在坐标盒里（盒外的字照样写）。
+        for (index, annotation) in TextAnnotations.all(in: state.document).enumerated() {
+            guard let screen = view.project(view.normalized(annotation.position)) else { continue }
+            let point = CGPoint(x: screen.x / scale, y: screen.y / scale)
+            guard point.x > left - 200, point.x < right, point.y > top, point.y < bottom else { continue }
+            labels.place("a\(index)", annotation.text, font: .systemFont(ofSize: annotation.fontSize),
+                         color: ControlFactory.nsColor(annotation.color), at: point, anchor: .leading)
+        }
+
         for label in state.chrome3D().labels {
             guard let screen = view.project(label.position) else { continue }
             let point = CGPoint(x: screen.x / scale, y: screen.y / scale)

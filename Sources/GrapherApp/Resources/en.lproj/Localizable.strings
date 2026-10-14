@@ -220,3 +220,10 @@
 "Oblique projection" = "Oblique projection";
 "Project along a direction instead of perpendicular to the plane." = "Project along a direction instead of perpendicular to the plane.";
 "Direction" = "Direction";
+
+/* Text layers */
+"Text" = "Text";
+"Font size" = "Font size";
+"Edit Text" = "Edit Text";
+"Move Text" = "Move Text";
+"Change Font Size" = "Change Font Size";

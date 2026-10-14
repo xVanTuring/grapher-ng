@@ -22,6 +22,8 @@ macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**
   导数在 `Tangents` 里用中心差分求，来源是编译好的公式；切平面经 `SpaceGeometry.recognize(_:in:)`（要看得到来源图层）
   当平面用，所以能进位置关系面板、当投影目标。**认平面请用带 `in:` 的重载**，单参数那个认不出切平面。
 - 投影图层的 `projectionDirection`（nil = 正投影）是斜投影方向，与平面平行时整层不画。
+- 文字标注（`.text`，平面图 / 立体图都能放）：`formula` 是要写的字，不编译；位置 `anchorU/V/W`、字号 `fontSize`。`PlotKind.dimension` 是 `.plane`，立体图的类型列表里手动补上。
+  文字由画布叠加层（2D `CanvasOverlayView`、3D `Canvas3DOverlayView`）和导出图片（`GraphSnapshot`）按 `TextAnnotations.all` 写，不进 Metal 场景。
 - 以上几种新 `PlotKind` 都要同步：`SceneBuilder2D` 里两处 switch、`LayerEditorViewController`、`MCPFacade.variables`、`MCPTests`、两份用法文档。
 
 **选中联动 / 半透明**（立体图）：

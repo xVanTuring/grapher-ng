@@ -112,6 +112,12 @@ final class MCPFacade {
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
         if layer.kind == .point { object["label"] = layer.showsLabel }
+        if layer.kind == .text {
+            object["at"] = layer.anchorU
+            object["at2"] = layer.anchorV
+            if state.document.dimension == .space { object["at3"] = layer.anchorW }
+            object["fontSize"] = layer.fontSize
+        }
         if layer.kind == .tangent || layer.kind == .tangentPlane {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["at"] = layer.anchorU
@@ -219,6 +225,8 @@ final class MCPFacade {
         var showsLabel: Bool?
         var anchorU: Double?
         var anchorV: Double?
+        var anchorW: Double?
+        var fontSize: Double?
         var drawsNormal: Bool?
         var projectionTarget: ProjectionTarget?
         var projectionOffset: Double?
@@ -241,7 +249,11 @@ final class MCPFacade {
                 "A \(state.document.dimension == .space ? "3D" : "2D") document cannot hold '\(kind.rawValue)' layers. Allowed kinds: \(names)."
             )
         }
-        if kind.needsFormula {
+        if kind == .text {
+            guard let text = edit.formula, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
+                throw MCPInvalidParams("'text' layers need 'formula': the text to write")
+            }
+        } else if kind.needsFormula {
             guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
                 throw MCPInvalidParams("missing required 'formula'")
             }
@@ -355,9 +367,26 @@ final class MCPFacade {
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
         }
-        if edit.anchorU != nil || edit.anchorV != nil || edit.drawsNormal != nil {
+        if layer.kind == .text {
+            if let size = edit.fontSize {
+                guard (6...96).contains(size) else { throw MCPToolError("font_size must be between 6 and 96.") }
+                layer.fontSize = size
+            }
+            if let w = edit.anchorW {
+                guard w.isFinite else { throw MCPToolError("at3 must be a finite number.") }
+                layer.anchorW = w
+            }
+            if edit.drawsNormal != nil { throw MCPToolError("'text' layers have no normal.") }
+            for (name, value, keyPath) in [("at", edit.anchorU, \Layer.anchorU), ("at2", edit.anchorV, \Layer.anchorV)] {
+                guard let value else { continue }
+                guard value.isFinite else { throw MCPToolError("\(name) must be a finite number.") }
+                layer[keyPath: keyPath] = value
+            }
+        } else if edit.fontSize != nil || edit.anchorW != nil {
+            throw MCPToolError("Only 'text' layers have at3 / font_size.")
+        } else if edit.anchorU != nil || edit.anchorV != nil || edit.drawsNormal != nil {
             guard layer.kind == .tangent || layer.kind == .tangentPlane else {
-                throw MCPToolError("Only 'tangent' and 'tangentPlane' layers have at / at2 / normal.")
+                throw MCPToolError("Only 'tangent', 'tangentPlane' and 'text' layers have at / at2 / normal.")
             }
             if let u = edit.anchorU {
                 guard u.isFinite else { throw MCPToolError("at must be a finite number.") }
@@ -503,6 +532,7 @@ final class MCPFacade {
         case .surfaceIntersection: return "(none; it has no formula)"
         case .point: return "(none; only parameters and numbers)"
         case .projection, .tangent, .tangentPlane: return "(none; it has no formula)"
+        case .text: return "(none; the text is not a formula)"
         }
     }
 

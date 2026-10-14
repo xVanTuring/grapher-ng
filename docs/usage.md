@@ -108,6 +108,7 @@ Every tool that targets a document takes an optional `document_id`. Leave it out
 | 3D | `spaceCurve` | x(t), y(t), z(t) in the three formula fields, `domain` |
 | 3D | `implicitSurface` | `formula` = F(x, y, z), drawn where F = 0 |
 | 3D | `surfaceIntersection` | no formula: `source_a` and `source_b` are the ids of two surface layers (`surface`, `parametricSurface`, `implicitSurface`); draws the curve where they meet, even if the sources are hidden |
+| 2D / 3D | `text` | `formula` = the text to write (not compiled as a formula), `at` / `at2` (`at3` in 3D) = position in data coordinates, `font_size`, `color` |
 | 2D | `tangent` | no formula: `source_a` = an `explicit` / `parametric` / `polar` layer, `at` = x (explicit), t (parametric) or theta (polar), `normal: true` draws the normal line instead |
 | 3D | `tangentPlane` | no formula: `source_a` = a `surface` / `parametricSurface` layer, `at` + `at2` = the point's (x, y) or (u, v); shows a translucent patch, its normal and the point, and counts as a plane in the relations panel |
 | 3D | `point` | `formula`, `secondary_formula`, `tertiary_formula` = x, y, z (numbers and parameters only); `line_width` is the size |

@@ -30,12 +30,14 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case tangent
     /// 立体图：显式曲面或参数曲面上一点的切平面（连同法线），没有公式
     case tangentPlane
+    /// 自由文字标注：文字写在 `formula` 里（不当公式编译），位置是 `anchorU/V/W`。平面图、立体图都能放
+    case text
 
     public var id: String { rawValue }
 
     public var dimension: DocumentDimension {
         switch self {
-        case .explicit, .parametric, .polar, .implicit, .region, .tangent: return .plane
+        case .explicit, .parametric, .polar, .implicit, .region, .tangent, .text: return .plane
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
              .tangentPlane:
             return .space
@@ -47,7 +49,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public static func cases(for dimension: DocumentDimension) -> [PlotKind] {
         switch dimension {
         case .plane: return allCases.filter { $0.dimension == .plane }
-        case .space: return allCases.filter { $0.dimension == .space } + allCases.filter(\.canExtrude)
+        case .space: return allCases.filter { $0.dimension == .space } + allCases.filter(\.canExtrude) + [.text]
         }
     }
 
@@ -56,7 +58,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
         case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point,
-             .projection, .tangent, .tangentPlane:
+             .projection, .tangent, .tangentPlane, .text:
             return false
         }
     }
@@ -77,6 +79,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .projection: return L("Projection onto a plane")
         case .tangent: return L("Tangent / normal line")
         case .tangentPlane: return L("Tangent plane")
+        case .text: return L("Text label")
         }
     }
 
@@ -96,6 +99,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .projection: return L("Projection")
         case .tangent: return L("Tangent")
         case .tangentPlane: return L("Tangent plane")
+        case .text: return L("Text")
         }
     }
 
@@ -109,7 +113,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane: return []
+        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text: return []
         }
     }
 
@@ -149,6 +153,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
         case .surfaceIntersection, .projection, .tangent, .tangentPlane: return ""
+        case .text: return "Text"
         case .point: return "1"
         }
     }
@@ -172,10 +177,10 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// 交线、投影、切线、切平面图层没有公式，只引用别的图层。
+    /// 交线、投影、切线、切平面图层没有公式，只引用别的图层；文字标注的 `formula` 是要写的字，不当公式编译。
     public var needsFormula: Bool {
         switch self {
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane: return false
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text: return false
         default: return true
         }
     }
@@ -215,7 +220,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
         case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane:
+             .tangent, .tangentPlane, .text:
             return false
         }
     }
@@ -354,6 +359,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var anchorU: Double
     public var anchorV: Double
     public var drawsNormal: Bool
+    /// 文字标注：位置的第三个坐标（立体图的 z）与字号（点）。
+    public var anchorW: Double
+    public var fontSize: Double
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -384,6 +392,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         anchorU: Double = 0,
         anchorV: Double = 0,
         drawsNormal: Bool = false,
+        anchorW: Double = 0,
+        fontSize: Double = 14,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -412,6 +422,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.anchorU = anchorU
         self.anchorV = anchorV
         self.drawsNormal = drawsNormal
+        self.anchorW = anchorW
+        self.fontSize = fontSize
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -421,7 +433,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
-        case anchorU, anchorV, drawsNormal, projectionDirection
+        case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -452,6 +464,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         anchorV = try container.decodeIfPresent(Double.self, forKey: .anchorV) ?? 0
         drawsNormal = try container.decodeIfPresent(Bool.self, forKey: .drawsNormal) ?? false
         projectionDirection = try container.decodeIfPresent(SIMD3<Double>.self, forKey: .projectionDirection)
+        anchorW = try container.decodeIfPresent(Double.self, forKey: .anchorW) ?? 0
+        fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? 14
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -487,6 +501,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             upper = 2 * Double.pi
         case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection, .projection, .tangent, .tangentPlane:
             break
+        case .text:
+            lineWidth = 1.8
         case .point:
             // 默认大小比线宽大一点，一眼能看见。
             lineWidth = 3

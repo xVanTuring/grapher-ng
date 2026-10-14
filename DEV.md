@@ -127,5 +127,5 @@ asserts that not a single pixel is drawn outside the box and that nearer faces h
 - Surface intersection curves are refined only to mesh accuracy (see `MeshIntersection`); Newton projection onto the true
   surfaces, and curves between a surface and a 2D-extruded wall, are not done.
 - 3D: hover read-out, vector export; translucent surfaces are not depth-sorted against each other.
-- Free text annotations.
+
 - Data scatter plots and statistical charts.

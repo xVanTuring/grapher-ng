@@ -220,3 +220,10 @@
 "Oblique projection" = "斜投影";
 "Project along a direction instead of perpendicular to the plane." = "沿指定方向投影，而不是垂直于平面。";
 "Direction" = "方向";
+
+/* Text layers */
+"Text" = "文字";
+"Font size" = "字号";
+"Edit Text" = "修改文字";
+"Move Text" = "移动文字";
+"Change Font Size" = "修改字号";

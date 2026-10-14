@@ -267,6 +267,34 @@ final class MCPTests: XCTestCase {
         XCTAssertThrowsError(try facade.updateLayer(in: space, id: made.id, stray), "normal 只给 tangent")
     }
 
+    func testTextLayerTakesTheTextAsFormulaAndAPosition() throws {
+        let plane = GraphDocument()
+        let facade = MCPFacade()
+        var text = MCPFacade.LayerEdit()
+        text.kind = .text
+        XCTAssertThrowsError(try facade.addLayer(to: plane, text), "没有文字")
+        text.formula = "x + ("   // 不是公式，不能被当公式拒绝
+        text.anchorU = 1
+        text.anchorV = -2
+        text.fontSize = 20
+        let (made, _) = try facade.addLayer(to: plane, text)
+        XCTAssertEqual(made.formula, "x + (")
+        XCTAssertEqual([made.anchorU, made.anchorV, made.fontSize], [1, -2, 20])
+
+        var bad = MCPFacade.LayerEdit()
+        bad.fontSize = 1
+        XCTAssertThrowsError(try facade.updateLayer(in: plane, id: made.id, bad), "字号范围")
+        let (curve, _) = try facade.addLayer(to: plane, edit(kind: .explicit, formula: "x"))
+        var stray = MCPFacade.LayerEdit()
+        stray.fontSize = 12
+        XCTAssertThrowsError(try facade.updateLayer(in: plane, id: curve.id, stray), "只有文字有字号")
+
+        let space = GraphDocument(dimension: .space)
+        text.anchorW = 3
+        let (made3D, _) = try facade.addLayer(to: space, text)
+        XCTAssertEqual(made3D.anchorW, 3)
+    }
+
     func testPointLabelOption() throws {
         let space = GraphDocument(dimension: .space)
         let facade = MCPFacade()

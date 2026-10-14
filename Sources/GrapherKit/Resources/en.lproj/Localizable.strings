@@ -100,3 +100,7 @@
 "Tangent / normal line" = "Tangent / normal line";
 "Tangent" = "Tangent";
 "Tangent plane" = "Tangent plane";
+
+/* GrapherKit: text labels */
+"Text label" = "Text label";
+"Text" = "Text";

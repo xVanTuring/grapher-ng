@@ -241,7 +241,7 @@ public enum SceneBuilder2D {
         case .parametric, .polar: return true
         case .implicit, .region: return false
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane:
+             .tangent, .tangentPlane, .text:
             return false
         }
     }
@@ -464,6 +464,10 @@ public enum SceneBuilder2D {
             scene.append(.markers(MarkerPrimitiveBatch(
                 positions: [viewport.toScreen(x: tangent.point.x, y: tangent.point.y)],
                 radius: strokeWidth * 1.6 + 2, color: layer.lineStyle.color)))
+
+        case .text:
+            // 文字由画布叠加层与导出的图片写（`TextAnnotations`），不进 Metal 场景。
+            return
 
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
              .tangentPlane:

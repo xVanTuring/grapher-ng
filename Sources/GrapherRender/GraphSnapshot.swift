@@ -71,6 +71,15 @@ public enum GraphSnapshot {
         guard labels else { return rendered }
         return drawing(on: rendered) { context in
             drawPlaneLabels(document: document, viewport: viewport, pointScale: pointScale, in: context)
+            let painter = LabelPainter(pointScale: pointScale, color: document.theme.label, axisNameSize: 11)
+            for annotation in TextAnnotations.all(in: document) {
+                let screen = viewport.toScreen(x: annotation.position.x, y: annotation.position.y)
+                painter.draw(annotation.text, font: LabelPainter.font(size: annotation.fontSize * pointScale, bold: false, monospacedDigits: false),
+                             at: CGPoint(x: screen.x, y: screen.y), anchor: .leading,
+                             color: CGColor(srgbRed: annotation.color.r, green: annotation.color.g,
+                                            blue: annotation.color.b, alpha: annotation.color.a),
+                             in: context)
+            }
         }
     }
 
@@ -108,6 +117,14 @@ public enum GraphSnapshot {
                 case .axisName(let name):
                     painter.draw(name, font: painter.axisName, at: point, anchor: .center, in: context)
                 }
+            }
+            for annotation in TextAnnotations.all(in: document) {
+                guard let screen = view.project(view.normalized(annotation.position)) else { continue }
+                painter.draw(annotation.text, font: LabelPainter.font(size: annotation.fontSize * pointScale, bold: false, monospacedDigits: false),
+                             at: CGPoint(x: screen.x, y: screen.y), anchor: .leading,
+                             color: CGColor(srgbRed: annotation.color.r, green: annotation.color.g,
+                                            blue: annotation.color.b, alpha: annotation.color.a),
+                             in: context)
             }
             // 点的名称：和画布一样写在点的右上方（偏移 9 点）。
             let pointFont = LabelPainter.font(size: 13 * pointScale, bold: true, monospacedDigits: false)

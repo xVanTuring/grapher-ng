@@ -176,7 +176,9 @@ enum MCPTools {
             "direction": MCPSchema.numbers("projection only: [dx, dy, dz] for an oblique projection along that direction; [0, 0, 0] goes back to a perpendicular one", count: 3),
             "projectors": MCPSchema.boolean("projection only: draw thin lines from the original to its projection (default true)"),
             "at": MCPSchema.number("tangent / tangentPlane: the tangent point. tangent: x (explicit), t (parametric) or theta (polar). tangentPlane: x of a surface, u of a parametricSurface"),
-            "at2": MCPSchema.number("tangentPlane only: y of a surface, v of a parametricSurface"),
+            "at2": MCPSchema.number("tangentPlane only: y of a surface, v of a parametricSurface. text: y"),
+            "at3": MCPSchema.number("text in a 3D document only: z of the text position"),
+            "font_size": MCPSchema.number("text only: font size in points, 6–96 (default 14)"),
             "normal": MCPSchema.boolean("tangent only: draw the normal line instead of the tangent line"),
             "label": MCPSchema.boolean("point only: write the layer name (A, B, C…) next to the point (default true)"),
             "opacity": MCPSchema.number("surface / region fill opacity, 0.05–1 (default 1); below 1 a surface becomes translucent"),
@@ -221,6 +223,8 @@ enum MCPTools {
         edit.showsLabel = try args.optionalBool("label")
         edit.anchorU = try args.optionalDouble("at")
         edit.anchorV = try args.optionalDouble("at2")
+        edit.anchorW = try args.optionalDouble("at3")
+        edit.fontSize = try args.optionalDouble("font_size")
         edit.drawsNormal = try args.optionalBool("normal")
         edit.projectionOffset = try args.optionalDouble("offset")
         if let direction = try args.optionalDoubles("direction", count: 3) {
@@ -245,6 +249,7 @@ enum MCPTools {
                 + "and projection (no formula: source_a = a point / spaceCurve / surfaceIntersection layer, target = xy | yz | xz | plane). "
                 + "and tangent (2D: source_a = an explicit / parametric / polar layer, at = x or t or theta, normal = true for the normal line) "
                 + "and tangentPlane (3D: source_a = a surface / parametricSurface layer, at + at2 = the point's x, y or u, v). "
+                + "and text (a free label in either kind of document: formula = the text itself, at / at2 (/ at3 in 3D) = its position in data coordinates, font_size). "
                 + "Every kind except surfaceIntersection, projection, tangent and tangentPlane requires 'formula'.",
             inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind"]),
             tier: .write
@@ -437,6 +442,7 @@ enum MCPTools {
       tangent             (2D document) source_a = id of an explicit / parametric / polar layer, at = x (explicit) | t | theta, normal = true for the normal line; no formula
       tangentPlane        (3D document) source_a = id of a surface / parametricSurface layer, at, at2 = (x, y) or (u, v) of the tangent point; no formula.
                           The plane shows up in the relations panel like any other plane and can be a projection target.
+      text                (2D and 3D documents) formula = the text to write (NOT a formula), at / at2 (and at3 in 3D) = position, font_size, color
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.
     Write the F of an implicit layer WITHOUT "= 0": x^2 + y^2 - 4, not x^2 + y^2 = 4.
     Everything in a 3D document is clipped to the axis box (default −4 … 4 on each axis); scale shapes to fit or call set_view.

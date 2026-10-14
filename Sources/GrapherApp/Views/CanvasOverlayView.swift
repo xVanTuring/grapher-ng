@@ -121,6 +121,15 @@ final class CanvasOverlayView: NSView {
                          at: CGPoint(x: label.point.x, y: label.point.y), anchor: label.anchor)
         }
 
+        // 自由文字：写在数据坐标 (x, y) 上，文字左边缘对着这一点，跟着画布一起平移缩放。
+        for (index, annotation) in TextAnnotations.all(in: state.document).enumerated() {
+            let screen = viewport.toScreen(x: annotation.position.x, y: annotation.position.y)
+            let point = CGPoint(x: screen.x / scale, y: screen.y / scale)
+            guard point.x > -400, point.x < bounds.width + 40, point.y > -40, point.y < bounds.height + 40 else { continue }
+            labels.place("a\(index)", annotation.text, font: .systemFont(ofSize: annotation.fontSize),
+                         color: ControlFactory.nsColor(annotation.color), at: point, anchor: .leading)
+        }
+
         placeProbe(state: state, scale: scale, bounds: bounds, insets: obscuredInsets(scale: scale))
     }
 

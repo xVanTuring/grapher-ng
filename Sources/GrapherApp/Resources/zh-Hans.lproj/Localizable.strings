@@ -160,14 +160,10 @@
 "Enable MCP server" = "启用 MCP 服务";
 "Allow AI to modify graphs" = "允许 AI 修改图形";
 "Port" = "端口";
-"Copy Token" = "复制令牌";
 "Regenerate Token" = "重新生成令牌";
-"Copy Command" = "复制命令";
-"Copy JSON" = "复制 JSON";
 "Copied" = "已复制";
 "Access Token" = "访问令牌";
 "Claude Code" = "Claude Code";
-"Other clients (JSON)" = "其他客户端（JSON）";
 "Stopped" = "已停止";
 "Not running: %@" = "未运行：%@";
 "Running on 127.0.0.1:%ld" = "运行中：127.0.0.1:%ld";
@@ -176,3 +172,8 @@
 "Every request must carry this token. Regenerating it disconnects clients that use the old one." = "每个请求都必须带上这个令牌。重新生成后，使用旧令牌的客户端会断开。";
 "Edit Layer" = "编辑图层";
 "Change Appearance" = "修改外观";
+"AI Access" = "AI 接入";
+"Connect a Client" = "连接客户端";
+"Show" = "显示";
+"Hide" = "隐藏";
+"JSON" = "JSON";

@@ -160,14 +160,10 @@
 "Enable MCP server" = "Enable MCP server";
 "Allow AI to modify graphs" = "Allow AI to modify graphs";
 "Port" = "Port";
-"Copy Token" = "Copy Token";
 "Regenerate Token" = "Regenerate Token";
-"Copy Command" = "Copy Command";
-"Copy JSON" = "Copy JSON";
 "Copied" = "Copied";
 "Access Token" = "Access Token";
 "Claude Code" = "Claude Code";
-"Other clients (JSON)" = "Other clients (JSON)";
 "Stopped" = "Stopped";
 "Not running: %@" = "Not running: %@";
 "Running on 127.0.0.1:%ld" = "Running on 127.0.0.1:%ld";
@@ -176,3 +172,8 @@
 "Every request must carry this token. Regenerating it disconnects clients that use the old one." = "Every request must carry this token. Regenerating it disconnects clients that use the old one.";
 "Edit Layer" = "Edit Layer";
 "Change Appearance" = "Change Appearance";
+"AI Access" = "AI Access";
+"Connect a Client" = "Connect a Client";
+"Show" = "Show";
+"Hide" = "Hide";
+"JSON" = "JSON";

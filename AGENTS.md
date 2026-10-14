@@ -309,3 +309,11 @@ Tests/GrapherNGTests/   单元测试
 - **`AgentScenarioTests`** 把 AI 当用户，走真实的 MCP 工具目录 + JSON-RPC 画图：交线 + 投影、维维亚尼曲线、位置关系
   （`relate` / `draw_relation`）、切线 + 散点 + 文字、参数、出错不留半成品、只读权限。测试宿主里最后一扇窗口关掉会让 App 退出，
   所以测试里留一扇「哨兵」窗口不关。新加 MCP 工具 / 图型时，在这里加一个场景。
+
+## 梯度场
+
+`.gradientField`（立体图）引用一个显式曲面图层（`sourceA`），在坐标盒的 xy 范围上按 `gridDensity` 铺网格，每格一支箭头
+（`GradientField.arrows`，纯逻辑，中心差分求 ∇f）。`gradientOnFloor` 为假时箭头沿曲面最陡上升方向 (fx, fy, |∇f|²)，
+为真时是平放在盒底的 ∇f 本身；`arrowScale` 为负画下降方向。箭头长度 ∝ g/(g+0.5)（不超过一格），颜色按这一批最大梯度归一化
+（`GradientField.color`，蓝 → 黄 → 红）；梯度为 0 的点（极值、鞍点、平地）没有箭头。箭头是 `Polyline3D`（一笔：起点 → 尖 → 翼 → 尖 → 翼），
+所以选中高亮、点选、导出都照常。**公式里有参数时箭头随参数实时变**——这是后面做「参数播放」动画的基础。

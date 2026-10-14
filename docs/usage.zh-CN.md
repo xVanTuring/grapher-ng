@@ -112,6 +112,7 @@ curl -s -X POST http://127.0.0.1:8775/mcp \
 | 平面 / 立体 | `text` | `formula` 是要写的文字（不当公式编译），`at` / `at2`（立体图再加 `at3`）是数据坐标里的位置，`font_size` 字号，`color` 颜色 |
 | 平面 | `tangent` | 没有公式：`source_a` 是 `explicit` / `parametric` / `polar` 图层，`at` 是切点位置（显函数的 x、参数方程的 t、极坐标的 theta），`normal: true` 画法线而不是切线 |
 | 立体 | `tangentPlane` | 没有公式：`source_a` 是 `surface` / `parametricSurface` 图层，`at` + `at2` 是切点的 (x, y) 或 (u, v)；画一块半透明方片、法线和切点，在位置关系面板里当平面用 |
+| 立体 | `gradientField` | 没有公式：`source_a` 是 `surface` 图层 z = f(x, y)；箭头沿最陡上升方向，坡越陡越长越暖（峰顶、谷底、鞍点没有箭头）。`density` 是每个方向的箭头数（2–40），`arrow_scale` 取负数画 −∇f，`on_floor: true` 把 ∇f 平放在坐标盒底面 |
 | 立体 | `point` | `formula`、`secondary_formula`、`tertiary_formula` 依次是 x、y、z（只能写数和参数）；`line_width` 是点的大小 |
 | 立体 | `projection` | 没有公式：`source_a` 是 `point` / `spaceCurve` / `surfaceIntersection` 图层，`target` 取 `xy` / `yz` / `xz`（投到 z / x / y = `offset` 的平面）或 `plane`（`source_b` 是一个平面图层），`projectors` 控制是否画投影线，`direction` = [dx, dy, dz] 改成沿该方向的斜投影 |
 | 立体 | `explicit`、`parametric`、`polar`、`implicit` | 同平面；默认画在 z = 0 上，`extrude: true` 则沿 z 拉成竖直曲面 |

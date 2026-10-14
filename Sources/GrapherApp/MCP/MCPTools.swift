@@ -180,6 +180,9 @@ enum MCPTools {
             "at3": MCPSchema.number("text in a 3D document only: z of the text position"),
             "font_size": MCPSchema.number("text only: font size in points, 6–96 (default 14)"),
             "normal": MCPSchema.boolean("tangent only: draw the normal line instead of the tangent line"),
+            "density": MCPSchema.integer("gradientField only: arrows per axis, 2–40 (default 12)", minimum: 2, maximum: 40),
+            "arrow_scale": MCPSchema.number("gradientField only: arrow length multiplier 0.1–5 (default 1); negative draws the descent direction −∇f"),
+            "on_floor": MCPSchema.boolean("gradientField only: draw ∇f flat on the floor of the box instead of along the surface"),
             "fit": MCPSchema.boolean("scatter only: draw the least-squares line (get_document then reports slope, intercept and r)"),
             "label": MCPSchema.boolean("point only: write the layer name (A, B, C…) next to the point (default true)"),
             "opacity": MCPSchema.number("surface / region fill opacity, 0.05–1 (default 1); below 1 a surface becomes translucent"),
@@ -223,6 +226,9 @@ enum MCPTools {
         edit.opacity = try args.optionalDouble("opacity")
         edit.showsLabel = try args.optionalBool("label")
         edit.showsFit = try args.optionalBool("fit")
+        edit.gridDensity = try args.optionalInt("density")
+        edit.arrowScale = try args.optionalDouble("arrow_scale")
+        edit.gradientOnFloor = try args.optionalBool("on_floor")
         edit.anchorU = try args.optionalDouble("at")
         edit.anchorV = try args.optionalDouble("at2")
         edit.anchorW = try args.optionalDouble("at3")
@@ -252,6 +258,7 @@ enum MCPTools {
                 + "and tangent (2D: source_a = an explicit / parametric / polar layer, at = x or t or theta, normal = true for the normal line) "
                 + "and tangentPlane (3D: source_a = a surface / parametricSurface layer, at + at2 = the point's x, y or u, v). "
                 + "and text (a free label in either kind of document: formula = the text itself, at / at2 (/ at3 in 3D) = its position in data coordinates, font_size). "
+                + "and gradientField (3D: source_a = a surface z = f(x, y) layer; arrows along the steepest ascent, longer and warmer where the slope is larger; on_floor = true draws ∇f flat on the floor; arrow_scale < 0 draws −∇f) "
                 + "and scatter (2D: formula = the data, one \"x, y\" point per line; fit = true draws the least-squares line). "
                 + "Every kind except surfaceIntersection, projection, tangent and tangentPlane requires 'formula'.",
             inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind"]),
@@ -491,6 +498,7 @@ enum MCPTools {
       tangent             (2D document) source_a = id of an explicit / parametric / polar layer, at = x (explicit) | t | theta, normal = true for the normal line; no formula
       tangentPlane        (3D document) source_a = id of a surface / parametricSurface layer, at, at2 = (x, y) or (u, v) of the tangent point; no formula.
                           The plane shows up in the relations panel like any other plane and can be a projection target.
+      gradientField       (3D document) source_a = id of a surface layer z = f(x,y); density = arrows per axis, arrow_scale, on_floor; no formula. Shows where f is steep (red, long arrows) or flat (blue, short; none at extrema/saddles).
       scatter             (2D document) formula = the data, one point per line ("1, 2.5\n2, 4.1"; commas, spaces or tabs; header lines are skipped), fit = true draws y = a·x + b; line_width = point size
       text                (2D and 3D documents) formula = the text to write (NOT a formula), at / at2 (and at3 in 3D) = position, font_size, color
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.

@@ -222,6 +222,46 @@ final class AgentScenarioTests: XCTestCase {
         XCTAssertEqual(distance, 3, accuracy: 1e-6)
     }
 
+    // MARK: - 立体图：梯度场
+
+    func testAgentVisualisesAGradient() async throws {
+        let session = try await session()
+        defer { session.close() }
+        _ = await session.open("space")
+        let hill = await session.add("surface", ["formula": "3*exp(-(x^2 + y^2)/6)", "opacity": 0.55, "name": "Hill"])
+        let torus = await session.add("implicitSurface", ["formula": "x^2 + y^2 + z^2 - 4"])
+        XCTAssertFalse(hill.isEmpty)
+
+        let field = await session.add("gradientField", ["source_a": hill, "density": 14, "line_width": 2.2])
+        XCTAssertFalse(field.isEmpty)
+        let flat = await session.add("gradientField", ["source_a": hill, "on_floor": true, "arrow_scale": -1.2, "density": 10])
+        XCTAssertFalse(flat.isEmpty)
+
+        let layers = await session.layers()
+        let described = try XCTUnwrap(layers.first { $0["id"] as? String == flat })
+        XCTAssertEqual(described["onFloor"] as? Bool, true)
+        XCTAssertEqual(described["arrowScale"] as? Double, -1.2)
+        XCTAssertEqual(described["density"] as? Int, 10)
+
+        // 来源不是显式曲面、缺来源、参数超范围：都报错，什么都不加。
+        let count = layers.count
+        let wrongSource = await session.call("add_layer", ["kind": "gradientField", "source_a": torus])
+        XCTAssertTrue(wrongSource.isError)
+        XCTAssertTrue(wrongSource.text.contains("'surface'"), wrongSource.text)
+        let missing = await session.call("add_layer", ["kind": "gradientField"])
+        XCTAssertTrue(missing.isError)
+        let tooDense = await session.call("update_layer", ["layer_id": field, "density": 400])
+        XCTAssertTrue(tooDense.isError)
+        let stray = await session.call("update_layer", ["layer_id": hill, "density": 5])
+        XCTAssertTrue(stray.isError, "密度只给梯度场")
+        let after = await session.layers().count
+        XCTAssertEqual(after, count)
+
+        let pictureReply = await session.call("render_image", ["width": 800, "height": 600])
+        let picture = try XCTUnwrap(pictureReply.image)
+        XCTAssertGreaterThan(inkFraction(of: picture), 0.02)
+    }
+
     // MARK: - 平面图：切线、数据、文字
 
     func testAgentDrawsTangentsAndAScatterPlot() async throws {

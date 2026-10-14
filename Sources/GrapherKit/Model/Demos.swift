@@ -13,11 +13,12 @@ public enum DemoCategory: String, CaseIterable, Sendable {
     case intersections
     case geometry
     case projections
+    case gradients
 
     public var dimension: DocumentDimension {
         switch self {
         case .curves, .parameters, .tangents, .data: return .plane
-        case .surfaces, .intersections, .geometry, .projections: return .space
+        case .surfaces, .intersections, .geometry, .projections, .gradients: return .space
         }
     }
 
@@ -31,6 +32,7 @@ public enum DemoCategory: String, CaseIterable, Sendable {
         case .intersections: return L("Intersection curves")
         case .geometry: return L("Points, lines and planes")
         case .projections: return L("Projections and tangent planes")
+        case .gradients: return L("Gradients")
         }
     }
 }
@@ -316,6 +318,37 @@ public enum Demos {
                 b.tangentPlane("Tangent plane", of: sphere, at: 0.8, 1.1)
                 return b.document
             },
+
+            Demo(id: "space.gradient-hill", category: .gradients, title: L("Gradient on a hill"),
+                 summary: L("Arrows point uphill, longer and redder where the slope is steeper. The top and the flat foot have none.")) {
+                var b = DemoBuilder(.space, azimuth: 0.8, elevation: 0.65)
+                let hill = b.add(.surface, "z = 3e^(−(x²+y²)/6)", "3*exp(-(x^2 + y^2)/6)") { $0.fillStyle.opacity = 0.55 }
+                b.gradient("∇f", of: hill, density: 14)
+                return b.document
+            },
+            Demo(id: "space.gradient-floor", category: .gradients, title: L("Gradient field as a vector field"),
+                 summary: L("The same idea as in the textbook: ∇f drawn flat on the floor, always pointing across the contours of the surface above.")) {
+                var b = DemoBuilder(.space, azimuth: 0.7, elevation: 0.55)
+                let waves = b.add(.surface, "z = 1.5 sin x cos y", "1.5*sin(x)*cos(y)") { $0.fillStyle.opacity = 0.6 }
+                b.gradient("∇f on the floor", of: waves, density: 16, onFloor: true)
+                return b.document
+            },
+            Demo(id: "space.gradient-saddle", category: .gradients, title: L("Uphill and downhill on a saddle"),
+                 summary: L("Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none.")) {
+                var b = DemoBuilder(.space, azimuth: 0.9, elevation: 0.5)
+                let saddle = b.add(.surface, "z = (x² − y²)/5", "(x^2 - y^2)/5") { $0.fillStyle.opacity = 0.5 }
+                b.gradient("∇f", of: saddle, density: 12)
+                b.gradient("−∇f", of: saddle, density: 12, scale: -1)
+                return b.document
+            },
+            Demo(id: "space.gradient-slider", category: .gradients, title: L("A gradient field that changes with a slider"),
+                 summary: L("Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live.")) {
+                var b = DemoBuilder(.space, azimuth: 0.8, elevation: 0.6)
+                b.document.parameters = [ParameterDefinition(name: "s", value: 6, lowerBound: 1.5, upperBound: 14)]
+                let hill = b.add(.surface, "z = 3e^(−(x²+y²)/s)", "3*exp(-(x^2 + y^2)/s)") { $0.fillStyle.opacity = 0.55 }
+                b.gradient("∇f", of: hill, density: 14, scale: 1.2)
+                return b.document
+            },
         ]
     }
 }
@@ -374,6 +407,19 @@ struct DemoBuilder {
             $0.anchorU = x
             $0.anchorV = y
             $0.anchorW = z
+        }
+    }
+
+    @discardableResult
+    mutating func gradient(
+        _ name: String, of source: Layer, density: Int, scale: Double = 1, onFloor: Bool = false
+    ) -> Layer {
+        add(.gradientField, name) {
+            $0.sourceA = source.id
+            $0.gridDensity = density
+            $0.arrowScale = scale
+            $0.gradientOnFloor = onFloor
+            $0.lineStyle.width = 2.2
         }
     }
 

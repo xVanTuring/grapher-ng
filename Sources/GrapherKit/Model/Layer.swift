@@ -34,6 +34,8 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case text
     /// 平面图：散点数据，`formula` 里每行一个点（"x, y"，逗号 / 空格 / 制表符分隔），可选画最小二乘拟合直线
     case scatter
+    /// 立体图：显式曲面 z = f(x, y) 的梯度场，在网格上画箭头，箭头越长颜色越暖梯度越大，没有公式
+    case gradientField
 
     public var id: String { rawValue }
 
@@ -41,7 +43,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit, .region, .tangent, .text, .scatter: return .plane
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangentPlane:
+             .tangentPlane, .gradientField:
             return .space
         }
     }
@@ -60,7 +62,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
         case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point,
-             .projection, .tangent, .tangentPlane, .text, .scatter:
+             .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField:
             return false
         }
     }
@@ -83,6 +85,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .tangentPlane: return L("Tangent plane")
         case .text: return L("Text label")
         case .scatter: return L("Scatter data")
+        case .gradientField: return L("Gradient field")
         }
     }
 
@@ -104,6 +107,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .tangentPlane: return L("Tangent plane")
         case .text: return L("Text")
         case .scatter: return L("Scatter")
+        case .gradientField: return L("Gradient")
         }
     }
 
@@ -117,7 +121,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text, .scatter: return []
+        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField: return []
         }
     }
 
@@ -156,7 +160,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametricSurface: return "(2 + cos(v))*cos(u)"
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane: return ""
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .gradientField: return ""
         case .text: return "Text"
         case .scatter: return "1, 2.1\n2, 3.9\n3, 6.2\n4, 7.8"
         case .point: return "1"
@@ -185,10 +189,13 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     /// 交线、投影、切线、切平面图层没有公式，只引用别的图层；文字标注的 `formula` 是要写的字，不当公式编译。
     public var needsFormula: Bool {
         switch self {
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter: return false
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField: return false
         default: return true
         }
     }
+
+    /// 能当梯度场来源的曲面：显式曲面 z = f(x, y)。
+    public var isGradientSource: Bool { self == .surface }
 
     /// 能当切线来源的平面曲线。
     public var isTangentSource: Bool { self == .explicit || self == .parametric || self == .polar }
@@ -225,7 +232,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
         case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane, .text, .scatter:
+             .tangent, .tangentPlane, .text, .scatter, .gradientField:
             return false
         }
     }
@@ -369,6 +376,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var fontSize: Double
     /// 散点图：画最小二乘拟合直线。
     public var showsFit: Bool
+    /// 梯度场图层：每个方向画多少个箭头、箭头长度的倍数（负数画下降方向 −∇f）、箭头画在曲面上还是投到地面。
+    public var gridDensity: Int
+    public var arrowScale: Double
+    public var gradientOnFloor: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -402,6 +413,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         anchorW: Double = 0,
         fontSize: Double = 14,
         showsFit: Bool = false,
+        gridDensity: Int = 12,
+        arrowScale: Double = 1,
+        gradientOnFloor: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -433,6 +447,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.anchorW = anchorW
         self.fontSize = fontSize
         self.showsFit = showsFit
+        self.gridDensity = gridDensity
+        self.arrowScale = arrowScale
+        self.gradientOnFloor = gradientOnFloor
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -443,6 +460,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
         case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize, showsFit
+        case gridDensity, arrowScale, gradientOnFloor
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -476,6 +494,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         anchorW = try container.decodeIfPresent(Double.self, forKey: .anchorW) ?? 0
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? 14
         showsFit = try container.decodeIfPresent(Bool.self, forKey: .showsFit) ?? false
+        gridDensity = try container.decodeIfPresent(Int.self, forKey: .gridDensity) ?? 12
+        arrowScale = try container.decodeIfPresent(Double.self, forKey: .arrowScale) ?? 1
+        gradientOnFloor = try container.decodeIfPresent(Bool.self, forKey: .gradientOnFloor) ?? false
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -511,6 +532,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             upper = 2 * Double.pi
         case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection, .projection, .tangent, .tangentPlane:
             break
+        case .gradientField:
+            lineWidth = 2
         case .text:
             lineWidth = 1.8
         case .scatter:

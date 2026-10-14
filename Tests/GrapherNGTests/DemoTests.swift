@@ -41,10 +41,10 @@ final class DemoTests: XCTestCase {
             XCTAssertEqual(demo.make().dimension, demo.dimension, demo.id)
         }
         XCTAssertEqual(Demos.categories(for: .plane), [.curves, .parameters, .tangents, .data])
-        XCTAssertEqual(Demos.categories(for: .space), [.surfaces, .intersections, .geometry, .projections])
+        XCTAssertEqual(Demos.categories(for: .space), [.surfaces, .intersections, .geometry, .projections, .gradients])
         XCTAssertNotNil(Demos.demo(id: "space.sphere-plane"))
         XCTAssertNil(Demos.demo(id: "nope"))
-        XCTAssertGreaterThanOrEqual(Demos.all.count, 20)
+        XCTAssertGreaterThanOrEqual(Demos.all.count, 30)
     }
 
     /// 测试固定用简体中文跑：标题、说明、分类名都得有中文，说明没漏翻译。

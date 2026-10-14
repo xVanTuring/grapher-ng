@@ -241,7 +241,7 @@ public enum SceneBuilder2D {
         case .parametric, .polar: return true
         case .implicit, .region: return false
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane, .text:
+             .tangent, .tangentPlane, .text, .gradientField:
             return false
         case .scatter: return true
         }
@@ -488,7 +488,7 @@ public enum SceneBuilder2D {
             return
 
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangentPlane:
+             .tangentPlane, .gradientField:
             // 立体图型只在 3D 画布上画（`SceneBuilder3D`）。
             return
         }

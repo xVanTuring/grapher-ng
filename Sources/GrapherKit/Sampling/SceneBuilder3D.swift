@@ -129,6 +129,24 @@ public enum SceneBuilder3D {
                 ))
                 fit = DataBox3D(min: p, max: p).intersection(box)?.union(fit) ?? fit
 
+            case .gradientField:
+                guard let id = layer.sourceA,
+                      let source = request.compiled.first(where: { $0.layer.id == id }),
+                      source.layer.kind.isGradientSource, let f = source.primary else { continue }
+                let arrows = GradientField.arrows(
+                    of: f, center: view.center, halfExtent: view.halfExtent, density: layer.gridDensity,
+                    scale: layer.arrowScale, onFloor: layer.gradientOnFloor)
+                let width = max(layer.lineStyle.width * request.backingScale, 0.5)
+                let limit = SurfaceMesher.coordinateLimit
+                for arrow in arrows {
+                    scene.polylines.append(Polyline3D(
+                        points: arrow.path.map {
+                            simd_clamp(SIMD3<Float>(view.normalized($0)), SIMD3(repeating: -limit), SIMD3(repeating: limit))
+                        },
+                        color: GradientField.color(level: arrow.level), width: width))
+                }
+                fit = DataBox3D.enclosing(arrows.map(\.tip))?.intersection(box)?.union(fit) ?? fit
+
             case .tangentPlane:
                 guard let id = layer.sourceA,
                       let source = request.compiled.first(where: { $0.layer.id == id }),

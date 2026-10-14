@@ -174,3 +174,18 @@
 "Viviani's curve" = "Viviani's curve";
 "y = f(x). The curve of 1/x is cut at the pole instead of being joined by a vertical line." = "y = f(x). The curve of 1/x is cut at the pole instead of being joined by a vertical line.";
 "z = f(x, y). A ripple and a saddle; use the opacity slider to see through the saddle." = "z = f(x, y). A ripple and a saddle; use the opacity slider to see through the saddle.";
+
+/* GrapherKit: gradient */
+"Gradient field" = "Gradient field";
+"Gradient" = "Gradient";
+
+/* GrapherKit: gradient demos */
+"Gradients" = "Gradients";
+"Gradient on a hill" = "Gradient on a hill";
+"Arrows point uphill, longer and redder where the slope is steeper. The top and the flat foot have none." = "Arrows point uphill, longer and redder where the slope is steeper. The top and the flat foot have none.";
+"Gradient field as a vector field" = "Gradient field as a vector field";
+"The same idea as in the textbook: ∇f drawn flat on the floor, always pointing across the contours of the surface above." = "The same idea as in the textbook: ∇f drawn flat on the floor, always pointing across the contours of the surface above.";
+"Uphill and downhill on a saddle" = "Uphill and downhill on a saddle";
+"Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none." = "Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none.";
+"A gradient field that changes with a slider" = "A gradient field that changes with a slider";
+"Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live." = "Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live.";

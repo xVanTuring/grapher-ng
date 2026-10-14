@@ -128,6 +128,12 @@ final class MCPFacade {
             if state.document.dimension == .space { object["at3"] = layer.anchorW }
             object["fontSize"] = layer.fontSize
         }
+        if layer.kind == .gradientField {
+            object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
+            object["density"] = layer.gridDensity
+            object["arrowScale"] = layer.arrowScale
+            object["onFloor"] = layer.gradientOnFloor
+        }
         if layer.kind == .tangent || layer.kind == .tangentPlane {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["at"] = layer.anchorU
@@ -231,6 +237,9 @@ final class MCPFacade {
         var extrude: Bool?
         var sourceA: UUID?
         var sourceB: UUID?
+        var gridDensity: Int?
+        var arrowScale: Double?
+        var gradientOnFloor: Bool?
         var opacity: Double?
         var showsFit: Bool?
         var showsLabel: Bool?
@@ -269,6 +278,10 @@ final class MCPFacade {
         } else if kind.needsFormula {
             guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
                 throw MCPInvalidParams("missing required 'formula'")
+            }
+        } else if kind == .gradientField {
+            if edit.sourceA == nil {
+                throw MCPInvalidParams("'gradientField' layers need 'source_a' (the id of a surface layer z = f(x, y))")
             }
         } else if kind == .projection {
             if edit.sourceA == nil { throw MCPInvalidParams("'projection' layers need 'source_a' (the layer to project)") }
@@ -374,8 +387,8 @@ final class MCPFacade {
         }
         if edit.sourceA != nil || edit.sourceB != nil {
             guard layer.kind == .surfaceIntersection || layer.kind == .projection
-                    || layer.kind == .tangent || layer.kind == .tangentPlane else {
-                throw MCPToolError("Only 'surfaceIntersection', 'projection', 'tangent' and 'tangentPlane' layers have source_a / source_b.")
+                    || layer.kind == .tangent || layer.kind == .tangentPlane || layer.kind == .gradientField else {
+                throw MCPToolError("Only 'surfaceIntersection', 'projection', 'tangent', 'tangentPlane' and 'gradientField' layers have source_a / source_b.")
             }
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
@@ -414,6 +427,22 @@ final class MCPFacade {
                 guard layer.kind == .tangent else { throw MCPToolError("Only 'tangent' layers have normal.") }
                 layer.drawsNormal = normal
             }
+        }
+        if edit.gridDensity != nil || edit.arrowScale != nil || edit.gradientOnFloor != nil {
+            guard layer.kind == .gradientField else {
+                throw MCPToolError("Only 'gradientField' layers have density / arrow_scale / on_floor.")
+            }
+            if let density = edit.gridDensity {
+                guard (2...40).contains(density) else { throw MCPToolError("density must be between 2 and 40.") }
+                layer.gridDensity = density
+            }
+            if let scale = edit.arrowScale {
+                guard scale.isFinite, abs(scale) >= 0.1, abs(scale) <= 5 else {
+                    throw MCPToolError("arrow_scale must be between 0.1 and 5 (negative draws the descent direction −∇f).")
+                }
+                layer.arrowScale = scale
+            }
+            if let onFloor = edit.gradientOnFloor { layer.gradientOnFloor = onFloor }
         }
         if let fit = edit.showsFit {
             guard layer.kind == .scatter else { throw MCPToolError("Only 'scatter' layers have fit.") }
@@ -460,6 +489,10 @@ final class MCPFacade {
             try validateTangent(layer, in: state)
             return []
         }
+        if layer.kind == .gradientField {
+            try validateGradient(layer, in: state)
+            return []
+        }
         let probe = GrapherDocument(
             dimension: state.document.dimension,
             layers: [layer],
@@ -490,6 +523,19 @@ final class MCPFacade {
             guard source.kind.isSurfaceSource else {
                 throw MCPToolError("\(field) is a '\(source.kind.rawValue)' layer; it must be a surface, parametricSurface or implicitSurface layer.")
             }
+        }
+    }
+
+    /// 梯度场：来源必须是显式曲面 z = f(x, y) 图层。
+    private func validateGradient(_ layer: Layer, in state: AppState) throws {
+        guard let id = layer.sourceA else {
+            throw MCPInvalidParams("'gradientField' layers need 'source_a' (the id of a surface layer z = f(x, y))")
+        }
+        guard let source = state.layer(with: id) else {
+            throw MCPToolError("source_a: no layer with id \(id.uuidString). Call get_document to list layers.")
+        }
+        guard source.kind.isGradientSource else {
+            throw MCPToolError("source_a is a '\(source.kind.rawValue)' layer; a gradient field needs a 'surface' layer z = f(x, y).")
         }
     }
 
@@ -554,6 +600,7 @@ final class MCPFacade {
         case .projection, .tangent, .tangentPlane: return "(none; it has no formula)"
         case .text: return "(none; the text is not a formula)"
         case .scatter: return "(none; the data is one \"x, y\" point per line)"
+        case .gradientField: return "(none; it has no formula)"
         }
     }
 

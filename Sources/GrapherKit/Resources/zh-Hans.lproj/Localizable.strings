@@ -174,3 +174,18 @@
 "Viviani's curve" = "维维亚尼曲线";
 "y = f(x). The curve of 1/x is cut at the pole instead of being joined by a vertical line." = "y = f(x)。1/x 的曲线在极点处断开，不会连出一条竖线。";
 "z = f(x, y). A ripple and a saddle; use the opacity slider to see through the saddle." = "z = f(x, y)。一个波纹面和一个马鞍面；用不透明度滑块可以透过马鞍面看里面。";
+
+/* GrapherKit: gradient */
+"Gradient field" = "梯度场";
+"Gradient" = "梯度";
+
+/* GrapherKit: gradient demos */
+"Gradients" = "梯度";
+"Gradient on a hill" = "山丘上的梯度";
+"Arrows point uphill, longer and redder where the slope is steeper. The top and the flat foot have none." = "箭头指向上坡方向，坡越陡箭头越长、越红。山顶和平缓的山脚没有箭头。";
+"Gradient field as a vector field" = "作为向量场的梯度场";
+"The same idea as in the textbook: ∇f drawn flat on the floor, always pointing across the contours of the surface above." = "和课本上一样的画法：把 ∇f 平放在地面上，它始终垂直于上方曲面的等高线。";
+"Uphill and downhill on a saddle" = "马鞍面上的上坡与下坡";
+"Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none." = "马鞍面的上坡箭头（暖色）和下坡箭头（长度取负），中间的鞍点没有箭头。";
+"A gradient field that changes with a slider" = "随滑块变化的梯度场";
+"Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live." = "拖动 s 让山丘变宽或变窄：最陡的那一圈会移动，箭头实时跟着变。";

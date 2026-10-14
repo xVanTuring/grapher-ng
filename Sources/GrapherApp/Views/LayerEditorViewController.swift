@@ -59,6 +59,11 @@ final class LayerEditorViewController: NSViewController {
     private var obliqueCheckbox: NSButton?
     private var directionFields: [NSTextField] = []
     private var directionRowView: NSView?
+    private var gradientSourcePopUp: NSPopUpButton?
+    private var densityField: NSTextField?
+    private var arrowScaleField: NSTextField?
+    private var floorCheckbox: NSButton?
+    private var descentCheckbox: NSButton?
     private var scatterTextView: NSTextView?
     private var fitCheckbox: NSButton?
     private var scatterReadout: NSTextField?
@@ -142,7 +147,7 @@ final class LayerEditorViewController: NSViewController {
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
         case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text,
-             .scatter:
+             .scatter, .gradientField:
             return false
         }
     }
@@ -219,6 +224,27 @@ final class LayerEditorViewController: NSViewController {
             rows.append(projectors)
             rows.append(ControlFactory.caption(
                 L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
+        }
+
+        if layer.kind == .gradientField {
+            let source = ControlFactory.popUp(items: [], target: self, action: #selector(gradientSourceEdited(_:)))
+            gradientSourcePopUp = source
+            rows.append(ControlFactory.formRow(L("Of"), source))
+            let density = ControlFactory.numberField(Double(layer.gridDensity), target: self, action: #selector(gradientOptionsEdited(_:)))
+            densityField = density
+            rows.append(ControlFactory.formRow(L("Arrows per axis"), density))
+            let scale = ControlFactory.numberField(abs(layer.arrowScale), target: self, action: #selector(gradientOptionsEdited(_:)))
+            arrowScaleField = scale
+            rows.append(ControlFactory.formRow(L("Arrow length"), scale))
+            let floor = ControlFactory.checkbox(L("Flat on the floor (∇f)"), target: self, action: #selector(gradientOptionsEdited(_:)))
+            floor.toolTip = L("Off: arrows lie along the surface in the steepest-ascent direction. On: ∇f is drawn flat on the floor of the box.")
+            floorCheckbox = floor
+            rows.append(floor)
+            let descent = ControlFactory.checkbox(L("Downhill (−∇f)"), target: self, action: #selector(gradientOptionsEdited(_:)))
+            descentCheckbox = descent
+            rows.append(descent)
+            rows.append(ControlFactory.caption(
+                L("Arrows point where the surface rises fastest; longer and redder means steeper. There are none at peaks, pits and saddle points.")))
         }
 
         if layer.kind == .scatter {
@@ -381,6 +407,7 @@ final class LayerEditorViewController: NSViewController {
         refreshTangent(layer)
         refreshText(layer)
         refreshScatter(layer)
+        refreshGradient(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -418,6 +445,47 @@ final class LayerEditorViewController: NSViewController {
         sourceHint?.stringValue = ready
             ? L("The curve where the two surfaces meet. Hide the surfaces to keep only the curve.")
             : L("Pick two different surface layers. Add surfaces first if the lists are empty.")
+    }
+
+    // MARK: - Gradient rows
+
+    private func refreshGradient(_ layer: Layer) {
+        guard let popUp = gradientSourcePopUp else { return }
+        let sources = state.document.layers.filter { $0.kind.isGradientSource }
+        popUp.removeAllItems()
+        popUp.addItem(withTitle: L("None"))
+        popUp.menu?.addItem(.separator())
+        for source in sources { popUp.addItem(withTitle: source.name) }
+        if let id = layer.sourceA, let index = sources.firstIndex(where: { $0.id == id }) {
+            popUp.selectItem(at: index + 2)
+        } else {
+            popUp.selectItem(at: 0)
+        }
+        if let field = densityField, field.currentEditor() == nil { field.stringValue = ControlFactory.format(Double(layer.gridDensity)) }
+        if let field = arrowScaleField, field.currentEditor() == nil { field.stringValue = ControlFactory.format(abs(layer.arrowScale)) }
+        floorCheckbox?.state = layer.gradientOnFloor ? .on : .off
+        descentCheckbox?.state = layer.arrowScale < 0 ? .on : .off
+    }
+
+    @objc private func gradientSourceEdited(_ sender: NSPopUpButton) {
+        let sources = state.document.layers.filter { $0.kind.isGradientSource }
+        let index = sender.indexOfSelectedItem
+        let id = index >= 2 && index - 2 < sources.count ? sources[index - 2].id : nil
+        editLayer(L("Change Gradient")) { $0.sourceA = id }
+    }
+
+    /// 箭头数、长度、画在曲面上还是地面、上升还是下降：一起读出来写回，哪个控件触发都行。
+    @objc private func gradientOptionsEdited(_ sender: Any?) {
+        guard let layer = state.selectedLayer else { return }
+        let density = Int(min(max((ControlFactory.parse(densityField?.stringValue ?? "") ?? Double(layer.gridDensity)).rounded(), 2), 40))
+        let length = min(max(ControlFactory.parse(arrowScaleField?.stringValue ?? "") ?? abs(layer.arrowScale), 0.1), 5)
+        let onFloor = floorCheckbox?.state == .on
+        let downhill = descentCheckbox?.state == .on
+        editLayer(L("Change Gradient")) {
+            $0.gridDensity = density
+            $0.arrowScale = downhill ? -length : length
+            $0.gradientOnFloor = onFloor
+        }
     }
 
     // MARK: - Scatter rows
@@ -694,6 +762,11 @@ final class LayerEditorViewController: NSViewController {
         obliqueCheckbox = nil
         directionFields = []
         directionRowView = nil
+        gradientSourcePopUp = nil
+        densityField = nil
+        arrowScaleField = nil
+        floorCheckbox = nil
+        descentCheckbox = nil
         scatterTextView?.delegate = nil
         scatterTextView = nil
         fitCheckbox = nil
@@ -747,7 +820,7 @@ final class LayerEditorViewController: NSViewController {
             return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter: return []
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField: return []
         case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }

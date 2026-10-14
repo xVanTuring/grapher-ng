@@ -512,6 +512,10 @@ final class AppState {
             created.anchorU = 1
             created.anchorV = 1
         }
+        if kind == .gradientField {
+            // 默认取最近的一个显式曲面。
+            created.sourceA = document.layers.last { $0.kind.isGradientSource }?.id
+        }
         if kind == .projection {
             // 默认投影最近的一个点 / 曲线 / 交线。
             created.sourceA = document.layers.last { $0.kind.isProjectable }?.id

@@ -9,6 +9,54 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.2.0</title>
+      <pubDate>Wed, 14 Oct 2026 09:48:24 +0000</pubDate>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.2.0</h3>
+<h4>新功能</h4>
+<ul>
+<li><strong>示例目录</strong>：「文件 ▸ 打开示例」（以及欢迎窗口的「示例」）按功能分类列出 27 个现成示例——平面图的曲线与区域、参数滑块、切线与法线、数据与拟合；立体图的曲面与空间曲线、曲面交线、点线面、投影与切平面。每个示例在新窗口打开，拿来学习。</li>
+<li><strong>曲面交线</strong>：选两个曲面（显式、参数、隐式任意组合），画出它们的交线；曲面隐藏后交线仍然保留。</li>
+<li><strong>点、投影与位置关系</strong>：新增点图层（可带名称标注 A、B、C…）；投影图层把点、空间曲线或交线投到坐标面或任意平面上，支持斜投影和投影线；检查器里的「位置关系」面板选两个点 / 直线 / 平面，给出距离、夹角、垂足、交点、公垂线、交线，并可一键画出。</li>
+<li><strong>切线 / 法线与切平面</strong>：平面图里给显函数、参数方程、极坐标画切线或法线；立体图里给曲面画切平面（半透明方片加法线），切平面可进位置关系面板、也能当投影目标。</li>
+<li><strong>半透明曲面</strong>：曲面图层新增不透明度滑块。</li>
+<li><strong>选中联动</strong>：在图层列表选中图层，画布里对应图形高亮；在画布里点击图形，选中对应图层。立体图里鼠标停在图形上，状态栏显示图层名和坐标。</li>
+<li><strong>文字标注与散点图</strong>：平面图、立体图都能放自由文字；平面图新增散点图图层，粘贴 x, y 数据即可作图，可画最小二乘直线并显示均值、标准差、相关系数。</li>
+<li><strong>AI 助手</strong>：新增 <code>relate</code>、<code>draw_relation</code> 工具，助手可以计算并画出点线面的位置关系；其余新图型也都能通过 MCP 使用。</li>
+</ul>
+<h4>改进</h4>
+<ul>
+<li>点的名称标注、文字标注会画进导出的 PNG。</li>
+<li>多个来源（Debug 与发布）统一使用同一个签名证书。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.2.0">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.2.0</h3>
+<h4>What's New</h4>
+<ul>
+<li><strong>Example catalog</strong>: File ▸ Open Example (and the Examples card in the welcome window) lists 27 ready-made graphs grouped by topic — in 2D: curves and regions, parameter sliders, tangents and normals, data and fitting; in 3D: surfaces and space curves, intersection curves, points/lines/planes, projections and tangent planes. Each opens in a new window to learn from.</li>
+<li><strong>Surface intersection curves</strong>: pick two surfaces (explicit, parametric or implicit, any combination) and draw where they meet; the curve stays when the surfaces are hidden.</li>
+<li><strong>Points, projections and relations</strong>: a new point layer (with name labels A, B, C…); a projection layer projects points, space curves or intersection curves onto a coordinate plane or any plane, including oblique projection and projecting lines; the Relations panel in the inspector takes two points / lines / planes and gives distance, angle, foot of the perpendicular, intersection, common perpendicular and line of intersection, and can draw them in one click.</li>
+<li><strong>Tangent / normal lines and tangent planes</strong>: in 2D, a tangent or normal line for explicit, parametric and polar curves; in 3D, a tangent plane (translucent patch plus normal) for surfaces, usable in the Relations panel and as a projection target.</li>
+<li><strong>Translucent surfaces</strong>: surface layers now have an opacity slider.</li>
+<li><strong>Selection linking</strong>: select a layer in the list and its graph is highlighted; click a graph on the canvas to select its layer. In 3D, hovering shows the layer name and coordinates in the status bar.</li>
+<li><strong>Text labels and scatter plots</strong>: free text in both 2D and 3D; a new scatter-plot layer in 2D takes pasted x, y data and can draw the least-squares line with mean, standard deviation and correlation.</li>
+<li><strong>AI assistants</strong>: new <code>relate</code> and <code>draw_relation</code> tools compute and draw point/line/plane relations; every new layer kind is available through MCP.</li>
+</ul>
+<h4>Improvements</h4>
+<ul>
+<li>Point names and text labels are drawn into exported PNGs.</li>
+<li>Debug and release builds now share one signing certificate.</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.2.0">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.2.0/GrapherNG-1.2.0.zip" length="2946903" type="application/octet-stream" sparkle:edSignature="IsApLL4ZhCNi7wV9NxHsHLSpXMALAL+0aUVTDiPedUPK/YoasojSma7ThIqDC1EwyAs135moOgZvrcnl4Q6JAw==" />
+    </item>
+    <item>
       <title>v1.1.1</title>
       <pubDate>Wed, 14 Oct 2026 06:50:23 +0000</pubDate>
       <sparkle:version>4</sparkle:version>

@@ -129,6 +129,37 @@ public enum SceneBuilder3D {
                 ))
                 fit = DataBox3D(min: p, max: p).intersection(box)?.union(fit) ?? fit
 
+            case .gradientFlow:
+                guard let id = layer.sourceA,
+                      let source = request.compiled.first(where: { $0.layer.id == id }),
+                      source.layer.kind.isGradientSource, let f = source.primary else { continue }
+                let floorZ = view.center.z - view.halfExtent + 0.02 * view.halfExtent
+                let raw = compiled.secondary?.evaluate([]) ?? 1
+                let progress = raw.isFinite ? min(max(raw, 0), 1) : 1
+                let width = max(layer.lineStyle.width * request.backingScale, 0.5)
+                let limit = SurfaceMesher.coordinateLimit
+                var extent: [SIMD3<Double>] = []
+                for seed in ScatterData.parse(layer.formula).prefix(40) {
+                    let xy = GradientFlow.path(
+                        of: f, from: seed, center: view.center, halfExtent: view.halfExtent, descent: layer.arrowScale < 0)
+                    let line = xy.map { SIMD3($0.x, $0.y, layer.gradientOnFloor ? floorZ : f.evaluate([$0.x, $0.y])) }
+                    extent.append(contentsOf: line)
+                    if line.count >= 2 {
+                        scene.polylines.append(Polyline3D(
+                            points: line.map {
+                                simd_clamp(SIMD3<Float>(view.normalized($0)), SIMD3(repeating: -limit), SIMD3(repeating: limit))
+                            },
+                            color: layer.lineStyle.color, width: width))
+                    }
+                    if let ball = GradientFlow.point(along: line, fraction: progress) {
+                        scene.meshes.append(PointMarker.mesh(
+                            center: SIMD3<Float>(view.normalized(ball)),
+                            radius: PointMarker.radius(width: layer.lineStyle.width * 1.8),
+                            color: layer.lineStyle.color))
+                    }
+                }
+                fit = DataBox3D.enclosing(extent)?.intersection(box)?.union(fit) ?? fit
+
             case .gradientField:
                 guard let id = layer.sourceA,
                       let source = request.compiled.first(where: { $0.layer.id == id }),

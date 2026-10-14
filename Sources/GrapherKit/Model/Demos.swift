@@ -349,6 +349,27 @@ public enum Demos {
                 b.gradient("∇f", of: hill, density: 14, scale: 1.2)
                 return b.document
             },
+            Demo(id: "space.gradient-climb", category: .gradients, title: L("Climbing to two summits"),
+                 summary: L("Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along.")) {
+                var b = DemoBuilder(.space, azimuth: 0.8, elevation: 0.6)
+                b.document.parameters = [ParameterDefinition(name: "p", value: 0.35, lowerBound: 0, upperBound: 1)]
+                let hills = b.add(.surface, "Two hills", "2.5*exp(-((x - 1.5)^2 + (y - 1)^2)/3) + 1.6*exp(-((x + 1.8)^2 + (y + 1.2)^2)/2.5)") {
+                    $0.fillStyle.opacity = 0.5
+                }
+                b.flow("Uphill paths", of: hills,
+                       seeds: "0.2, 0.2\n3, -0.5\n1.5, 3\n-0.5, 1.2\n-3, -2.5\n-1.5, 0\n0, -3\n3, 3", progress: "p")
+                return b.document
+            },
+            Demo(id: "space.gradient-descent", category: .gradients, title: L("Gradient descent in a narrow valley"),
+                 summary: L("Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p.")) {
+                var b = DemoBuilder(.space, azimuth: 0.55, elevation: 0.55)
+                b.document.parameters = [ParameterDefinition(name: "p", value: 0.5, lowerBound: 0, upperBound: 1)]
+                let valley = b.add(.surface, "z = x²/8 + y²/1.5 − 2", "x^2/8 + y^2/1.5 - 2") { $0.fillStyle.opacity = 0.5 }
+                b.flow("Downhill paths", of: valley, seeds: "-3.6, 2.4\n3.6, 2.4\n-3.6, -2.4\n3.6, -2.4\n0, 3\n-3.2, 0.4",
+                       progress: "p", descent: true)
+                b.gradient("−∇f", of: valley, density: 10, scale: -0.8, onFloor: true)
+                return b.document
+            },
         ]
     }
 }
@@ -407,6 +428,18 @@ struct DemoBuilder {
             $0.anchorU = x
             $0.anchorV = y
             $0.anchorW = z
+        }
+    }
+
+    @discardableResult
+    mutating func flow(
+        _ name: String, of source: Layer, seeds: String, progress: String = "1", descent: Bool = false, onFloor: Bool = false
+    ) -> Layer {
+        add(.gradientFlow, name, seeds, progress) {
+            $0.sourceA = source.id
+            $0.arrowScale = descent ? -1 : 1
+            $0.gradientOnFloor = onFloor
+            $0.lineStyle.width = 2.6
         }
     }
 

@@ -189,3 +189,12 @@
 "Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none." = "Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none.";
 "A gradient field that changes with a slider" = "A gradient field that changes with a slider";
 "Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live." = "Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live.";
+
+/* GrapherKit: gradient flow */
+"Gradient flow lines" = "Gradient flow lines";
+"Flow" = "Flow";
+
+"Climbing to two summits" = "Climbing to two summits";
+"Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along." = "Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along.";
+"Gradient descent in a narrow valley" = "Gradient descent in a narrow valley";
+"Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p." = "Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p.";

@@ -317,3 +317,9 @@ Tests/GrapherNGTests/   单元测试
 为真时是平放在盒底的 ∇f 本身；`arrowScale` 为负画下降方向。箭头长度 ∝ g/(g+0.5)（不超过一格），颜色按这一批最大梯度归一化
 （`GradientField.color`，蓝 → 黄 → 红）；梯度为 0 的点（极值、鞍点、平地）没有箭头。箭头是 `Polyline3D`（一笔：起点 → 尖 → 翼 → 尖 → 翼），
 所以选中高亮、点选、导出都照常。**公式里有参数时箭头随参数实时变**——这是后面做「参数播放」动画的基础。
+
+**参数播放**：`AppState.togglePlayback`（每个参数一个播放按钮，参数面板里）。60Hz 的 `Timer` 按实际流逝时间（一帧最多按 0.1 秒）用
+`ParameterPlayback.advance`（Kit 里的纯数学：往返 / 循环、大步长也折得对）推进参数值，每帧走和拖滑块一样的 `requestInteractiveRebuild`（停手 200ms 补精）。
+整个播放期间是一次 `beginLiveEdit` / `commitLiveEdit`，撤销回到播放前的值；`replaceDocument`、撤销、删参数都会停播放。播放状态和速度是窗口状态，不进文档。
+**梯度流线**（`.gradientFlow`）：`formula` 是起点文本（`ScatterData.parse`）、不当公式编译，只有 `secondaryFormula`（小球位置 0…1，可写参数）
+被 `LayerCompiler` 编译；路径在 `GradientFlow.path`（xy 平面上 RK4、按弧长匀速，到临界点 / 出盒 / 900 步停）。

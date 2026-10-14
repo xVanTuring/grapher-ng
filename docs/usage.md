@@ -115,6 +115,7 @@ Every tool that targets a document takes an optional `document_id`. Leave it out
 | 2D | `tangent` | no formula: `source_a` = an `explicit` / `parametric` / `polar` layer, `at` = x (explicit), t (parametric) or theta (polar), `normal: true` draws the normal line instead |
 | 3D | `tangentPlane` | no formula: `source_a` = a `surface` / `parametricSurface` layer, `at` + `at2` = the point's (x, y) or (u, v); shows a translucent patch, its normal and the point, and counts as a plane in the relations panel |
 | 3D | `gradientField` | no formula: `source_a` = a `surface` layer z = f(x, y); arrows along the steepest ascent, longer and warmer where the slope is larger (none at peaks, pits, saddles). `density` = arrows per axis (2–40), `arrow_scale` (negative draws −∇f), `on_floor: true` draws ∇f flat on the floor of the box |
+| 3D | `gradientFlow` | `source_a` = a `surface` layer; `formula` = the starting points, one `x, y` per line; the path follows ∇f uphill (`arrow_scale` < 0: downhill), `on_floor` draws it flat on the floor; `secondary_formula` = the ball position along the path, 0 to 1, and may use a parameter (play that parameter to roll the ball) |
 | 3D | `point` | `formula`, `secondary_formula`, `tertiary_formula` = x, y, z (numbers and parameters only); `line_width` is the size |
 | 3D | `projection` | no formula: `source_a` = a `point` / `spaceCurve` / `surfaceIntersection` layer, `target` = `xy` / `yz` / `xz` (the plane z / x / y = `offset`) or `plane` (`source_b` = a plane layer), `projectors` draws the projecting lines, `direction` = [dx, dy, dz] makes it an oblique projection |
 | 3D | `explicit`, `parametric`, `polar`, `implicit` | as in 2D; drawn on z = 0, or with `extrude: true` swept along z |
@@ -138,3 +139,7 @@ For implicit kinds write F without `= 0` (`x^2 + y^2 - 4`, not `x^2 + y^2 = 4`).
 - **3D**: surfaces and space curves · intersection curves · points, lines and planes · projections and tangent planes
 
 Hover over an example in the menu for a one-line explanation.
+
+### Animating with parameters
+
+Every parameter in the left panel has a **play** button. Play makes the slider sweep its range by itself, so every graph that uses the parameter moves: a plane sliding through a surface (and its intersection curve with it), a wave changing phase, a gradient field following a hill that widens and narrows, a ball rolling along a gradient path (write the ball position as a parameter such as `p`). The gear next to **+** sets the speed (slow / medium / fast) and whether it goes back and forth or repeats. Several parameters can play at once; undo returns to the values before playing.

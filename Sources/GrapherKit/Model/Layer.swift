@@ -36,6 +36,9 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case scatter
     /// 立体图：显式曲面 z = f(x, y) 的梯度场，在网格上画箭头，箭头越长颜色越暖梯度越大，没有公式
     case gradientField
+    /// 立体图：从几个起点沿梯度一路上升（或下降）的流线。`formula` 里每行一个起点 "x, y"，
+    /// `secondaryFormula` 是小球在路径上的位置（0…1，可以写参数），其余引用显式曲面
+    case gradientFlow
 
     public var id: String { rawValue }
 
@@ -43,7 +46,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit, .region, .tangent, .text, .scatter: return .plane
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangentPlane, .gradientField:
+             .tangentPlane, .gradientField, .gradientFlow:
             return .space
         }
     }
@@ -62,7 +65,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
         case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point,
-             .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField:
+             .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField, .gradientFlow:
             return false
         }
     }
@@ -86,6 +89,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .text: return L("Text label")
         case .scatter: return L("Scatter data")
         case .gradientField: return L("Gradient field")
+        case .gradientFlow: return L("Gradient flow lines")
         }
     }
 
@@ -108,6 +112,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .text: return L("Text")
         case .scatter: return L("Scatter")
         case .gradientField: return L("Gradient")
+        case .gradientFlow: return L("Flow")
         }
     }
 
@@ -121,7 +126,9 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField: return []
+        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField,
+             .gradientFlow:
+            return []
         }
     }
 
@@ -161,6 +168,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
         case .surfaceIntersection, .projection, .tangent, .tangentPlane, .gradientField: return ""
+        case .gradientFlow: return "1.5, 0.5\n-2, 2\n0.5, -3\n-3, -1.5"
         case .text: return "Text"
         case .scatter: return "1, 2.1\n2, 3.9\n3, 6.2\n4, 7.8"
         case .point: return "1"
@@ -172,6 +180,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametric: return "sin(t)"
         case .parametricSurface: return "(2 + cos(v))*sin(u)"
         case .spaceCurve: return "2*sin(t)"
+        case .gradientFlow: return "1"
         case .point: return "2"
         default: return ""
         }
@@ -189,7 +198,8 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     /// 交线、投影、切线、切平面图层没有公式，只引用别的图层；文字标注的 `formula` 是要写的字，不当公式编译。
     public var needsFormula: Bool {
         switch self {
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField: return false
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField, .gradientFlow:
+            return false
         default: return true
         }
     }
@@ -232,7 +242,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
         case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane, .text, .scatter, .gradientField:
+             .tangent, .tangentPlane, .text, .scatter, .gradientField, .gradientFlow:
             return false
         }
     }
@@ -534,6 +544,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             break
         case .gradientField:
             lineWidth = 2
+        case .gradientFlow:
+            lineWidth = 2.6
         case .text:
             lineWidth = 1.8
         case .scatter:

@@ -189,3 +189,12 @@
 "Uphill arrows (warm) and downhill arrows (negative length) of a saddle; the saddle point in the middle has none." = "马鞍面的上坡箭头（暖色）和下坡箭头（长度取负），中间的鞍点没有箭头。";
 "A gradient field that changes with a slider" = "随滑块变化的梯度场";
 "Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live." = "拖动 s 让山丘变宽或变窄：最陡的那一圈会移动，箭头实时跟着变。";
+
+/* GrapherKit: gradient flow */
+"Gradient flow lines" = "梯度流线";
+"Flow" = "流线";
+
+"Climbing to two summits" = "攀向两座山顶";
+"Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along." = "从不同起点沿梯度走的路径，会停在不同的山顶上。在参数 p 上按播放，小球就沿路径滚动。";
+"Gradient descent in a narrow valley" = "窄谷里的梯度下降";
+"Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p." = "沿 −∇f 往谷里走：路径先沿陡峭的谷壁下坠，再沿谷底滑行。在参数 p 上按播放。";

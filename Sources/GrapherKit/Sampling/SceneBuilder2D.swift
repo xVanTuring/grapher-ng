@@ -37,6 +37,14 @@ public final class LayerCompiler {
 
         for layer in document.layers {
             var compiled = CompiledLayer(layer: layer)
+            // 梯度流线：`formula` 是起点列表（文字），只有「小球位置」`secondaryFormula` 是公式（可以写参数）。
+            if layer.kind == .gradientFlow {
+                let outcome = compileOne(source: layer.secondaryFormula, variables: [], parameters: parameters)
+                compiled.secondary = outcome.0
+                compiled.secondaryError = outcome.1
+                result.append(compiled)
+                continue
+            }
             guard layer.kind.needsFormula else {
                 result.append(compiled)
                 continue
@@ -241,7 +249,7 @@ public enum SceneBuilder2D {
         case .parametric, .polar: return true
         case .implicit, .region: return false
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane, .text, .gradientField:
+             .tangent, .tangentPlane, .text, .gradientField, .gradientFlow:
             return false
         case .scatter: return true
         }
@@ -488,7 +496,7 @@ public enum SceneBuilder2D {
             return
 
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangentPlane, .gradientField:
+             .tangentPlane, .gradientField, .gradientFlow:
             // 立体图型只在 3D 画布上画（`SceneBuilder3D`）。
             return
         }

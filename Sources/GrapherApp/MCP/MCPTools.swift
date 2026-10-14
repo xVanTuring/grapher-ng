@@ -259,6 +259,7 @@ enum MCPTools {
                 + "and tangentPlane (3D: source_a = a surface / parametricSurface layer, at + at2 = the point's x, y or u, v). "
                 + "and text (a free label in either kind of document: formula = the text itself, at / at2 (/ at3 in 3D) = its position in data coordinates, font_size). "
                 + "and gradientField (3D: source_a = a surface z = f(x, y) layer; arrows along the steepest ascent, longer and warmer where the slope is larger; on_floor = true draws ∇f flat on the floor; arrow_scale < 0 draws −∇f) "
+                + "and gradientFlow (3D: source_a = a surface layer; formula = starting points one \"x, y\" per line; the path climbs along ∇f, arrow_scale < 0 descends, on_floor draws it flat; secondary_formula = ball position 0 to 1 along the path, may use a parameter so that playing the parameter slides the ball) "
                 + "and scatter (2D: formula = the data, one \"x, y\" point per line; fit = true draws the least-squares line). "
                 + "Every kind except surfaceIntersection, projection, tangent and tangentPlane requires 'formula'.",
             inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind"]),
@@ -499,6 +500,7 @@ enum MCPTools {
       tangentPlane        (3D document) source_a = id of a surface / parametricSurface layer, at, at2 = (x, y) or (u, v) of the tangent point; no formula.
                           The plane shows up in the relations panel like any other plane and can be a projection target.
       gradientField       (3D document) source_a = id of a surface layer z = f(x,y); density = arrows per axis, arrow_scale, on_floor; no formula. Shows where f is steep (red, long arrows) or flat (blue, short; none at extrema/saddles).
+      gradientFlow        (3D document) source_a = id of a surface layer; formula = start points ("1.5, 0.5\n-2, 2"); secondary_formula = ball position along the path, 0 to 1 (e.g. "p" with a parameter p; play p to animate); arrow_scale < 0 = descend; on_floor
       scatter             (2D document) formula = the data, one point per line ("1, 2.5\n2, 4.1"; commas, spaces or tabs; header lines are skipped), fit = true draws y = a·x + b; line_width = point size
       text                (2D and 3D documents) formula = the text to write (NOT a formula), at / at2 (and at3 in 3D) = position, font_size, color
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.

@@ -25,6 +25,8 @@ final class AppState {
         case errors
         /// Parameters were added, removed or renamed.
         case parameters
+        /// A parameter's value moved on its own (playback) or playback started / stopped.
+        case playback
         /// Viewport framing changed.
         case viewport
     }
@@ -192,6 +194,7 @@ final class AppState {
     }
 
     private func restore(_ snapshot: GrapherDocument) {
+        stopAllPlayback(commit: false)
         var restored = snapshot
         adoptCanvasMetrics(&restored)
         document = restored
@@ -512,7 +515,7 @@ final class AppState {
             created.anchorU = 1
             created.anchorV = 1
         }
-        if kind == .gradientField {
+        if kind == .gradientField || kind == .gradientFlow {
             // 默认取最近的一个显式曲面。
             created.sourceA = document.layers.last { $0.kind.isGradientSource }?.id
         }
@@ -592,7 +595,91 @@ final class AppState {
         mutate(L("New Parameter")) { $0.parameters.append(parameter) }
     }
 
+    // MARK: - Playback
+
+    /// 正在自动播放的参数：id → 方向（+1 往上，−1 往下）。
+    private(set) var playing: [UUID: Double] = [:]
+    /// 扫满一个参数的范围要多少秒、到头之后怎么办。窗口自己的状态，不进文档。
+    var playbackSweepSeconds = 6.0
+    var playbackMode: PlaybackMode = .pingPong
+    private var playbackTimer: Timer?
+    private var playbackClock: CFTimeInterval = 0
+    /// 播放期间所有值的变化合成一步撤销：撤销回到开始播放之前。
+    private var playbackOpensLiveEdit = false
+
+    func isPlaying(_ id: UUID) -> Bool { playing[id] != nil }
+
+    func togglePlayback(id: UUID) {
+        if playing[id] != nil {
+            playing[id] = nil
+            if playing.isEmpty { stopAllPlayback(commit: true) } else { notify(.playback) }
+            return
+        }
+        guard document.parameters.contains(where: { $0.id == id }) else { return }
+        if playing.isEmpty {
+            playbackOpensLiveEdit = liveEditSnapshot == nil
+            if playbackOpensLiveEdit { beginLiveEdit() }
+            playbackClock = CACurrentMediaTime()
+            let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+                MainActor.assumeIsolated {
+                    guard let self else { timer.invalidate(); return }
+                    self.tickPlayback()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            playbackTimer = timer
+        }
+        playing[id] = 1
+        notify(.playback)
+    }
+
+    func stopAllPlayback(commit: Bool) {
+        playbackTimer?.invalidate()
+        playbackTimer = nil
+        let wasPlaying = !playing.isEmpty
+        playing = [:]
+        if playbackOpensLiveEdit {
+            playbackOpensLiveEdit = false
+            if commit { commitLiveEdit(L("Play Parameter")) } else { liveEditSnapshot = nil }
+        }
+        if wasPlaying {
+            requestRebuild(interactive: false)
+            notify(.playback)
+        }
+    }
+
+    private func tickPlayback() {
+        let now = CACurrentMediaTime()
+        // 窗口被拖住或机器卡了之后别一步跳很远：一帧最多按 0.1 秒算。
+        let elapsed = min(max(now - playbackClock, 0), 0.1)
+        playbackClock = now
+        var changed = false
+        for (id, direction) in playing {
+            guard let index = document.parameters.firstIndex(where: { $0.id == id }) else {
+                playing[id] = nil
+                continue
+            }
+            let parameter = document.parameters[index]
+            let next = ParameterPlayback.advance(
+                value: parameter.value, direction: direction,
+                lower: min(parameter.lowerBound, parameter.upperBound), upper: max(parameter.lowerBound, parameter.upperBound),
+                seconds: elapsed, sweepSeconds: playbackSweepSeconds, mode: playbackMode)
+            playing[id] = next.direction
+            if next.value != parameter.value {
+                document.parameters[index].value = next.value
+                changed = true
+            }
+        }
+        if playing.isEmpty { stopAllPlayback(commit: true); return }
+        guard changed else { return }
+        markEdited()
+        requestInteractiveRebuild()
+        notify(.playback)
+    }
+
     func removeParameter(id: UUID) {
+        playing[id] = nil
+        if playing.isEmpty { stopAllPlayback(commit: true) }
         mutate(L("Delete Parameter")) { document in
             document.parameters.removeAll { $0.id == id }
         }
@@ -680,6 +767,7 @@ final class AppState {
     /// 换上从文件读进来的文档（`GraphDocument.read`）。读写文件、文件名、是否改过都归 `NSDocument` 管，
     /// 这里只换内容。
     func replaceDocument(with loaded: GrapherDocument) {
+        stopAllPlayback(commit: false)
         var loaded = loaded
         adoptCanvasMetrics(&loaded)
         document = loaded

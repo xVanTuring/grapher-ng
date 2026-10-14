@@ -134,6 +134,13 @@ final class MCPFacade {
             object["arrowScale"] = layer.arrowScale
             object["onFloor"] = layer.gradientOnFloor
         }
+        if layer.kind == .gradientFlow {
+            object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
+            object["seeds"] = ScatterData.parse(layer.formula).map { [$0.x, $0.y] }
+            object["progress"] = layer.secondaryFormula
+            object["descent"] = layer.arrowScale < 0
+            object["onFloor"] = layer.gradientOnFloor
+        }
         if layer.kind == .tangent || layer.kind == .tangentPlane {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["at"] = layer.anchorU
@@ -279,6 +286,13 @@ final class MCPFacade {
             guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
                 throw MCPInvalidParams("missing required 'formula'")
             }
+        } else if kind == .gradientFlow {
+            if edit.sourceA == nil {
+                throw MCPInvalidParams("'gradientFlow' layers need 'source_a' (the id of a surface layer z = f(x, y))")
+            }
+            guard let seeds = edit.formula, !ScatterData.parse(seeds).isEmpty else {
+                throw MCPInvalidParams("'gradientFlow' layers need 'formula': the starting points, one \"x, y\" per line")
+            }
         } else if kind == .gradientField {
             if edit.sourceA == nil {
                 throw MCPInvalidParams("'gradientField' layers need 'source_a' (the id of a surface layer z = f(x, y))")
@@ -339,7 +353,7 @@ final class MCPFacade {
         if let name = edit.name { layer.name = name }
         if let formula = edit.formula { layer.formula = formula }
         if let secondary = edit.secondaryFormula {
-            guard layer.kind.needsSecondaryFormula else {
+            guard layer.kind.needsSecondaryFormula || layer.kind == .gradientFlow else {
                 throw MCPToolError("'\(layer.kind.rawValue)' layers have no secondary_formula.")
             }
             layer.secondaryFormula = secondary
@@ -387,8 +401,9 @@ final class MCPFacade {
         }
         if edit.sourceA != nil || edit.sourceB != nil {
             guard layer.kind == .surfaceIntersection || layer.kind == .projection
-                    || layer.kind == .tangent || layer.kind == .tangentPlane || layer.kind == .gradientField else {
-                throw MCPToolError("Only 'surfaceIntersection', 'projection', 'tangent', 'tangentPlane' and 'gradientField' layers have source_a / source_b.")
+                    || layer.kind == .tangent || layer.kind == .tangentPlane || layer.kind == .gradientField
+                    || layer.kind == .gradientFlow else {
+                throw MCPToolError("Only 'surfaceIntersection', 'projection', 'tangent', 'tangentPlane', 'gradientField' and 'gradientFlow' layers have source_a / source_b.")
             }
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
@@ -429,8 +444,11 @@ final class MCPFacade {
             }
         }
         if edit.gridDensity != nil || edit.arrowScale != nil || edit.gradientOnFloor != nil {
-            guard layer.kind == .gradientField else {
-                throw MCPToolError("Only 'gradientField' layers have density / arrow_scale / on_floor.")
+            guard layer.kind == .gradientField || layer.kind == .gradientFlow else {
+                throw MCPToolError("Only 'gradientField' and 'gradientFlow' layers have density / arrow_scale / on_floor.")
+            }
+            if edit.gridDensity != nil, layer.kind != .gradientField {
+                throw MCPToolError("Only 'gradientField' layers have density.")
             }
             if let density = edit.gridDensity {
                 guard (2...40).contains(density) else { throw MCPToolError("density must be between 2 and 40.") }
@@ -492,6 +510,13 @@ final class MCPFacade {
         if layer.kind == .gradientField {
             try validateGradient(layer, in: state)
             return []
+        }
+        if layer.kind == .gradientFlow {
+            try validateGradient(layer, in: state)
+            guard !ScatterData.parse(layer.formula).isEmpty else {
+                throw MCPToolError("The starting points have no valid \"x, y\" line. Write one pair per line, e.g. \"1.5, 0.5\".")
+            }
+            // 往下走：小球位置公式（secondary_formula）照常编译检查。
         }
         let probe = GrapherDocument(
             dimension: state.document.dimension,
@@ -601,6 +626,7 @@ final class MCPFacade {
         case .text: return "(none; the text is not a formula)"
         case .scatter: return "(none; the data is one \"x, y\" point per line)"
         case .gradientField: return "(none; it has no formula)"
+        case .gradientFlow: return "(secondary_formula may use parameters only; the ball position, 0 to 1)"
         }
     }
 

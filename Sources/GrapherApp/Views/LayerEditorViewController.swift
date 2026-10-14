@@ -147,7 +147,7 @@ final class LayerEditorViewController: NSViewController {
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
         case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text,
-             .scatter, .gradientField:
+             .scatter, .gradientField, .gradientFlow:
             return false
         }
     }
@@ -226,29 +226,39 @@ final class LayerEditorViewController: NSViewController {
                 L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
         }
 
-        if layer.kind == .gradientField {
+        if layer.kind == .gradientField || layer.kind == .gradientFlow {
+            let isField = layer.kind == .gradientField
             let source = ControlFactory.popUp(items: [], target: self, action: #selector(gradientSourceEdited(_:)))
             gradientSourcePopUp = source
             rows.append(ControlFactory.formRow(L("Of"), source))
-            let density = ControlFactory.numberField(Double(layer.gridDensity), target: self, action: #selector(gradientOptionsEdited(_:)))
-            densityField = density
-            rows.append(ControlFactory.formRow(L("Arrows per axis"), density))
-            let scale = ControlFactory.numberField(abs(layer.arrowScale), target: self, action: #selector(gradientOptionsEdited(_:)))
-            arrowScaleField = scale
-            rows.append(ControlFactory.formRow(L("Arrow length"), scale))
-            let floor = ControlFactory.checkbox(L("Flat on the floor (∇f)"), target: self, action: #selector(gradientOptionsEdited(_:)))
-            floor.toolTip = L("Off: arrows lie along the surface in the steepest-ascent direction. On: ∇f is drawn flat on the floor of the box.")
+            if isField {
+                let density = ControlFactory.numberField(Double(layer.gridDensity), target: self, action: #selector(gradientOptionsEdited(_:)))
+                densityField = density
+                rows.append(ControlFactory.formRow(L("Arrows per axis"), density))
+                let scale = ControlFactory.numberField(abs(layer.arrowScale), target: self, action: #selector(gradientOptionsEdited(_:)))
+                arrowScaleField = scale
+                rows.append(ControlFactory.formRow(L("Arrow length"), scale))
+            }
+            let floor = ControlFactory.checkbox(
+                isField ? L("Flat on the floor (∇f)") : L("Flat on the floor"),
+                target: self, action: #selector(gradientOptionsEdited(_:)))
+            floor.toolTip = isField
+                ? L("Off: arrows lie along the surface in the steepest-ascent direction. On: ∇f is drawn flat on the floor of the box.")
+                : L("Off: the path lies on the surface. On: it is drawn flat on the floor of the box.")
             floorCheckbox = floor
             rows.append(floor)
-            let descent = ControlFactory.checkbox(L("Downhill (−∇f)"), target: self, action: #selector(gradientOptionsEdited(_:)))
+            let descent = ControlFactory.checkbox(
+                isField ? L("Downhill (−∇f)") : L("Go downhill"), target: self, action: #selector(gradientOptionsEdited(_:)))
             descentCheckbox = descent
             rows.append(descent)
-            rows.append(ControlFactory.caption(
-                L("Arrows point where the surface rises fastest; longer and redder means steeper. There are none at peaks, pits and saddle points.")))
+            rows.append(ControlFactory.caption(isField
+                ? L("Arrows point where the surface rises fastest; longer and redder means steeper. There are none at peaks, pits and saddle points.")
+                : L("Each path starts at a point below and follows the gradient. Make the ball position a parameter (for example p) and press play on it to roll the ball along.")))
         }
 
-        if layer.kind == .scatter {
-            rows.append(ControlFactory.sectionLabel(L("Data (one point per line: x, y)")))
+        if layer.kind == .scatter || layer.kind == .gradientFlow {
+            rows.append(ControlFactory.sectionLabel(layer.kind == .scatter
+                ? L("Data (one point per line: x, y)") : L("Starting points (one per line: x, y)")))
             let textView = NSTextView()
             textView.isRichText = false
             textView.isAutomaticQuoteSubstitutionEnabled = false
@@ -267,9 +277,11 @@ final class LayerEditorViewController: NSViewController {
             scroll.heightAnchor.constraint(equalToConstant: 120).isActive = true
             scatterTextView = textView
             rows.append(scroll)
-            let fit = ControlFactory.checkbox(L("Show least-squares line"), target: self, action: #selector(fitToggled(_:)))
-            fitCheckbox = fit
-            rows.append(fit)
+            if layer.kind == .scatter {
+                let fit = ControlFactory.checkbox(L("Show least-squares line"), target: self, action: #selector(fitToggled(_:)))
+                fitCheckbox = fit
+                rows.append(fit)
+            }
             let readout = ControlFactory.caption("")
             scatterReadout = readout
             rows.append(readout)
@@ -500,6 +512,10 @@ final class LayerEditorViewController: NSViewController {
 
         let points = ScatterData.parse(layer.formula)
         var text = String(format: L("%ld points"), points.count)
+        if layer.kind == .gradientFlow {
+            scatterReadout?.stringValue = text
+            return
+        }
         if let fit = ScatterData.fit(points) {
             func n(_ v: Double) -> String { ControlFactory.format(v) }
             text += "\n" + String(format: L("mean (%@, %@)  ·  std (%@, %@)"),
@@ -821,6 +837,7 @@ final class LayerEditorViewController: NSViewController {
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
         case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter, .gradientField: return []
+        case .gradientFlow: return [(L("Ball position along the path (0 to 1)"), .secondary)]
         case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }

@@ -29,6 +29,7 @@ enum MCPSettings {
 
     /// 每次读取都保证有值：第一次打开设置就能复制，不必先手动生成。
     static var token: String {
+        if isRunningTests { return testToken }
         if let existing = Keychain.read(account: tokenAccount) { return existing }
         return regenerateToken()
     }
@@ -36,9 +37,18 @@ enum MCPSettings {
     @discardableResult
     static func regenerateToken() -> String {
         let generated = UUID().uuidString
-        Keychain.write(generated, account: tokenAccount)
+        if isRunningTests {
+            testToken = generated
+        } else {
+            Keychain.write(generated, account: tokenAccount)
+        }
         return generated
     }
+
+    /// 跑单元测试时令牌只放内存：Debug 版是 ad-hoc 签名，每次构建签名都变，碰钥匙串每次都会弹授权窗，
+    /// 还会改到真正在用的令牌。
+    private static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    nonisolated(unsafe) private static var testToken = UUID().uuidString
 }
 
 /// MCP 服务器：本机唯一入口，让 AI（Claude Code 等）经 HTTP + JSON-RPC 读写文档里的图形。

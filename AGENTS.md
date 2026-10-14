@@ -2,11 +2,15 @@
 
 macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**纯 AppKit + Metal**，唯一的第三方包是自动更新用的 Sparkle
 （只链接到 App target，见 `docs/release.md`），**别再加别的依赖**；xcodegen 管理工程
-（`GrapherNG.xcodeproj` 由 `project.yml` 生成，不要手改），macOS 14+，Swift 5 语言模式，ad-hoc 签名。
+（`GrapherNG.xcodeproj` 由 `project.yml` 生成，不要手改），macOS 14+，Swift 5 语言模式；Debug 用固定的 Apple Development 证书（**不许用 ad-hoc**），Release 的 Developer ID 签名在 `scripts/package.sh`。
 
 文档分**平面图**与**立体图**两种（新建时定下，`GrapherDocument.dimension`）：平面图有 2D 全部图型（显函数 / 参数方程 /
 极坐标 / 隐函数 / 不等式区域）；立体图有显式曲面、参数曲面、空间曲线、隐式曲面，平面曲线也能放进去（画在 z = 0 上或
-「延伸到 3D」）。两曲面交线是下一期。
+「延伸到 3D」）。**曲面交线**（`.surfaceIntersection`）是引用另外两个曲面图层（`sourceA` / `sourceB`）的图层，没有公式：
+`SceneBuilder3D` 先画完其它图层再处理它，两张来源曲面的网格（藏起来的现采）交给 `MeshIntersection` 逐对三角形求交、按端点拼成折线，
+不分图型组合；精度就是网格精度。
+
+测试里 MCP 令牌只放内存（`MCPSettings.token`），不碰真正的 Keychain，免得弄丢 / 改写正在用的令牌。
 
 ## 构建 / 测试 / 运行
 
@@ -101,8 +105,8 @@ Tests/GrapherNGTests/   单元测试
   那一刻一扇窗口都没有，程序会直接退出。没有文档时关掉欢迎窗口，程序同样会退出（最后一扇窗口关了就退出，这是既有约定）。
 - 卡片（`WelcomeCardView`）整块是点击区：`hitTest` 返回自己，子视图不接鼠标；`mouseDownCanMoveWindow = false`，
   否则窗口「拖背景移动」会把点击吃掉。颜色都在 `draw` 里取动态色，深浅色外观切换时自动跟上。
-- **Debug 版每重新编一次，最近列表就清空一次**（实测）：系统按 App 的签名记这份列表，ad-hoc 签名每次构建都变。
-  正式签名的版本不受影响，别当成代码 bug 去查。
+- **Debug 版曾经每重新编一次，最近列表就清空一次**：系统按 App 的签名记这份列表，ad-hoc 签名每次构建都变。
+  现在 Debug 用固定开发证书，不再发生；要是又出现，先查签名是不是被改回了 `-`。
 - `read(from:ofType:)` 在 SDK 里是 nonisolated；没开并发读（`canConcurrentlyReadDocuments` 默认 false），AppKit 在主线程调它，
   所以里面用 `MainActor.assumeIsolated` 把内容交给 `AppState`。
 

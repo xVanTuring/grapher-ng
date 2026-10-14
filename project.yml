@@ -28,9 +28,14 @@ settings:
     DEAD_CODE_STRIPPING: YES
     GENERATE_INFOPLIST_FILE: NO
     SWIFT_STRICT_CONCURRENCY: minimal
-    # 本地开发用 ad-hoc 签名即可运行；发布时再走 Developer ID。
+    # Release 在这里仍是 ad-hoc，由 scripts/package.sh 在命令行指定 Developer ID 再签。
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
+  configs:
+    # Debug 不用 ad-hoc：每次构建签名都变，Keychain 授权窗、系统按签名记的状态（最近打开）都会反复失效。
+    # 用固定的开发证书；换机器时改成 `security find-identity -v -p codesigning` 里自己的 Apple Development。
+    Debug:
+      CODE_SIGN_IDENTITY: "Apple Development: xVan Turing (K9K27993X3)"
 
 targets:
   # ── 数学与采样层 ────────────────────────────────────────────────

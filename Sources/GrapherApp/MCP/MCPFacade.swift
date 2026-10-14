@@ -1,6 +1,7 @@
 import AppKit
 import GrapherKit
 import GrapherRender
+import simd
 import ImageIO
 import UniformTypeIdentifiers
 
@@ -125,6 +126,7 @@ final class MCPFacade {
                 object["offset"] = layer.projectionOffset
             }
             object["projectors"] = layer.showsProjectors
+            if let direction = layer.projectionDirection { object["direction"] = [direction.x, direction.y, direction.z] }
         }
         if layer.kind == .surfaceIntersection {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
@@ -220,6 +222,8 @@ final class MCPFacade {
         var drawsNormal: Bool?
         var projectionTarget: ProjectionTarget?
         var projectionOffset: Double?
+        /// 斜投影方向；全零表示改回正投影。
+        var projectionDirection: SIMD3<Double>?
         var showsProjectors: Bool?
         var color: RGBAColor?
         var lineWidth: Double?
@@ -331,9 +335,13 @@ final class MCPFacade {
             guard layer.kind.canExtrude else { throw MCPToolError("'\(layer.kind.rawValue)' layers cannot be extruded.") }
             layer.extrudesInSpace = extrude
         }
-        if edit.projectionTarget != nil || edit.projectionOffset != nil || edit.showsProjectors != nil {
+        if edit.projectionTarget != nil || edit.projectionOffset != nil || edit.showsProjectors != nil
+            || edit.projectionDirection != nil {
             guard layer.kind == .projection else {
-                throw MCPToolError("Only 'projection' layers have target / offset / projectors.")
+                throw MCPToolError("Only 'projection' layers have target / offset / projectors / direction.")
+            }
+            if let direction = edit.projectionDirection {
+                layer.projectionDirection = simd_length(direction) > 1e-9 ? direction : nil
             }
             if let target = edit.projectionTarget { layer.projectionTarget = target }
             if let offset = edit.projectionOffset { layer.projectionOffset = offset }

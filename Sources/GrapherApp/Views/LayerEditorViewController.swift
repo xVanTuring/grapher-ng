@@ -1,5 +1,6 @@
 import AppKit
 import GrapherKit
+import simd
 
 /// A pane that takes the full width of the inspector's column. The inspector
 /// stacks its panes with leading alignment, and NSStackView only applies
@@ -55,6 +56,9 @@ final class LayerEditorViewController: NSViewController {
     private var projectionOffsetRow: NSView?
     private var projectorsCheckbox: NSButton?
     private var labelCheckbox: NSButton?
+    private var obliqueCheckbox: NSButton?
+    private var directionFields: [NSTextField] = []
+    private var directionRowView: NSView?
     private var tangentSourcePopUp: NSPopUpButton?
     private var anchorUField: NSTextField?
     private var anchorVField: NSTextField?
@@ -189,6 +193,21 @@ final class LayerEditorViewController: NSViewController {
             rows.append(ControlFactory.formRow(L("Project"), source))
             rows.append(ControlFactory.formRow(L("Onto"), target))
             rows.append(offsetRow)
+            let oblique = ControlFactory.checkbox(
+                L("Oblique projection"), target: self, action: #selector(obliqueToggled(_:)))
+            oblique.toolTip = L("Project along a direction instead of perpendicular to the plane.")
+            obliqueCheckbox = oblique
+            rows.append(oblique)
+            let fields = (0..<3).map { _ in
+                ControlFactory.numberField(0, target: self, action: #selector(directionEdited(_:)))
+            }
+            directionFields = fields
+            let directionRow = ControlFactory.stack(fields, orientation: .horizontal, spacing: 6, alignment: .firstBaseline)
+            fields.forEach { $0.setContentHuggingPriority(.defaultLow, for: .horizontal) }
+            for field in fields.dropFirst() { field.widthAnchor.constraint(equalTo: fields[0].widthAnchor).isActive = true }
+            let directionLabeled = ControlFactory.formRow(L("Direction"), directionRow)
+            directionRowView = directionLabeled
+            rows.append(directionLabeled)
             rows.append(projectors)
             rows.append(ControlFactory.caption(
                 L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
@@ -459,6 +478,29 @@ final class LayerEditorViewController: NSViewController {
             field.stringValue = ControlFactory.format(layer.projectionOffset)
         }
         projectorsCheckbox?.state = layer.showsProjectors ? .on : .off
+        obliqueCheckbox?.state = layer.projectionDirection != nil ? .on : .off
+        directionRowView?.isHidden = layer.projectionDirection == nil
+        if let direction = layer.projectionDirection {
+            for (index, field) in directionFields.enumerated() where field.currentEditor() == nil {
+                field.stringValue = ControlFactory.format(direction[index])
+            }
+        }
+    }
+
+    @objc private func obliqueToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Change Projection")) { $0.projectionDirection = on ? ($0.projectionDirection ?? SIMD3(1, 1, 1)) : nil }
+    }
+
+    @objc private func directionEdited(_ sender: NSTextField) {
+        guard let layer = state.selectedLayer else { return }
+        var direction = layer.projectionDirection ?? SIMD3(1, 1, 1)
+        for (index, field) in directionFields.enumerated() {
+            direction[index] = ControlFactory.parse(field.stringValue) ?? direction[index]
+        }
+        // 全零没有方向：当作没改。
+        guard simd_length(direction) > 1e-9 else { return refreshProjection(layer) }
+        editLayer(L("Change Projection")) { $0.projectionDirection = direction }
     }
 
     @objc private func projectionSourceEdited(_ sender: NSPopUpButton) {
@@ -529,6 +571,9 @@ final class LayerEditorViewController: NSViewController {
         projectionOffsetRow = nil
         projectorsCheckbox = nil
         labelCheckbox = nil
+        obliqueCheckbox = nil
+        directionFields = []
+        directionRowView = nil
         tangentSourcePopUp = nil
         anchorUField = nil
         anchorVField = nil

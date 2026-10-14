@@ -345,6 +345,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var projectionTarget: ProjectionTarget
     public var projectionOffset: Double
     public var showsProjectors: Bool
+    /// 投影图层：沿这个方向做斜投影；nil 是正投影（垂直于目标平面）。
+    public var projectionDirection: SIMD3<Double>?
     /// 点图层：在点旁边写出图层名（A、B、C……）。
     public var showsLabel: Bool
     /// 切线 / 切平面图层：切点的位置（切线：显函数的 x、参数方程的 t、极坐标的 θ；
@@ -377,6 +379,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         projectionTarget: ProjectionTarget = .xy,
         projectionOffset: Double = 0,
         showsProjectors: Bool = true,
+        projectionDirection: SIMD3<Double>? = nil,
         showsLabel: Bool = false,
         anchorU: Double = 0,
         anchorV: Double = 0,
@@ -404,6 +407,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.projectionTarget = projectionTarget
         self.projectionOffset = projectionOffset
         self.showsProjectors = showsProjectors
+        self.projectionDirection = projectionDirection
         self.showsLabel = showsLabel
         self.anchorU = anchorU
         self.anchorV = anchorV
@@ -417,7 +421,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
-        case anchorU, anchorV, drawsNormal
+        case anchorU, anchorV, drawsNormal, projectionDirection
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -447,6 +451,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         anchorU = try container.decodeIfPresent(Double.self, forKey: .anchorU) ?? 0
         anchorV = try container.decodeIfPresent(Double.self, forKey: .anchorV) ?? 0
         drawsNormal = try container.decodeIfPresent(Bool.self, forKey: .drawsNormal) ?? false
+        projectionDirection = try container.decodeIfPresent(SIMD3<Double>.self, forKey: .projectionDirection)
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)

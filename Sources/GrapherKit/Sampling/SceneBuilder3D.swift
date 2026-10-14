@@ -572,8 +572,17 @@ public enum SceneBuilder3D {
         var meshes: [Mesh3D] = []
         var extent: [SIMD3<Double>] = []
 
+        // 斜投影：沿给定方向投到平面上；方向与平面平行时投不出去，什么都不画。
+        var slant: SIMD3<Double>?
+        if let direction = layer.projectionDirection, simd_length(direction) > 1e-9 {
+            slant = simd_normalize(direction)
+            if abs(simd_dot(normal, slant!)) <= 1e-9 { return ([], [], nil) }
+        }
         for run in runs {
-            let feet = run.map { SpaceGeometry.foot(of: $0, onPlane: normal, offset: offset) }
+            let feet = run.map { p -> SIMD3<Double> in
+                if let slant, let q = SpaceGeometry.project(p, onPlane: normal, offset: offset, along: slant) { return q }
+                return SpaceGeometry.foot(of: p, onPlane: normal, offset: offset)
+            }
             extent.append(contentsOf: feet)
             if run.count == 1 {
                 meshes.append(PointMarker.mesh(

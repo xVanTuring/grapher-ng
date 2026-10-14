@@ -363,6 +363,43 @@ final class SpaceGeometryTests: XCTestCase {
         }
     }
 
+    /// 斜投影：点 (1,2,3) 沿 (1,0,1) 投到 z = 0，落在 (-2, 2, 0)；方向与平面平行时什么都不画。
+    func testObliqueProjection() throws {
+        let p = point("1", "2", "3")
+        var layerPoint = p
+        layerPoint.isVisible = false
+        var shadow = Layer.makeDefault(kind: .projection, index: 1)
+        shadow.sourceA = p.id
+        shadow.showsProjectors = false
+        shadow.projectionDirection = SIMD3(1, 0, 1)
+        var document = GrapherDocument(dimension: .space)
+        document.layers = [layerPoint, shadow]
+        func build() -> BuiltScene3D {
+            SceneBuilder3D.build(SceneBuild3DRequest(
+                document: document, compiled: LayerCompiler().compile(document),
+                view: .standard, quality: .interactive, backingScale: 2))
+        }
+        var built = build()
+        let sphere = try XCTUnwrap(built.scene.meshes.first)
+        let centre = sphere.vertices.reduce(SIMD3<Float>.zero) { $0 + $1.position } / Float(sphere.vertices.count)
+        let data = built.view.data(SIMD3<Double>(centre))
+        XCTAssertEqual(data.x, -2, accuracy: 0.03)
+        XCTAssertEqual(data.y, 2, accuracy: 0.03)
+        XCTAssertEqual(data.z, 0, accuracy: 0.03)
+
+        document.layers[1].projectionDirection = SIMD3(1, 1, 0)
+        built = build()
+        XCTAssertTrue(built.scene.meshes.isEmpty, "方向与 z = 0 平行，投不出去")
+
+        // 存档往返，旧文件没有这个字段时是正投影。
+        let data2 = try JSONEncoder().encode(shadow)
+        XCTAssertEqual(try JSONDecoder().decode(Layer.self, from: data2).projectionDirection, SIMD3(1, 0, 1))
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data2) as? [String: Any])
+        object.removeValue(forKey: "projectionDirection")
+        let old = try JSONDecoder().decode(Layer.self, from: JSONSerialization.data(withJSONObject: object))
+        XCTAssertNil(old.projectionDirection)
+    }
+
     func testProjectionNeedsAValidSource() {
         let p = point("1", "2", "3")
         var orphan = Layer.makeDefault(kind: .projection, index: 0)

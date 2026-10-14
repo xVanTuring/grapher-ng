@@ -173,6 +173,7 @@ enum MCPTools {
                 "projection only: xy (z = offset), yz (x = offset), xz (y = offset) or plane (use source_b)",
                 enumValues: ProjectionTarget.allCases.map(\.rawValue)),
             "offset": MCPSchema.number("projection only: position of the xy / yz / xz plane (default 0)"),
+            "direction": MCPSchema.numbers("projection only: [dx, dy, dz] for an oblique projection along that direction; [0, 0, 0] goes back to a perpendicular one", count: 3),
             "projectors": MCPSchema.boolean("projection only: draw thin lines from the original to its projection (default true)"),
             "at": MCPSchema.number("tangent / tangentPlane: the tangent point. tangent: x (explicit), t (parametric) or theta (polar). tangentPlane: x of a surface, u of a parametricSurface"),
             "at2": MCPSchema.number("tangentPlane only: y of a surface, v of a parametricSurface"),
@@ -222,6 +223,9 @@ enum MCPTools {
         edit.anchorV = try args.optionalDouble("at2")
         edit.drawsNormal = try args.optionalBool("normal")
         edit.projectionOffset = try args.optionalDouble("offset")
+        if let direction = try args.optionalDoubles("direction", count: 3) {
+            edit.projectionDirection = SIMD3(direction[0], direction[1], direction[2])
+        }
         edit.showsProjectors = try args.optionalBool("projectors")
         if let color = try args.optionalString("color") { edit.color = try MCPFacade.parseColor(color) }
         edit.lineWidth = try args.optionalDouble("line_width")

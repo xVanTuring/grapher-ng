@@ -111,7 +111,7 @@ Every tool that targets a document takes an optional `document_id`. Leave it out
 | 2D | `tangent` | no formula: `source_a` = an `explicit` / `parametric` / `polar` layer, `at` = x (explicit), t (parametric) or theta (polar), `normal: true` draws the normal line instead |
 | 3D | `tangentPlane` | no formula: `source_a` = a `surface` / `parametricSurface` layer, `at` + `at2` = the point's (x, y) or (u, v); shows a translucent patch, its normal and the point, and counts as a plane in the relations panel |
 | 3D | `point` | `formula`, `secondary_formula`, `tertiary_formula` = x, y, z (numbers and parameters only); `line_width` is the size |
-| 3D | `projection` | no formula: `source_a` = a `point` / `spaceCurve` / `surfaceIntersection` layer, `target` = `xy` / `yz` / `xz` (the plane z / x / y = `offset`) or `plane` (`source_b` = a plane layer), `projectors` draws the projecting lines |
+| 3D | `projection` | no formula: `source_a` = a `point` / `spaceCurve` / `surfaceIntersection` layer, `target` = `xy` / `yz` / `xz` (the plane z / x / y = `offset`) or `plane` (`source_b` = a plane layer), `projectors` draws the projecting lines, `direction` = [dx, dy, dz] makes it an oblique projection |
 | 3D | `explicit`, `parametric`, `polar`, `implicit` | as in 2D; drawn on z = 0, or with `extrude: true` swept along z |
 
 For implicit kinds write F without `= 0` (`x^2 + y^2 - 4`, not `x^2 + y^2 = 4`).

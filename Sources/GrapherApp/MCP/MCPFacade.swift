@@ -110,6 +110,7 @@ final class MCPFacade {
         }
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
+        if layer.kind == .point { object["label"] = layer.showsLabel }
         if layer.kind == .projection {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["target"] = layer.projectionTarget.rawValue
@@ -208,6 +209,7 @@ final class MCPFacade {
         var sourceA: UUID?
         var sourceB: UUID?
         var opacity: Double?
+        var showsLabel: Bool?
         var projectionTarget: ProjectionTarget?
         var projectionOffset: Double?
         var showsProjectors: Bool?
@@ -327,6 +329,10 @@ final class MCPFacade {
             }
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
+        }
+        if let label = edit.showsLabel {
+            guard layer.kind == .point else { throw MCPToolError("Only 'point' layers have a label.") }
+            layer.showsLabel = label
         }
         if let opacity = edit.opacity {
             guard layer.kind.isSurfaceSource || layer.kind == .region || (layer.kind.canExtrude && layer.extrudesInSpace) else {

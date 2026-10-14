@@ -323,6 +323,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var projectionTarget: ProjectionTarget
     public var projectionOffset: Double
     public var showsProjectors: Bool
+    /// 点图层：在点旁边写出图层名（A、B、C……）。
+    public var showsLabel: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -348,6 +350,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         projectionTarget: ProjectionTarget = .xy,
         projectionOffset: Double = 0,
         showsProjectors: Bool = true,
+        showsLabel: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -371,6 +374,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.projectionTarget = projectionTarget
         self.projectionOffset = projectionOffset
         self.showsProjectors = showsProjectors
+        self.showsLabel = showsLabel
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -379,7 +383,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
-        case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors
+        case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -405,6 +409,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         projectionTarget = try container.decodeIfPresent(ProjectionTarget.self, forKey: .projectionTarget) ?? .xy
         projectionOffset = try container.decodeIfPresent(Double.self, forKey: .projectionOffset) ?? 0
         showsProjectors = try container.decodeIfPresent(Bool.self, forKey: .showsProjectors) ?? true
+        showsLabel = try container.decodeIfPresent(Bool.self, forKey: .showsLabel) ?? false
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -456,6 +461,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             domain2Lower: 0,
             domain2Upper: 2 * Double.pi,
             usesExplicitDomain: false,
+            showsLabel: kind == .point,
             lineStyle: LineStyle(color: color, width: lineWidth),
             fillStyle: FillStyle(color: color.withAlpha(0.22))
         )

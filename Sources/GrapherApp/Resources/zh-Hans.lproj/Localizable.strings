@@ -201,3 +201,4 @@
 "Show projecting lines" = "显示投影线";
 "Change Projection" = "修改投影";
 "Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection." = "点、空间曲线或曲面交线的正投影。把原图形隐藏起来，就只剩投影。";
+"Show name" = "显示名称";

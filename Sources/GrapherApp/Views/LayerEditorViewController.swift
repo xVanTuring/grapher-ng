@@ -54,6 +54,7 @@ final class LayerEditorViewController: NSViewController {
     private var projectionOffsetField: NSTextField?
     private var projectionOffsetRow: NSView?
     private var projectorsCheckbox: NSButton?
+    private var labelCheckbox: NSButton?
     private var relationPopUp: NSPopUpButton?
     private var lineColorWell: NSColorWell?
     private var lineWidthSlider: NSSlider?
@@ -211,6 +212,12 @@ final class LayerEditorViewController: NSViewController {
             rows.append(checkbox)
         }
 
+        if layer.kind == .point {
+            let checkbox = ControlFactory.checkbox(L("Show name"), target: self, action: #selector(labelToggled(_:)))
+            labelCheckbox = checkbox
+            rows.append(checkbox)
+        }
+
         if layer.kind.usesRelation {
             let relations = RegionRelation.allCases
             let popUp = ControlFactory.popUp(
@@ -267,6 +274,7 @@ final class LayerEditorViewController: NSViewController {
             if let field, field.currentEditor() == nil { field.stringValue = ControlFactory.format(value) }
         }
         extrudeCheckbox?.state = layer.extrudesInSpace ? .on : .off
+        labelCheckbox?.state = layer.showsLabel ? .on : .off
         refreshSourcePopUps(layer)
         refreshProjection(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
@@ -419,6 +427,7 @@ final class LayerEditorViewController: NSViewController {
         projectionOffsetField = nil
         projectionOffsetRow = nil
         projectorsCheckbox = nil
+        labelCheckbox = nil
         relationPopUp = nil
         lineColorWell = nil
         lineWidthSlider = nil
@@ -731,6 +740,11 @@ final class LayerEditorViewController: NSViewController {
         let candidates = sourceCandidates
         guard index >= 2, index - 2 < candidates.count else { return nil }
         return candidates[index - 2].id
+    }
+
+    @objc private func labelToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Show name")) { $0.showsLabel = on }
     }
 
     @objc private func relationEdited(_ sender: NSPopUpButton) {

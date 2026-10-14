@@ -230,6 +230,22 @@ final class MCPTests: XCTestCase {
         XCTAssertThrowsError(try facade.updateLayer(in: space, id: plane.id, stray), "只有交线图层有来源")
     }
 
+    func testPointLabelOption() throws {
+        let space = GraphDocument(dimension: .space)
+        let facade = MCPFacade()
+        var point = edit(kind: .point, formula: "1", secondary: "2", tertiary: "3")
+        let (created, _) = try facade.addLayer(to: space, point)
+        XCTAssertTrue(created.showsLabel, "点默认写出名称")
+        point.showsLabel = false
+        let (hidden, _) = try facade.addLayer(to: space, point)
+        XCTAssertFalse(hidden.showsLabel)
+
+        let (surface, _) = try facade.addLayer(to: space, edit(kind: .surface, formula: "x"))
+        var stray = MCPFacade.LayerEdit()
+        stray.showsLabel = true
+        XCTAssertThrowsError(try facade.updateLayer(in: space, id: surface.id, stray), "只有点有名称")
+    }
+
     func testProjectionLayerValidatesItsSourceAndTarget() throws {
         let space = GraphDocument(dimension: .space)
         let facade = MCPFacade()

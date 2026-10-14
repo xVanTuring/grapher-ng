@@ -496,6 +496,14 @@ final class AppState {
                 created.sourceB = surfaces[surfaces.count - 1].id
             }
         }
+        if kind == .point {
+            // 点按字母起名：A、B、C…（用掉的跳过），超过 26 个后加数字。
+            let used = Set(document.layers.map(\.name))
+            let letters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+            created.name = (0..<260).lazy
+                .map { i in "\(letters[i % 26])\(i >= 26 ? String(i / 26) : "")" }
+                .first { !used.contains($0) } ?? created.name
+        }
         if kind == .projection {
             // 默认投影最近的一个点 / 曲线 / 交线。
             created.sourceA = document.layers.last { $0.kind.isProjectable }?.id

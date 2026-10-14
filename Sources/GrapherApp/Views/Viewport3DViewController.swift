@@ -431,15 +431,12 @@ final class Canvas3DOverlayView: NSView {
         // 点的名称：写在点的右上方，点在坐标盒外时不写（球也被裁掉了）。
         if state.document.layers.contains(where: { $0.kind == .point && $0.isVisible && $0.showsLabel }) {
             let pointFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
-            for compiled in state.compiler.compile(state.document)
-            where compiled.layer.kind == .point && compiled.layer.isVisible && compiled.layer.showsLabel {
-                guard case let .point(position)? = SpaceGeometry.recognize(compiled) else { continue }
-                let n = view.normalized(position)
-                guard abs(n.x) <= 1, abs(n.y) <= 1, abs(n.z) <= 1, let screen = view.project(n) else { continue }
+            for (index, label) in SpaceGeometry.pointLabels(in: state.compiler.compile(state.document), view: view).enumerated() {
+                guard let screen = view.project(view.normalized(label.position)) else { continue }
                 let point = CGPoint(x: screen.x / scale + 9, y: screen.y / scale - 9)
                 guard point.x > left, point.x < right - 8, point.y > top + 8, point.y < bottom else { continue }
-                labels.place("p\(compiled.layer.id)", compiled.layer.name, font: pointFont,
-                             color: ControlFactory.nsColor(compiled.layer.lineStyle.color), at: point, anchor: .leading)
+                labels.place("p\(index)", label.name, font: pointFont,
+                             color: ControlFactory.nsColor(label.color), at: point, anchor: .leading)
             }
         }
 

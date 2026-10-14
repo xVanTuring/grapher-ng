@@ -104,6 +104,19 @@ final class SpaceGeometryTests: XCTestCase {
         XCTAssertNotNil(built.fitBounds)
     }
 
+    func testPointLabelsAreFilteredByVisibilityToggleAndBox() {
+        var shown = point("1", "2", "3"); shown.name = "A"
+        var hiddenName = point("0", "0", "0"); hiddenName.name = "B"; hiddenName.showsLabel = false
+        var hiddenLayer = point("0", "1", "0"); hiddenLayer.name = "C"; hiddenLayer.isVisible = false
+        var outside = point("100", "0", "0"); outside.name = "D"
+        var surface = Layer.makeDefault(kind: .surface, index: 0); surface.formula = "0"
+        var document = GrapherDocument(dimension: .space)
+        document.layers = [shown, hiddenName, hiddenLayer, outside, surface]
+        let labels = SpaceGeometry.pointLabels(in: LayerCompiler().compile(document), view: .standard)
+        XCTAssertEqual(labels.map(\.name), ["A"])
+        XCTAssertEqual(labels.first?.position, SIMD3(1, 2, 3))
+    }
+
     // MARK: - 点
 
     func testPointToPlaneDistanceAndFoot() throws {

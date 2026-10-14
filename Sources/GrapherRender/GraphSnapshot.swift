@@ -84,8 +84,9 @@ public enum GraphSnapshot {
     ) -> CGImage? {
         let width = Int(view.widthPixels)
         let height = Int(view.heightPixels)
+        let compiledLayers = LayerCompiler().compile(document)
         let built = SceneBuilder3D.build(SceneBuild3DRequest(
-            document: document, compiled: LayerCompiler().compile(document), view: view,
+            document: document, compiled: compiledLayers, view: view,
             quality: quality, backingScale: pointScale))
         let chrome = Chrome3D.make(view: view, document: document, backingScale: pointScale)
         guard width > 0, height > 0,
@@ -107,6 +108,15 @@ public enum GraphSnapshot {
                 case .axisName(let name):
                     painter.draw(name, font: painter.axisName, at: point, anchor: .center, in: context)
                 }
+            }
+            // 点的名称：和画布一样写在点的右上方（偏移 9 点）。
+            let pointFont = LabelPainter.font(size: 13 * pointScale, bold: true, monospacedDigits: false)
+            for label in SpaceGeometry.pointLabels(in: compiledLayers, view: view) {
+                guard let screen = view.project(view.normalized(label.position)) else { continue }
+                let color = CGColor(srgbRed: label.color.r, green: label.color.g, blue: label.color.b, alpha: label.color.a)
+                painter.draw(label.name, font: pointFont,
+                             at: CGPoint(x: screen.x + 9 * pointScale, y: screen.y - 9 * pointScale),
+                             anchor: .leading, color: color, in: context)
             }
         }
     }
@@ -162,7 +172,7 @@ private struct LabelPainter {
         self.color = CGColor(srgbRed: color.r, green: color.g, blue: color.b, alpha: color.a)
     }
 
-    private static func font(size: Double, bold: Bool, monospacedDigits: Bool) -> CTFont {
+    fileprivate static func font(size: Double, bold: Bool, monospacedDigits: Bool) -> CTFont {
         let base = CTFontCreateUIFontForLanguage(bold ? .emphasizedSystem : .system, size, nil)
             ?? CTFontCreateWithName("Helvetica" as CFString, size, nil)
         guard monospacedDigits else { return base }
@@ -172,10 +182,11 @@ private struct LabelPainter {
     }
 
     /// 锚点的意思同画布叠加层（`LabelAnchor`）：`.top` 是锚点在字的上沿正中，依此类推。
-    func draw(_ text: String, font: CTFont, at point: CGPoint, anchor: LabelAnchor, in context: CGContext) {
+    func draw(_ text: String, font: CTFont, at point: CGPoint, anchor: LabelAnchor,
+              color override: CGColor? = nil, in context: CGContext) {
         let attributes: [NSAttributedString.Key: Any] = [
             NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
+            NSAttributedString.Key(kCTForegroundColorAttributeName as String): override ?? color,
         ]
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
         var ascent: CGFloat = 0

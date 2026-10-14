@@ -109,6 +109,24 @@ public enum SpaceGeometry {
 
     // MARK: - 从图层认出几何对象
 
+    /// 要写名称的点：可见、开了「显示名称」、落在坐标盒里。画布叠加层与导出的图片共用，两边的标注一致。
+    public struct PointLabel: Equatable, Sendable {
+        public var name: String
+        public var position: SIMD3<Double>
+        public var color: RGBAColor
+    }
+
+    public static func pointLabels(in compiled: [LayerCompiler.CompiledLayer], view: View3D) -> [PointLabel] {
+        compiled.compactMap { entry in
+            let layer = entry.layer
+            guard layer.kind == .point, layer.isVisible, layer.showsLabel,
+                  case let .point(position)? = recognize(entry) else { return nil }
+            let n = view.normalized(position)
+            guard abs(n.x) <= 1, abs(n.y) <= 1, abs(n.z) <= 1 else { return nil }
+            return PointLabel(name: layer.name, position: position, color: layer.lineStyle.color)
+        }
+    }
+
     /// 同上，但能看到文档里的其他图层：切平面图层靠它认出来（它的平面由来源曲面在切点处的导数定）。
     public static func recognize(
         _ compiled: LayerCompiler.CompiledLayer, in all: [LayerCompiler.CompiledLayer]

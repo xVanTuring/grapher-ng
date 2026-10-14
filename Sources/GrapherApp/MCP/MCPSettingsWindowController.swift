@@ -145,9 +145,10 @@ final class MCPSettingsWindowController: NSWindowController, NSTextFieldDelegate
             view.widthAnchor.constraint(equalToConstant: Metric.width - Metric.margin * 2).isActive = true
         }
 
-        let content = NSView()
+        let content = FocusAnchorView()
         content.addSubview(rootStack)
         window.contentView = content
+        window.initialFirstResponder = content
         NSLayoutConstraint.activate([
             rootStack.topAnchor.constraint(equalTo: content.topAnchor),
             rootStack.leadingAnchor.constraint(equalTo: content.leadingAnchor),

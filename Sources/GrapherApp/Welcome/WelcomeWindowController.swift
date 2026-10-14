@@ -43,6 +43,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         window.contentViewController = WelcomeViewController(size: Self.size)
         window.setContentSize(Self.size)
         window.center()
+        window.initialFirstResponder = window.contentView
         window.delegate = self
     }
 
@@ -77,7 +78,7 @@ private final class WelcomeViewController: NSViewController {
     }
 
     override func loadView() {
-        let root = NSView(frame: NSRect(origin: .zero, size: size))
+        let root = FocusAnchorView(frame: NSRect(origin: .zero, size: size))
         let left = makeActionsPane()
         let divider = NSBox()
         divider.boxType = .separator

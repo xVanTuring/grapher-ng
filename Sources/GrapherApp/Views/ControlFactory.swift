@@ -7,6 +7,21 @@ final class FlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
+/// 设置窗口、欢迎窗口的根视图。窗口一显示 AppKit 就会把焦点交给键盘循环里的第一个控件，
+/// 于是总有一个按钮或输入框被框住。把本视图设为 `initialFirstResponder`：它自己接收焦点、不画焦点环，
+/// 控件就不会被默认选中；点空白处也会收走焦点，顺便结束输入框的编辑。
+final class FocusAnchorView: NSView {
+    override var acceptsFirstResponder: Bool { true }
+    override var focusRingType: NSFocusRingType {
+        get { .none }
+        set {}
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+    }
+}
+
 /// One place where the chrome's metrics and control styling live, so the
 /// sidebar, the inspector and the toolbar all end up looking like one app.
 enum ControlFactory {

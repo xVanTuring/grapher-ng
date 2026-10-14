@@ -9,6 +9,32 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.1.1</title>
+      <pubDate>Wed, 14 Oct 2026 06:50:23 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.1.1</h3>
+<h4>改进</h4>
+<ul>
+<li>重新设计设置窗口：分组卡片、开关靠右；访问令牌默认遮住（只显示最后 4 位），可显示、拷贝、重新生成；连接 Claude Code 或其他客户端的命令合并成一个切换加一个拷贝按钮。</li>
+<li>设置窗口和欢迎窗口显示时，不再默认选中某个按钮或输入框。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.1.1">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.1.1</h3>
+<h4>Improvements</h4>
+<ul>
+<li>Redesigned the Settings window: grouped cards with switches on the right; the access token is hidden by default (only the last 4 characters show) and can be shown, copied or regenerated; the commands for Claude Code and other clients are now one switcher with a single Copy button.</li>
+<li>The Settings and Welcome windows no longer select a button or text field when they open.</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.1.1">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.1.1/GrapherNG-1.1.1.zip" length="2596160" type="application/octet-stream" sparkle:edSignature="NEv821StAykfan5JIN91VUstUsQSsebu0ijxmMA6Y+F58nM3ee6e7XF2/NAuBhzfme5kMwchqw0W8kCBroSjAw==" />
+    </item>
+    <item>
       <title>v1.1.0</title>
       <pubDate>Wed, 14 Oct 2026 06:33:34 +0000</pubDate>
       <sparkle:version>3</sparkle:version>

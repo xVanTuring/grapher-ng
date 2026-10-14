@@ -621,6 +621,7 @@ final class AppState {
                 view.halfExtent = standard.halfExtent
                 view.azimuth = standard.azimuth
                 view.elevation = standard.elevation
+                view.cameraZoom = standard.cameraZoom
             }
             requestRebuild(interactive: false)
             return
@@ -636,10 +637,15 @@ final class AppState {
     /// 以视口中心为锚缩放：工具栏按钮与 ⌘= / ⌘- 都走这条。锚点代数只写在 `Viewport2D.zoom`
     /// 一处，别在这里再抄一遍（UniReader 那边 ⌘0 / 1:1 / 捏合 / ⌘滚轮四个入口共用一个
     /// `applyZoom`，就是这个道理）。
-    func zoom(by factor: Double) {
+    /// 立体图：默认放大盒子（只换投影，不重采）；`range` 为真时改坐标盒框住的范围（要重采）。
+    func zoom(by factor: Double, range: Bool = false) {
         if document.dimension == .space {
-            mutateView3D { $0.zoom(by: factor) }
-            requestRebuild(interactive: false)
+            if range {
+                mutateView3D { $0.zoom(by: factor) }
+                requestRebuild(interactive: false)
+            } else {
+                mutateView3D { $0.zoomCamera(by: factor) }
+            }
             return
         }
         mutateViewport { viewport in

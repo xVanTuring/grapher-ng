@@ -70,8 +70,8 @@
 /* 画布 */
 "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset" = "拖动或滚动平移 · ⌘+滚轮或捏合缩放 · 移动鼠标读数 · F 适应内容 · R 重置";
 "Zoom %.4g px/unit" = "缩放 %.4g px/单位";
-"Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · F fit · R reset" = "拖动旋转 · ⇧+拖动或滚动平移 · ⌘+滚轮或捏合缩放 · F 适应内容 · R 重置";
-"Box ±%.4g" = "坐标盒 ±%.4g";
+"Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom, add ⌥ to change the range · F fit · R reset" = "拖动旋转 · ⇧+拖动或滚动平移 · ⌘+滚轮或捏合放大，加按 ⌥ 改范围 · F 适应内容 · R 重置";
+"Box ±%.4g · %.2g×" = "坐标盒 ±%.4g · %.2g×";
 
 /* 侧栏：图层 */
 "Layers" = "图层";

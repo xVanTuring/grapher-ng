@@ -7,9 +7,13 @@ import simd
 /// 采样只在盒内做；渲染时一切几何先换算到**盒内归一化坐标** `n = (p − center) / halfExtent`，
 /// 盒子就是 [-1, 1]³，盒外的部分由 GPU 按六个面精确裁掉。
 ///
-/// 相机绕盒心转（方位角 + 仰角，z 轴始终朝上），离盒心固定距离、透视投影。**缩放改的是盒子框住的
-/// 数据范围**（`halfExtent`），盒子在屏幕上的大小不变——Desmos 3D、macOS 自带 Grapher 都是这样。
-/// 于是旋转只换投影矩阵、不必重新采样；平移和缩放改了盒子，才需要重采。
+/// 相机绕盒心转（方位角 + 仰角，z 轴始终朝上），离盒心固定距离、透视投影。
+///
+/// 两种缩放：
+/// - **放大盒子**（`cameraZoom`）：盒子连同里面的图形一起在屏幕上变大变小，数据范围不变，只换投影、不重采。
+///   捏合、⌘+滚轮、工具栏的放大缩小走这一种。
+/// - **改范围**（`halfExtent`）：盒子在屏幕上大小不变，框住的数据范围变了，要重采（Desmos 3D 的缩放）。按住 ⌥ 走这一种。
+/// 旋转只换投影矩阵；平移和改范围改了盒子，才需要重采。
 public struct View3D: Equatable, Sendable, Codable {
     /// 坐标盒中心（数据坐标）。
     public var center: SIMD3<Double>
@@ -19,6 +23,8 @@ public struct View3D: Equatable, Sendable, Codable {
     public var azimuth: Double
     /// 相机仰角：离开 xy 平面的角度，弧度，夹在 ±`elevationLimit`。
     public var elevation: Double
+    /// 盒子在屏幕上的放大倍数：1 = 盒子的外接球正好装进未遮挡区的短边。
+    public var cameraZoom: Double = 1
 
     /// 画布尺寸（像素）与被浮层盖住的四边（像素）：窗口状态，不进文档，含义同 `Viewport2D`。
     public var widthPixels: Double = 1200
@@ -29,19 +35,31 @@ public struct View3D: Equatable, Sendable, Codable {
     public var insetBottom: Double = 0
 
     private enum CodingKeys: String, CodingKey {
-        case center, halfExtent, azimuth, elevation
+        case center, halfExtent, azimuth, elevation, cameraZoom
     }
 
     public init(
         center: SIMD3<Double> = .zero,
         halfExtent: Double = 4,
         azimuth: Double = 0.55,
-        elevation: Double = 0.45
+        elevation: Double = 0.45,
+        cameraZoom: Double = 1
     ) {
         self.center = center
         self.halfExtent = halfExtent
         self.azimuth = azimuth
         self.elevation = elevation
+        self.cameraZoom = cameraZoom
+    }
+
+    /// `cameraZoom` 是后加的，早先存下的立体图没有它，读成 1。
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        center = try container.decode(SIMD3<Double>.self, forKey: .center)
+        halfExtent = try container.decode(Double.self, forKey: .halfExtent)
+        azimuth = try container.decode(Double.self, forKey: .azimuth)
+        elevation = try container.decode(Double.self, forKey: .elevation)
+        cameraZoom = try container.decodeIfPresent(Double.self, forKey: .cameraZoom) ?? 1
     }
 
     /// 默认视角：x 轴朝左下、y 轴朝右、z 轴朝上，课本上画立体图的样子。
@@ -52,10 +70,11 @@ public struct View3D: Equatable, Sendable, Codable {
     static let boundingRadius = 3.0.squareRoot()
     static let nearPlane = cameraDistance - 2.2
     static let farPlane = cameraDistance + 2.2
-    /// 盒子外接球的直径占未遮挡区短边的比例。留出一圈给盒子外侧的刻度数字与轴名。
-    static let fillFraction = 0.84
+    /// `cameraZoom` = 1 时，盒子外接球的直径占未遮挡区短边的比例：正好装下，任何角度盒角都不出画面。
+    static let fillFraction = 1.0
     public static let elevationLimit = 89.0 * Double.pi / 180
     public static let halfExtentRange: ClosedRange<Double> = 1e-4...1e6
+    public static let cameraZoomRange: ClosedRange<Double> = 0.25...12
     /// 拖动一个点转多少弧度。
     public static let orbitRadiansPerPoint = 0.008
 
@@ -110,7 +129,7 @@ public struct View3D: Equatable, Sendable, Codable {
         let d = Self.cameraDistance
         let r = Self.boundingRadius
         let tangent = r / (d * d - r * r).squareRoot()
-        return Self.fillFraction * min(clearWidth, clearHeight) / max(heightPixels, 1) / tangent
+        return Self.fillFraction * cameraZoom * min(clearWidth, clearHeight) / max(heightPixels, 1) / tangent
     }
 
     /// 盒心所在深度上，一个像素对应多少归一化单位。
@@ -180,13 +199,19 @@ public struct View3D: Equatable, Sendable, Codable {
         center += (-right * delta.x + up * delta.y) * k
     }
 
-    /// 缩放：`factor > 1` 放大（盒子框住的范围变小）。
+    /// 改范围：`factor > 1` 放大（盒子框住的范围变小，盒子在屏幕上大小不变）。
     public mutating func zoom(by factor: Double) {
         guard factor.isFinite, factor > 0 else { return }
         halfExtent = min(max(halfExtent / factor, Self.halfExtentRange.lowerBound), Self.halfExtentRange.upperBound)
     }
 
-    /// 把一个数据包围盒装进坐标盒，留一点边。
+    /// 放大盒子：`factor > 1` 盒子连同图形在屏幕上变大，数据范围不变。
+    public mutating func zoomCamera(by factor: Double) {
+        guard factor.isFinite, factor > 0 else { return }
+        cameraZoom = min(max(cameraZoom * factor, Self.cameraZoomRange.lowerBound), Self.cameraZoomRange.upperBound)
+    }
+
+    /// 把一个数据包围盒装进坐标盒，留一点边；盒子回到正好装进画面的大小。
     public mutating func fit(min lower: SIMD3<Double>, max upper: SIMD3<Double>, margin: Double = 0.08) {
         let half = (upper - lower) / 2
         let largest = Swift.max(half.x, half.y, half.z)
@@ -194,5 +219,6 @@ public struct View3D: Equatable, Sendable, Codable {
         center = (lower + upper) / 2
         halfExtent = min(max(largest * (1 + margin), Self.halfExtentRange.lowerBound), Self.halfExtentRange.upperBound)
         if halfExtent < 1e-9 { halfExtent = 1 }
+        cameraZoom = 1
     }
 }

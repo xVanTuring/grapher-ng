@@ -70,8 +70,8 @@
 /* Canvas */
 "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset" = "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset";
 "Zoom %.4g px/unit" = "Zoom %.4g px/unit";
-"Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · F fit · R reset" = "Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · F fit · R reset";
-"Box ±%.4g" = "Box ±%.4g";
+"Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom, add ⌥ to change the range · F fit · R reset" = "Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom, add ⌥ to change the range · F fit · R reset";
+"Box ±%.4g · %.2g×" = "Box ±%.4g · %.2g×";
 
 /* Sidebar: layers */
 "Layers" = "Layers";

@@ -84,7 +84,8 @@ final class View3DTests: XCTestCase {
                     for c2 in [-1.0, 1.0] {
                         for c3 in [-1.0, 1.0] {
                             let p = try XCTUnwrap(v.project(SIMD3(corner, c2, c3)))
-                            XCTAssertTrue((0...900).contains(p.x) && (0...600).contains(p.y),
+                            // 外接球正好装进画面短边：盒角最多贴到边上。
+                            XCTAssertTrue((-0.5...900.5).contains(p.x) && (-0.5...600.5).contains(p.y),
                                           "角点 (\(corner), \(c2), \(c3)) 在 az=\(azimuth) el=\(elevation) 时出了画布：\(p)")
                             XCTAssertTrue((0...1).contains(p.z), "深度在近远裁剪面之间")
                         }
@@ -136,11 +137,53 @@ final class View3DTests: XCTestCase {
         assertClose(corner.y, after.y)
     }
 
-    func testFitFramesTheBounds() {
+    func testFitFramesTheBoundsAndResetsTheBoxZoom() {
         var v = view()
+        v.cameraZoom = 3
         v.fit(min: SIMD3(-1, 0, 2), max: SIMD3(3, 1, 4), margin: 0)
         XCTAssertEqual(v.center, SIMD3(1, 0.5, 3))
         XCTAssertEqual(v.halfExtent, 2)
+        XCTAssertEqual(v.cameraZoom, 1)
+    }
+
+    // MARK: - 放大盒子
+
+    /// 放大盒子：盒子连同图形在屏幕上按倍数变大，框住的数据范围不变。
+    func testCameraZoomEnlargesTheBoxButKeepsTheRange() throws {
+        var v = view()
+        let centre = try XCTUnwrap(v.project(.zero))
+        let corner = try XCTUnwrap(v.project(SIMD3(1, 1, 1)))
+        v.zoomCamera(by: 2)
+        XCTAssertEqual(v.halfExtent, View3D.standard.halfExtent)
+        let zoomed = try XCTUnwrap(v.project(SIMD3(1, 1, 1)))
+        assertClose(zoomed.x - centre.x, 2 * (corner.x - centre.x), 1e-6)
+        assertClose(zoomed.y - centre.y, 2 * (corner.y - centre.y), 1e-6)
+    }
+
+    func testPanStillFollowsThePointerWhenZoomedIn() throws {
+        var v = view()
+        v.zoomCamera(by: 3)
+        let before = try XCTUnwrap(v.project(.zero))
+        let anchor = v.center
+        v.pan(byPixels: SIMD2(25, 40))
+        let after = try XCTUnwrap(v.project(v.normalized(anchor)))
+        assertClose(after.x - before.x, 25, 1e-6)
+        assertClose(after.y - before.y, 40, 1e-6)
+    }
+
+    func testCameraZoomIsClamped() {
+        var v = view()
+        v.zoomCamera(by: 1e6)
+        XCTAssertEqual(v.cameraZoom, View3D.cameraZoomRange.upperBound)
+        v.zoomCamera(by: 1e-9)
+        XCTAssertEqual(v.cameraZoom, View3D.cameraZoomRange.lowerBound)
+    }
+
+    func testOlderSpaceViewsOpenAtTheDefaultBoxSize() throws {
+        let json = #"{"center":[0,0,0],"halfExtent":4,"azimuth":0.5,"elevation":0.4}"#
+        let decoded = try JSONDecoder().decode(View3D.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.cameraZoom, 1)
+        XCTAssertEqual(decoded.azimuth, 0.5)
     }
 
     // MARK: - 文件

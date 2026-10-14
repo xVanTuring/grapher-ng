@@ -139,7 +139,7 @@ public enum SceneBuilder3D {
                 scene.polylines.append(contentsOf: lines)
                 fit = extent.intersection(box)?.union(fit) ?? fit
 
-            case .region, .surfaceIntersection, .projection, .tangent, .text:
+            case .region, .surfaceIntersection, .projection, .tangent, .text, .scatter:
                 continue
             }
         }

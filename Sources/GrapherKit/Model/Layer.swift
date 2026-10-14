@@ -32,12 +32,14 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case tangentPlane
     /// 自由文字标注：文字写在 `formula` 里（不当公式编译），位置是 `anchorU/V/W`。平面图、立体图都能放
     case text
+    /// 平面图：散点数据，`formula` 里每行一个点（"x, y"，逗号 / 空格 / 制表符分隔），可选画最小二乘拟合直线
+    case scatter
 
     public var id: String { rawValue }
 
     public var dimension: DocumentDimension {
         switch self {
-        case .explicit, .parametric, .polar, .implicit, .region, .tangent, .text: return .plane
+        case .explicit, .parametric, .polar, .implicit, .region, .tangent, .text, .scatter: return .plane
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
              .tangentPlane:
             return .space
@@ -58,7 +60,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
         case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point,
-             .projection, .tangent, .tangentPlane, .text:
+             .projection, .tangent, .tangentPlane, .text, .scatter:
             return false
         }
     }
@@ -80,6 +82,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .tangent: return L("Tangent / normal line")
         case .tangentPlane: return L("Tangent plane")
         case .text: return L("Text label")
+        case .scatter: return L("Scatter data")
         }
     }
 
@@ -100,6 +103,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .tangent: return L("Tangent")
         case .tangentPlane: return L("Tangent plane")
         case .text: return L("Text")
+        case .scatter: return L("Scatter")
         }
     }
 
@@ -113,7 +117,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text: return []
+        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text, .scatter: return []
         }
     }
 
@@ -154,6 +158,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
         case .surfaceIntersection, .projection, .tangent, .tangentPlane: return ""
         case .text: return "Text"
+        case .scatter: return "1, 2.1\n2, 3.9\n3, 6.2\n4, 7.8"
         case .point: return "1"
         }
     }
@@ -180,7 +185,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     /// 交线、投影、切线、切平面图层没有公式，只引用别的图层；文字标注的 `formula` 是要写的字，不当公式编译。
     public var needsFormula: Bool {
         switch self {
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text: return false
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter: return false
         default: return true
         }
     }
@@ -220,7 +225,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
         case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection,
-             .tangent, .tangentPlane, .text:
+             .tangent, .tangentPlane, .text, .scatter:
             return false
         }
     }
@@ -362,6 +367,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     /// 文字标注：位置的第三个坐标（立体图的 z）与字号（点）。
     public var anchorW: Double
     public var fontSize: Double
+    /// 散点图：画最小二乘拟合直线。
+    public var showsFit: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -394,6 +401,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         drawsNormal: Bool = false,
         anchorW: Double = 0,
         fontSize: Double = 14,
+        showsFit: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -424,6 +432,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.drawsNormal = drawsNormal
         self.anchorW = anchorW
         self.fontSize = fontSize
+        self.showsFit = showsFit
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -433,7 +442,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
-        case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize
+        case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize, showsFit
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -466,6 +475,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         projectionDirection = try container.decodeIfPresent(SIMD3<Double>.self, forKey: .projectionDirection)
         anchorW = try container.decodeIfPresent(Double.self, forKey: .anchorW) ?? 0
         fontSize = try container.decodeIfPresent(Double.self, forKey: .fontSize) ?? 14
+        showsFit = try container.decodeIfPresent(Bool.self, forKey: .showsFit) ?? false
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -503,6 +513,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             break
         case .text:
             lineWidth = 1.8
+        case .scatter:
+            // 点的大小用线宽；默认比线粗一些。
+            lineWidth = 2.4
         case .point:
             // 默认大小比线宽大一点，一眼能看见。
             lineWidth = 3

@@ -104,3 +104,7 @@
 /* GrapherKit: text labels */
 "Text label" = "Text label";
 "Text" = "Text";
+
+/* GrapherKit: scatter */
+"Scatter data" = "Scatter data";
+"Scatter" = "Scatter";

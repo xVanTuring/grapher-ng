@@ -59,6 +59,9 @@ final class LayerEditorViewController: NSViewController {
     private var obliqueCheckbox: NSButton?
     private var directionFields: [NSTextField] = []
     private var directionRowView: NSView?
+    private var scatterTextView: NSTextView?
+    private var fitCheckbox: NSButton?
+    private var scatterReadout: NSTextField?
     private var textContentField: NSTextField?
     private var textPositionFields: [NSTextField] = []
     private var fontSizeField: NSTextField?
@@ -138,7 +141,9 @@ final class LayerEditorViewController: NSViewController {
         case .surface, .parametricSurface, .implicitSurface: return true
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
-        case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text: return false
+        case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane, .text,
+             .scatter:
+            return false
         }
     }
 
@@ -214,6 +219,34 @@ final class LayerEditorViewController: NSViewController {
             rows.append(projectors)
             rows.append(ControlFactory.caption(
                 L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
+        }
+
+        if layer.kind == .scatter {
+            rows.append(ControlFactory.sectionLabel(L("Data (one point per line: x, y)")))
+            let textView = NSTextView()
+            textView.isRichText = false
+            textView.isAutomaticQuoteSubstitutionEnabled = false
+            textView.isAutomaticDashSubstitutionEnabled = false
+            textView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+            textView.delegate = self
+            textView.isVerticallyResizable = true
+            textView.isHorizontallyResizable = false
+            textView.textContainer?.widthTracksTextView = true
+            textView.autoresizingMask = [.width]
+            let scroll = NSScrollView()
+            scroll.documentView = textView
+            scroll.hasVerticalScroller = true
+            scroll.borderType = .bezelBorder
+            scroll.translatesAutoresizingMaskIntoConstraints = false
+            scroll.heightAnchor.constraint(equalToConstant: 120).isActive = true
+            scatterTextView = textView
+            rows.append(scroll)
+            let fit = ControlFactory.checkbox(L("Show least-squares line"), target: self, action: #selector(fitToggled(_:)))
+            fitCheckbox = fit
+            rows.append(fit)
+            let readout = ControlFactory.caption("")
+            scatterReadout = readout
+            rows.append(readout)
         }
 
         if layer.kind == .text {
@@ -347,6 +380,7 @@ final class LayerEditorViewController: NSViewController {
         refreshProjection(layer)
         refreshTangent(layer)
         refreshText(layer)
+        refreshScatter(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -384,6 +418,35 @@ final class LayerEditorViewController: NSViewController {
         sourceHint?.stringValue = ready
             ? L("The curve where the two surfaces meet. Hide the surfaces to keep only the curve.")
             : L("Pick two different surface layers. Add surfaces first if the lists are empty.")
+    }
+
+    // MARK: - Scatter rows
+
+    private func refreshScatter(_ layer: Layer) {
+        guard let textView = scatterTextView else { return }
+        // 正在输入时不动文字（光标会跳）。
+        if textView.window?.firstResponder !== textView, textView.string != layer.formula {
+            textView.string = layer.formula
+        }
+        fitCheckbox?.state = layer.showsFit ? .on : .off
+
+        let points = ScatterData.parse(layer.formula)
+        var text = String(format: L("%ld points"), points.count)
+        if let fit = ScatterData.fit(points) {
+            func n(_ v: Double) -> String { ControlFactory.format(v) }
+            text += "\n" + String(format: L("mean (%@, %@)  ·  std (%@, %@)"),
+                                  n(fit.mean.x), n(fit.mean.y), n(fit.standardDeviation.x), n(fit.standardDeviation.y))
+            text += "\ny = \(n(fit.slope))·x " + (fit.intercept < 0 ? "− \(n(-fit.intercept))" : "+ \(n(fit.intercept))")
+            if let r = fit.correlation { text += "\nr = \(n(r))  ·  r² = \(n(r * r))" }
+        } else if !points.isEmpty {
+            text += "\n" + L("Need at least two points with different x to fit a line.")
+        }
+        scatterReadout?.stringValue = text
+    }
+
+    @objc private func fitToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Change Fit")) { $0.showsFit = on }
     }
 
     // MARK: - Text rows
@@ -631,6 +694,10 @@ final class LayerEditorViewController: NSViewController {
         obliqueCheckbox = nil
         directionFields = []
         directionRowView = nil
+        scatterTextView?.delegate = nil
+        scatterTextView = nil
+        fitCheckbox = nil
+        scatterReadout = nil
         textContentField = nil
         textPositionFields = []
         fontSizeField = nil
@@ -680,7 +747,7 @@ final class LayerEditorViewController: NSViewController {
             return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
-        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text: return []
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane, .text, .scatter: return []
         case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }
@@ -1045,5 +1112,26 @@ final class LayerEditorViewController: NSViewController {
                 document.layers[index].domainUpper = upper
             }
         }
+    }
+}
+
+// MARK: - 散点数据的多行文本框
+
+extension LayerEditorViewController: NSTextViewDelegate {
+    /// 每次改动都实时更新图（同公式栏：输入中不进撤销栈，输完一次记一步）。
+    func textDidChange(_ notification: Notification) {
+        guard let textView = notification.object as? NSTextView, textView === scatterTextView,
+              let id = state.selectedLayer?.id else { return }
+        let text = textView.string
+        state.beginLiveEdit()
+        state.updateLayerLive(id: id) { $0.formula = text }
+    }
+
+    func textDidEndEditing(_ notification: Notification) {
+        guard let textView = notification.object as? NSTextView, textView === scatterTextView,
+              let id = state.selectedLayer?.id else { return }
+        let text = textView.string
+        state.updateLayerLive(id: id) { $0.formula = text }
+        state.commitLiveEdit(L("Edit Data"))
     }
 }

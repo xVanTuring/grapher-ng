@@ -243,6 +243,7 @@ public enum SceneBuilder2D {
         case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
              .tangent, .tangentPlane, .text:
             return false
+        case .scatter: return true
         }
     }
 
@@ -464,6 +465,23 @@ public enum SceneBuilder2D {
             scene.append(.markers(MarkerPrimitiveBatch(
                 positions: [viewport.toScreen(x: tangent.point.x, y: tangent.point.y)],
                 radius: strokeWidth * 1.6 + 2, color: layer.lineStyle.color)))
+
+        case .scatter:
+            let points = ScatterData.parse(layer.formula)
+            guard !points.isEmpty else { return }
+            // 每个点是零长度的一段：让悬停读数、适应内容、CSV 导出都认得这些点。
+            collected = points.map { [$0, $0] }
+            if layer.showsFit, let fit = ScatterData.fit(points) {
+                // 拟合直线铺满视口的 x 范围，画成细一点的虚线风格（实线、半透明）。
+                let range = viewport.xRange
+                let a = SIMD2(range.lowerBound, fit.slope * range.lowerBound + fit.intercept)
+                let b = SIMD2(range.upperBound, fit.slope * range.upperBound + fit.intercept)
+                appendCurve([[a, b]], color: layer.lineStyle.color.withAlpha(0.7),
+                            width: max(strokeWidth * 0.7, 1), viewport: viewport, into: &scene)
+            }
+            scene.append(.markers(MarkerPrimitiveBatch(
+                positions: points.map { viewport.toScreen(x: $0.x, y: $0.y) },
+                radius: strokeWidth * 1.3 + 1.5, color: layer.lineStyle.color)))
 
         case .text:
             // 文字由画布叠加层与导出的图片写（`TextAnnotations`），不进 Metal 场景。

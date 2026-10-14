@@ -128,4 +128,4 @@ asserts that not a single pixel is drawn outside the box and that nearer faces h
   surfaces, and curves between a surface and a 2D-extruded wall, are not done.
 - 3D: hover read-out, vector export; translucent surfaces are not depth-sorted against each other.
 
-- Data scatter plots and statistical charts.
+- Statistical charts other than scatter plots (histograms, box plots, non-linear fits).

@@ -227,3 +227,12 @@
 "Edit Text" = "修改文字";
 "Move Text" = "移动文字";
 "Change Font Size" = "修改字号";
+
+/* Scatter layers */
+"Data (one point per line: x, y)" = "数据（每行一个点：x, y）";
+"Show least-squares line" = "显示最小二乘直线";
+"%ld points" = "%ld 个点";
+"mean (%@, %@)  ·  std (%@, %@)" = "均值 (%@, %@)  ·  标准差 (%@, %@)";
+"Need at least two points with different x to fit a line." = "要拟合直线，至少需要两个 x 不同的点。";
+"Change Fit" = "修改拟合";
+"Edit Data" = "修改数据";

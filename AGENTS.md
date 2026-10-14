@@ -24,6 +24,7 @@ macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**
 - 投影图层的 `projectionDirection`（nil = 正投影）是斜投影方向，与平面平行时整层不画。
 - 文字标注（`.text`，平面图 / 立体图都能放）：`formula` 是要写的字，不编译；位置 `anchorU/V/W`、字号 `fontSize`。`PlotKind.dimension` 是 `.plane`，立体图的类型列表里手动补上。
   文字由画布叠加层（2D `CanvasOverlayView`、3D `Canvas3DOverlayView`）和导出图片（`GraphSnapshot`）按 `TextAnnotations.all` 写，不进 Metal 场景。
+- 散点图（`.scatter`，平面图）：`formula` 是数据文本（每行 `x, y`，`ScatterData.parse` 解析，不当公式编译），点画成 `Draw2D.markers`、每个点同时是一段零长度的探针曲线（悬停读数、适应内容、CSV 导出都靠它）；`showsFit` 画最小二乘直线，统计量在检查器里显示。数据用多行 `NSTextView` 编辑（`LayerEditorViewController` 的 `NSTextViewDelegate` 扩展，输入中实时更新、输完记一步撤销）。
 - 以上几种新 `PlotKind` 都要同步：`SceneBuilder2D` 里两处 switch、`LayerEditorViewController`、`MCPFacade.variables`、`MCPTests`、两份用法文档。
 
 **选中联动 / 半透明**（立体图）：

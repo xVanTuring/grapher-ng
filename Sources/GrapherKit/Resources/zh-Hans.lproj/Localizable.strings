@@ -104,3 +104,7 @@
 /* GrapherKit: text labels */
 "Text label" = "文字标注";
 "Text" = "文字";
+
+/* GrapherKit: scatter */
+"Scatter data" = "散点数据";
+"Scatter" = "散点";

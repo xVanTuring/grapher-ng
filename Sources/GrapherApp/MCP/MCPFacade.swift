@@ -112,6 +112,16 @@ final class MCPFacade {
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
         if layer.kind == .point { object["label"] = layer.showsLabel }
+        if layer.kind == .scatter {
+            let points = ScatterData.parse(layer.formula)
+            object["pointCount"] = points.count
+            object["fit"] = layer.showsFit
+            if let fit = ScatterData.fit(points) {
+                object["slope"] = fit.slope
+                object["intercept"] = fit.intercept
+                if let r = fit.correlation { object["r"] = r }
+            }
+        }
         if layer.kind == .text {
             object["at"] = layer.anchorU
             object["at2"] = layer.anchorV
@@ -222,6 +232,7 @@ final class MCPFacade {
         var sourceA: UUID?
         var sourceB: UUID?
         var opacity: Double?
+        var showsFit: Bool?
         var showsLabel: Bool?
         var anchorU: Double?
         var anchorV: Double?
@@ -249,9 +260,11 @@ final class MCPFacade {
                 "A \(state.document.dimension == .space ? "3D" : "2D") document cannot hold '\(kind.rawValue)' layers. Allowed kinds: \(names)."
             )
         }
-        if kind == .text {
-            guard let text = edit.formula, !text.trimmingCharacters(in: .whitespaces).isEmpty else {
-                throw MCPInvalidParams("'text' layers need 'formula': the text to write")
+        if kind == .text || kind == .scatter {
+            guard let text = edit.formula, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw MCPInvalidParams(kind == .text
+                    ? "'text' layers need 'formula': the text to write"
+                    : "'scatter' layers need 'formula': one \"x, y\" point per line")
             }
         } else if kind.needsFormula {
             guard let formula = edit.formula, !formula.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -402,6 +415,13 @@ final class MCPFacade {
                 layer.drawsNormal = normal
             }
         }
+        if let fit = edit.showsFit {
+            guard layer.kind == .scatter else { throw MCPToolError("Only 'scatter' layers have fit.") }
+            layer.showsFit = fit
+        }
+        if layer.kind == .scatter, ScatterData.parse(layer.formula).isEmpty {
+            throw MCPToolError("The scatter data has no valid points. Write one \"x, y\" pair per line, e.g. \"1, 2.5\\n2, 4.1\".")
+        }
         if let label = edit.showsLabel {
             guard layer.kind == .point else { throw MCPToolError("Only 'point' layers have a label.") }
             layer.showsLabel = label
@@ -533,6 +553,7 @@ final class MCPFacade {
         case .point: return "(none; only parameters and numbers)"
         case .projection, .tangent, .tangentPlane: return "(none; it has no formula)"
         case .text: return "(none; the text is not a formula)"
+        case .scatter: return "(none; the data is one \"x, y\" point per line)"
         }
     }
 

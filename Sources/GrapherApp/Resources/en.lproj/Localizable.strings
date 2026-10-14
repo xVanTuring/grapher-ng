@@ -227,3 +227,12 @@
 "Edit Text" = "Edit Text";
 "Move Text" = "Move Text";
 "Change Font Size" = "Change Font Size";
+
+/* Scatter layers */
+"Data (one point per line: x, y)" = "Data (one point per line: x, y)";
+"Show least-squares line" = "Show least-squares line";
+"%ld points" = "%ld points";
+"mean (%@, %@)  ·  std (%@, %@)" = "mean (%@, %@)  ·  std (%@, %@)";
+"Need at least two points with different x to fit a line." = "Need at least two points with different x to fit a line.";
+"Change Fit" = "Change Fit";
+"Edit Data" = "Edit Data";

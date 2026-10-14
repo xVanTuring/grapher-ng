@@ -637,14 +637,14 @@ final class AppState {
     /// 以视口中心为锚缩放：工具栏按钮与 ⌘= / ⌘- 都走这条。锚点代数只写在 `Viewport2D.zoom`
     /// 一处，别在这里再抄一遍（UniReader 那边 ⌘0 / 1:1 / 捏合 / ⌘滚轮四个入口共用一个
     /// `applyZoom`，就是这个道理）。
-    /// 立体图：默认放大盒子（只换投影，不重采）；`range` 为真时改坐标盒框住的范围（要重采）。
-    func zoom(by factor: Double, range: Bool = false) {
+    /// 立体图：默认缩放图形（改坐标盒框住的范围，要重采）；`box` 为真时放大盒子（只换投影，不重采）。
+    func zoom(by factor: Double, box: Bool = false) {
         if document.dimension == .space {
-            if range {
+            if box {
+                mutateView3D { $0.zoomCamera(by: factor) }
+            } else {
                 mutateView3D { $0.zoom(by: factor) }
                 requestRebuild(interactive: false)
-            } else {
-                mutateView3D { $0.zoomCamera(by: factor) }
             }
             return
         }

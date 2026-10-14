@@ -6,8 +6,8 @@ import GrapherRender
 /// `ViewportViewController` 一致——画布铺满窗格、伸到毛玻璃侧栏底下，遮挡宽度由 `SafeAreaProbeView` 量，
 /// 一切更新都在屏幕刷新的回调里做。
 ///
-/// 操作：拖动旋转；⇧+拖动或双指滚动平移；⌘+滚轮或捏合放大盒子，再按住 ⌥ 则改坐标盒的范围；
-/// F 适应内容，R 回到默认视角。
+/// 操作：拖动旋转；⇧+拖动或双指滚动平移；⌘+滚轮或捏合缩放图形（改坐标盒的范围）；
+/// ⌥+滚轮或 ⌥+捏合放大盒子；F 适应内容，R 回到默认视角。
 final class Viewport3DViewController: NSViewController {
 
     private let state: AppState
@@ -144,7 +144,7 @@ final class Viewport3DViewController: NSViewController {
         statusBar.update(
             isBuilding: state.isBuilding,
             message: state.statusMessage.isEmpty
-                ? L("Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom, add ⌥ to change the range · F fit · R reset")
+                ? L("Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · ⌥-scroll to resize the box · F fit · R reset")
                 : state.statusMessage
         )
     }
@@ -232,9 +232,11 @@ final class Viewport3DViewController: NSViewController {
             dx *= 10
             dy *= 10
         }
-        if event.modifierFlags.contains(.command) {
+        // ⌥+滚轮放大盒子，⌘+滚轮缩放图形（改范围，与平面图的 ⌘+滚轮一致），什么都不按是平移。
+        let flags = event.modifierFlags
+        if flags.contains(.option) || flags.contains(.command) {
             guard dy != 0, event.momentumPhase == [] else { return }
-            zoom(by: min(max(exp(-dy * 0.008), 0.5), 2), range: event.modifierFlags.contains(.option))
+            zoom(by: min(max(exp(-dy * 0.008), 0.5), 2), box: flags.contains(.option))
             return
         }
         guard dx != 0 || dy != 0 else { return }
@@ -245,16 +247,17 @@ final class Viewport3DViewController: NSViewController {
     fileprivate func handleMagnify(_ event: NSEvent) {
         let factor = 1 + Double(event.magnification)
         guard factor.isFinite, factor > 0 else { return }
-        zoom(by: factor, range: event.modifierFlags.contains(.option))
+        zoom(by: factor, box: event.modifierFlags.contains(.option))
     }
 
-    /// 手势缩放：默认放大盒子（只换投影，当帧生效）；按住 ⌥ 改坐标盒的范围（交互画质重采、停手补精）。
-    private func zoom(by factor: Double, range: Bool) {
-        if range {
+    /// 手势缩放：默认缩放图形（改坐标盒的范围，交互画质重采、停手补精）；
+    /// 按住 ⌥ 放大盒子（盒子连同图形在屏幕上变大，只换投影，当帧生效）。
+    private func zoom(by factor: Double, box: Bool) {
+        if box {
+            state.mutateView3D { $0.zoomCamera(by: factor) }
+        } else {
             state.mutateView3D { $0.zoom(by: factor) }
             state.requestInteractiveRebuild()
-        } else {
-            state.mutateView3D { $0.zoomCamera(by: factor) }
         }
     }
 
@@ -271,8 +274,8 @@ final class Viewport3DViewController: NSViewController {
         switch event.charactersIgnoringModifiers?.lowercased() {
         case "f": state.fitToContent()
         case "r", "0": state.resetView()
-        case "=", "+": state.zoom(by: 1.25, range: event.modifierFlags.contains(.option))
-        case "-": state.zoom(by: 0.8, range: event.modifierFlags.contains(.option))
+        case "=", "+": state.zoom(by: 1.25, box: event.modifierFlags.contains(.option))
+        case "-": state.zoom(by: 0.8, box: event.modifierFlags.contains(.option))
         default: return false
         }
         return true

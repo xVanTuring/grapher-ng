@@ -95,3 +95,8 @@
 "yz plane (x = c)" = "yz 平面（x = c，侧视）";
 "xz plane (y = c)" = "xz 平面（y = c，正视）";
 "A plane layer" = "某个平面图层";
+
+/* GrapherKit: tangents */
+"Tangent / normal line" = "切线 / 法线";
+"Tangent" = "切线";
+"Tangent plane" = "切平面";

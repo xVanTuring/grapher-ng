@@ -230,6 +230,43 @@ final class MCPTests: XCTestCase {
         XCTAssertThrowsError(try facade.updateLayer(in: space, id: plane.id, stray), "只有交线图层有来源")
     }
 
+    func testTangentLayersValidateSourceAndPosition() throws {
+        let plane = GraphDocument()
+        let facade = MCPFacade()
+        let (curve, _) = try facade.addLayer(to: plane, edit(kind: .explicit, formula: "x^2"))
+        let (poles, _) = try facade.addLayer(to: plane, edit(kind: .explicit, formula: "1/x"))
+        let (region, _) = try facade.addLayer(to: plane, edit(kind: .region, formula: "x^2+y^2-1"))
+
+        var tangent = MCPFacade.LayerEdit()
+        tangent.kind = .tangent
+        XCTAssertThrowsError(try facade.addLayer(to: plane, tangent), "缺来源")
+        tangent.sourceA = curve.id
+        XCTAssertThrowsError(try facade.addLayer(to: plane, tangent), "缺 at")
+        tangent.anchorU = 2
+        let (created, _) = try facade.addLayer(to: plane, tangent)
+        XCTAssertEqual(created.anchorU, 2)
+        tangent.sourceA = region.id
+        XCTAssertThrowsError(try facade.addLayer(to: plane, tangent), "区域没有切线")
+        tangent.sourceA = poles.id
+        tangent.anchorU = 0
+        XCTAssertThrowsError(try facade.addLayer(to: plane, tangent), "1/x 在 0 处没有切线")
+        XCTAssertThrowsError(try facade.addLayer(to: GraphDocument(dimension: .space), tangent), "立体图里没有 tangent")
+
+        let space = GraphDocument(dimension: .space)
+        let (bowl, _) = try facade.addLayer(to: space, edit(kind: .surface, formula: "x^2 + y^2"))
+        var tangentPlane = MCPFacade.LayerEdit()
+        tangentPlane.kind = .tangentPlane
+        tangentPlane.sourceA = bowl.id
+        tangentPlane.anchorU = 1
+        XCTAssertThrowsError(try facade.addLayer(to: space, tangentPlane), "缺 at2")
+        tangentPlane.anchorV = 1
+        let (made, _) = try facade.addLayer(to: space, tangentPlane)
+        XCTAssertEqual(made.kind, .tangentPlane)
+        var stray = MCPFacade.LayerEdit()
+        stray.drawsNormal = true
+        XCTAssertThrowsError(try facade.updateLayer(in: space, id: made.id, stray), "normal 只给 tangent")
+    }
+
     func testPointLabelOption() throws {
         let space = GraphDocument(dimension: .space)
         let facade = MCPFacade()

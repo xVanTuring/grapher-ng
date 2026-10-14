@@ -109,6 +109,18 @@ public enum SpaceGeometry {
 
     // MARK: - 从图层认出几何对象
 
+    /// 同上，但能看到文档里的其他图层：切平面图层靠它认出来（它的平面由来源曲面在切点处的导数定）。
+    public static func recognize(
+        _ compiled: LayerCompiler.CompiledLayer, in all: [LayerCompiler.CompiledLayer]
+    ) -> SpaceObject? {
+        guard compiled.layer.kind == .tangentPlane else { return recognize(compiled) }
+        guard let id = compiled.layer.sourceA,
+              let source = all.first(where: { $0.layer.id == id }),
+              let plane = Tangents.tangentPlane(of: source, u: compiled.layer.anchorU, v: compiled.layer.anchorV)
+        else { return nil }
+        return .plane(normal: plane.normal, offset: plane.offset)
+    }
+
     /// 认出一个图层是点、直线还是平面；不是（或公式有错、不是线性的）返回 nil。
     /// 空间曲线按 t 的定义域取点，检验它是不是 `p0 + t d`；隐式 / 显式曲面检验是不是 x、y、z 的一次式。
     public static func recognize(_ compiled: LayerCompiler.CompiledLayer) -> SpaceObject? {

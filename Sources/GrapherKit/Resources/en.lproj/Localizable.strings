@@ -95,3 +95,8 @@
 "yz plane (x = c)" = "yz plane (x = c)";
 "xz plane (y = c)" = "xz plane (y = c)";
 "A plane layer" = "A plane layer";
+
+/* GrapherKit: tangents */
+"Tangent / normal line" = "Tangent / normal line";
+"Tangent" = "Tangent";
+"Tangent plane" = "Tangent plane";

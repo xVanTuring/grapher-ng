@@ -85,8 +85,9 @@ final class RelationPaneViewController: NSViewController {
         view.isHidden = !isSpace
         guard isSpace, firstPopUp != nil else { return }
 
-        candidates = state.compiler.compile(state.document).compactMap { compiled in
-            SpaceGeometry.recognize(compiled).map { (compiled.layer, $0) }
+        let all = state.compiler.compile(state.document)
+        candidates = all.compactMap { compiled in
+            SpaceGeometry.recognize(compiled, in: all).map { (compiled.layer, $0) }
         }
         let ids = candidates.map(\.layer.id)
         if firstID == nil || !ids.contains(firstID!) { firstID = ids.first }

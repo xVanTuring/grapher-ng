@@ -111,6 +111,11 @@ final class MCPFacade {
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
         if layer.kind == .point { object["label"] = layer.showsLabel }
+        if layer.kind == .tangent || layer.kind == .tangentPlane {
+            object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
+            object["at"] = layer.anchorU
+            if layer.kind == .tangentPlane { object["at2"] = layer.anchorV } else { object["normal"] = layer.drawsNormal }
+        }
         if layer.kind == .projection {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["target"] = layer.projectionTarget.rawValue
@@ -210,6 +215,9 @@ final class MCPFacade {
         var sourceB: UUID?
         var opacity: Double?
         var showsLabel: Bool?
+        var anchorU: Double?
+        var anchorV: Double?
+        var drawsNormal: Bool?
         var projectionTarget: ProjectionTarget?
         var projectionOffset: Double?
         var showsProjectors: Bool?
@@ -235,6 +243,14 @@ final class MCPFacade {
             }
         } else if kind == .projection {
             if edit.sourceA == nil { throw MCPInvalidParams("'projection' layers need 'source_a' (the layer to project)") }
+        } else if kind == .tangent || kind == .tangentPlane {
+            if edit.sourceA == nil {
+                throw MCPInvalidParams("'\(kind.rawValue)' layers need 'source_a' (the curve / surface layer) and 'at'")
+            }
+            if edit.anchorU == nil { throw MCPInvalidParams("'\(kind.rawValue)' layers need 'at' (the tangent point)") }
+            if kind == .tangentPlane, edit.anchorV == nil {
+                throw MCPInvalidParams("'tangentPlane' layers need both 'at' and 'at2' (x, y or u, v)")
+            }
         } else if edit.sourceA == nil || edit.sourceB == nil {
             throw MCPInvalidParams("'\(kind.rawValue)' layers need both 'source_a' and 'source_b' (layer ids)")
         }
@@ -324,11 +340,30 @@ final class MCPFacade {
             if let projectors = edit.showsProjectors { layer.showsProjectors = projectors }
         }
         if edit.sourceA != nil || edit.sourceB != nil {
-            guard layer.kind == .surfaceIntersection || layer.kind == .projection else {
-                throw MCPToolError("Only 'surfaceIntersection' and 'projection' layers have source_a / source_b.")
+            guard layer.kind == .surfaceIntersection || layer.kind == .projection
+                    || layer.kind == .tangent || layer.kind == .tangentPlane else {
+                throw MCPToolError("Only 'surfaceIntersection', 'projection', 'tangent' and 'tangentPlane' layers have source_a / source_b.")
             }
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
+        }
+        if edit.anchorU != nil || edit.anchorV != nil || edit.drawsNormal != nil {
+            guard layer.kind == .tangent || layer.kind == .tangentPlane else {
+                throw MCPToolError("Only 'tangent' and 'tangentPlane' layers have at / at2 / normal.")
+            }
+            if let u = edit.anchorU {
+                guard u.isFinite else { throw MCPToolError("at must be a finite number.") }
+                layer.anchorU = u
+            }
+            if let v = edit.anchorV {
+                guard layer.kind == .tangentPlane else { throw MCPToolError("Only 'tangentPlane' layers have at2.") }
+                guard v.isFinite else { throw MCPToolError("at2 must be a finite number.") }
+                layer.anchorV = v
+            }
+            if let normal = edit.drawsNormal {
+                guard layer.kind == .tangent else { throw MCPToolError("Only 'tangent' layers have normal.") }
+                layer.drawsNormal = normal
+            }
         }
         if let label = edit.showsLabel {
             guard layer.kind == .point else { throw MCPToolError("Only 'point' layers have a label.") }
@@ -364,6 +399,10 @@ final class MCPFacade {
             try validateProjection(layer, in: state)
             return []
         }
+        if layer.kind == .tangent || layer.kind == .tangentPlane {
+            try validateTangent(layer, in: state)
+            return []
+        }
         let probe = GrapherDocument(
             dimension: state.document.dimension,
             layers: [layer],
@@ -397,6 +436,30 @@ final class MCPFacade {
         }
     }
 
+    /// 切线 / 切平面：来源必须是对应的曲线 / 曲面图层，切点处要有切线 / 切平面。
+    private func validateTangent(_ layer: Layer, in state: AppState) throws {
+        guard let id = layer.sourceA else { throw MCPInvalidParams("'\(layer.kind.rawValue)' layers need 'source_a'") }
+        let compiled = LayerCompiler().compile(state.document)
+        guard let source = compiled.first(where: { $0.layer.id == id }) else {
+            throw MCPToolError("source_a: no layer with id \(id.uuidString). Call get_document to list layers.")
+        }
+        if layer.kind == .tangent {
+            guard source.layer.kind.isTangentSource else {
+                throw MCPToolError("source_a is a '\(source.layer.kind.rawValue)' layer; a tangent needs an explicit, parametric or polar curve.")
+            }
+            guard Tangents.tangent(of: source, at: layer.anchorU) != nil else {
+                throw MCPToolError("The curve has no tangent at at = \(layer.anchorU) (undefined or singular there).")
+            }
+        } else {
+            guard source.layer.kind.isTangentPlaneSource else {
+                throw MCPToolError("source_a is a '\(source.layer.kind.rawValue)' layer; a tangent plane needs a surface or parametricSurface layer.")
+            }
+            guard Tangents.tangentPlane(of: source, u: layer.anchorU, v: layer.anchorV) != nil else {
+                throw MCPToolError("The surface has no tangent plane at (\(layer.anchorU), \(layer.anchorV)) (undefined or singular there).")
+            }
+        }
+    }
+
     /// 投影：来源必须是点 / 空间曲线 / 交线；目标是 `plane` 时 source_b 必须是线性的平面图层。
     private func validateProjection(_ layer: Layer, in state: AppState) throws {
         guard let a = layer.sourceA else {
@@ -416,7 +479,7 @@ final class MCPFacade {
         guard let target = compiled.first(where: { $0.layer.id == b }) else {
             throw MCPToolError("source_b: no layer with id \(b.uuidString). Call get_document to list layers.")
         }
-        guard case .plane? = SpaceGeometry.recognize(target) else {
+        guard case .plane? = SpaceGeometry.recognize(target, in: compiled) else {
             throw MCPToolError("source_b must be a plane: an implicitSurface or surface layer whose formula is linear (a*x + b*y + c*z + d).")
         }
     }
@@ -431,7 +494,7 @@ final class MCPFacade {
         case .implicitSurface: return "x, y, z"
         case .surfaceIntersection: return "(none; it has no formula)"
         case .point: return "(none; only parameters and numbers)"
-        case .projection: return "(none; it has no formula)"
+        case .projection, .tangent, .tangentPlane: return "(none; it has no formula)"
         }
     }
 

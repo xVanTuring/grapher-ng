@@ -141,7 +141,8 @@ final class SceneBuilderTests: XCTestCase {
         document.viewport.widthPixels = 400
         document.viewport.heightPixels = 300
         document.viewport.scale = 40
-        let planeKinds = PlotKind.cases(for: .plane)
+        // 切线图层要引用别的图层才有几何，另有 TangentTests。
+        let planeKinds = PlotKind.cases(for: .plane).filter { $0 != .tangent }
         document.layers = planeKinds.enumerated().map { index, kind in
             Layer.makeDefault(kind: kind, index: index)
         }

@@ -26,13 +26,18 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case point
     /// 另一个图层（点、空间曲线、曲面交线）在平面上的正投影，没有公式
     case projection
+    /// 平面图：显函数 / 参数方程 / 极坐标上一点的切线或法线，没有公式
+    case tangent
+    /// 立体图：显式曲面或参数曲面上一点的切平面（连同法线），没有公式
+    case tangentPlane
 
     public var id: String { rawValue }
 
     public var dimension: DocumentDimension {
         switch self {
-        case .explicit, .parametric, .polar, .implicit, .region: return .plane
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection:
+        case .explicit, .parametric, .polar, .implicit, .region, .tangent: return .plane
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
+             .tangentPlane:
             return .space
         }
     }
@@ -51,7 +56,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
         case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point,
-             .projection:
+             .projection, .tangent, .tangentPlane:
             return false
         }
     }
@@ -70,6 +75,8 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .surfaceIntersection: return L("Surface intersection")
         case .point: return L("Point (x, y, z)")
         case .projection: return L("Projection onto a plane")
+        case .tangent: return L("Tangent / normal line")
+        case .tangentPlane: return L("Tangent plane")
         }
     }
 
@@ -87,6 +94,8 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .surfaceIntersection: return L("Intersection")
         case .point: return L("Point")
         case .projection: return L("Projection")
+        case .tangent: return L("Tangent")
+        case .tangentPlane: return L("Tangent plane")
         }
     }
 
@@ -100,7 +109,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection, .point, .projection: return []
+        case .surfaceIntersection, .point, .projection, .tangent, .tangentPlane: return []
         }
     }
 
@@ -139,7 +148,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametricSurface: return "(2 + cos(v))*cos(u)"
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
-        case .surfaceIntersection, .projection: return ""
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane: return ""
         case .point: return "1"
         }
     }
@@ -163,8 +172,19 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// 交线、投影图层没有公式，只引用别的图层。
-    public var needsFormula: Bool { self != .surfaceIntersection && self != .projection }
+    /// 交线、投影、切线、切平面图层没有公式，只引用别的图层。
+    public var needsFormula: Bool {
+        switch self {
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane: return false
+        default: return true
+        }
+    }
+
+    /// 能当切线来源的平面曲线。
+    public var isTangentSource: Bool { self == .explicit || self == .parametric || self == .polar }
+
+    /// 能当切平面来源的曲面。
+    public var isTangentPlaneSource: Bool { self == .surface || self == .parametricSurface }
 
     /// 能当投影来源的图型：点、空间曲线、曲面交线。
     public var isProjectable: Bool {
@@ -194,7 +214,9 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var usesDomain: Bool {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
-        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection: return false
+        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point, .projection,
+             .tangent, .tangentPlane:
+            return false
         }
     }
 
@@ -325,6 +347,11 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var showsProjectors: Bool
     /// 点图层：在点旁边写出图层名（A、B、C……）。
     public var showsLabel: Bool
+    /// 切线 / 切平面图层：切点的位置（切线：显函数的 x、参数方程的 t、极坐标的 θ；
+    /// 切平面：显式曲面的 x、y，参数曲面的 u、v），以及切线图层画法线而不是切线。
+    public var anchorU: Double
+    public var anchorV: Double
+    public var drawsNormal: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -351,6 +378,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         projectionOffset: Double = 0,
         showsProjectors: Bool = true,
         showsLabel: Bool = false,
+        anchorU: Double = 0,
+        anchorV: Double = 0,
+        drawsNormal: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -375,6 +405,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.projectionOffset = projectionOffset
         self.showsProjectors = showsProjectors
         self.showsLabel = showsLabel
+        self.anchorU = anchorU
+        self.anchorV = anchorV
+        self.drawsNormal = drawsNormal
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -384,6 +417,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
+        case anchorU, anchorV, drawsNormal
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -410,6 +444,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         projectionOffset = try container.decodeIfPresent(Double.self, forKey: .projectionOffset) ?? 0
         showsProjectors = try container.decodeIfPresent(Bool.self, forKey: .showsProjectors) ?? true
         showsLabel = try container.decodeIfPresent(Bool.self, forKey: .showsLabel) ?? false
+        anchorU = try container.decodeIfPresent(Double.self, forKey: .anchorU) ?? 0
+        anchorV = try container.decodeIfPresent(Double.self, forKey: .anchorV) ?? 0
+        drawsNormal = try container.decodeIfPresent(Bool.self, forKey: .drawsNormal) ?? false
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
@@ -443,7 +480,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             // 螺旋线：t 走两圈。
             lower = -2 * Double.pi
             upper = 2 * Double.pi
-        case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection, .projection:
+        case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection, .projection, .tangent, .tangentPlane:
             break
         case .point:
             // 默认大小比线宽大一点，一眼能看见。

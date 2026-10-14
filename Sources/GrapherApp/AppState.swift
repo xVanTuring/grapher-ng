@@ -504,6 +504,14 @@ final class AppState {
                 .map { i in "\(letters[i % 26])\(i >= 26 ? String(i / 26) : "")" }
                 .first { !used.contains($0) } ?? created.name
         }
+        if kind == .tangent || kind == .tangentPlane {
+            // 默认取最近的一个能当来源的图层；切点取原点附近（对 1/x 之类没定义的函数，用户再改）。
+            created.sourceA = document.layers.last {
+                kind == .tangent ? $0.kind.isTangentSource : $0.kind.isTangentPlaneSource
+            }?.id
+            created.anchorU = 1
+            created.anchorV = 1
+        }
         if kind == .projection {
             // 默认投影最近的一个点 / 曲线 / 交线。
             created.sourceA = document.layers.last { $0.kind.isProjectable }?.id

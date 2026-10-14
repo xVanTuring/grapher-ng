@@ -202,3 +202,18 @@
 "Change Projection" = "修改投影";
 "Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection." = "点、空间曲线或曲面交线的正投影。把原图形隐藏起来，就只剩投影。";
 "Show name" = "显示名称";
+
+/* Tangent layers */
+"Of" = "对象";
+"At" = "切点位置";
+"At u or x" = "切点 u（或 x）";
+"At v or y" = "切点 v（或 y）";
+"Draw the normal line instead" = "画法线而不是切线";
+"Pick a source layer." = "请先选一个来源图层。";
+"slope" = "斜率";
+"vertical tangent" = "竖直切线";
+"Point" = "点";
+"Normal" = "法向";
+"Change Tangent" = "修改切线";
+"The curve has no tangent at this position." = "曲线在这个位置没有切线。";
+"The surface has no tangent plane at this position." = "曲面在这个位置没有切平面。";

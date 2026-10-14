@@ -55,6 +55,11 @@ final class LayerEditorViewController: NSViewController {
     private var projectionOffsetRow: NSView?
     private var projectorsCheckbox: NSButton?
     private var labelCheckbox: NSButton?
+    private var tangentSourcePopUp: NSPopUpButton?
+    private var anchorUField: NSTextField?
+    private var anchorVField: NSTextField?
+    private var normalCheckbox: NSButton?
+    private var tangentReadout: NSTextField?
     private var relationPopUp: NSPopUpButton?
     private var lineColorWell: NSColorWell?
     private var lineWidthSlider: NSSlider?
@@ -126,7 +131,7 @@ final class LayerEditorViewController: NSViewController {
         case .surface, .parametricSurface, .implicitSurface: return true
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
-        case .region, .spaceCurve, .surfaceIntersection, .point, .projection: return false
+        case .region, .spaceCurve, .surfaceIntersection, .point, .projection, .tangent, .tangentPlane: return false
         }
     }
 
@@ -187,6 +192,29 @@ final class LayerEditorViewController: NSViewController {
             rows.append(projectors)
             rows.append(ControlFactory.caption(
                 L("Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.")))
+        }
+
+        if layer.kind == .tangent || layer.kind == .tangentPlane {
+            let source = ControlFactory.popUp(items: [], target: self, action: #selector(tangentSourceEdited(_:)))
+            tangentSourcePopUp = source
+            rows.append(ControlFactory.formRow(L("Of"), source))
+            let first = ControlFactory.numberField(layer.anchorU, target: self, action: #selector(anchorEdited(_:)))
+            anchorUField = first
+            if layer.kind == .tangent {
+                rows.append(ControlFactory.formRow(L("At"), first))
+                let normal = ControlFactory.checkbox(
+                    L("Draw the normal line instead"), target: self, action: #selector(normalToggled(_:)))
+                normalCheckbox = normal
+                rows.append(normal)
+            } else {
+                let second = ControlFactory.numberField(layer.anchorV, target: self, action: #selector(anchorEdited(_:)))
+                anchorVField = second
+                rows.append(ControlFactory.formRow(L("At u or x"), first))
+                rows.append(ControlFactory.formRow(L("At v or y"), second))
+            }
+            let readout = ControlFactory.caption("")
+            tangentReadout = readout
+            rows.append(readout)
         }
 
         if layer.kind.usesDomain {
@@ -277,6 +305,7 @@ final class LayerEditorViewController: NSViewController {
         labelCheckbox?.state = layer.showsLabel ? .on : .off
         refreshSourcePopUps(layer)
         refreshProjection(layer)
+        refreshTangent(layer)
         if let relationPopUp, let index = RegionRelation.allCases.firstIndex(of: layer.relation) {
             relationPopUp.selectItem(at: index)
         }
@@ -316,14 +345,86 @@ final class LayerEditorViewController: NSViewController {
             : L("Pick two different surface layers. Add surfaces first if the lists are empty.")
     }
 
+    // MARK: - Tangent rows
+
+    private func tangentCandidates(for layer: Layer) -> [Layer] {
+        state.document.layers.filter { layer.kind == .tangent ? $0.kind.isTangentSource : $0.kind.isTangentPlaneSource }
+    }
+
+    private func refreshTangent(_ layer: Layer) {
+        guard let popUp = tangentSourcePopUp else { return }
+        let sources = tangentCandidates(for: layer)
+        popUp.removeAllItems()
+        popUp.addItem(withTitle: L("None"))
+        popUp.menu?.addItem(.separator())
+        for source in sources { popUp.addItem(withTitle: source.name) }
+        if let id = layer.sourceA, let index = sources.firstIndex(where: { $0.id == id }) {
+            popUp.selectItem(at: index + 2)
+        } else {
+            popUp.selectItem(at: 0)
+        }
+        for (field, value) in [(anchorUField, layer.anchorU), (anchorVField, layer.anchorV)] {
+            if let field, field.currentEditor() == nil { field.stringValue = ControlFactory.format(value) }
+        }
+        normalCheckbox?.state = layer.drawsNormal ? .on : .off
+
+        // 读数：切点、斜率 / 法向。
+        func p2(_ v: SIMD2<Double>) -> String { "(\(ControlFactory.format(v.x)), \(ControlFactory.format(v.y)))" }
+        func p3(_ v: SIMD3<Double>) -> String {
+            "(\(ControlFactory.format(v.x)), \(ControlFactory.format(v.y)), \(ControlFactory.format(v.z)))"
+        }
+        let all = state.compiler.compile(state.document)
+        let source = all.first { $0.layer.id == layer.sourceA }
+        var text = L("Pick a source layer.")
+        if let source {
+            if layer.kind == .tangent {
+                if let t = Tangents.tangent(of: source, at: layer.anchorU) {
+                    let slope = t.slope.map { "\(L("slope")) \(ControlFactory.format($0))" } ?? L("vertical tangent")
+                    text = "\(L("Point")) \(p2(t.point))  ·  \(slope)"
+                } else {
+                    text = L("The curve has no tangent at this position.")
+                }
+            } else if let plane = Tangents.tangentPlane(of: source, u: layer.anchorU, v: layer.anchorV) {
+                text = "\(L("Point")) \(p3(plane.point))\n\(L("Normal")) \(p3(plane.normal))"
+            } else {
+                text = L("The surface has no tangent plane at this position.")
+            }
+        }
+        tangentReadout?.stringValue = text
+    }
+
+    @objc private func tangentSourceEdited(_ sender: NSPopUpButton) {
+        guard let layer = state.selectedLayer else { return }
+        let sources = tangentCandidates(for: layer)
+        let index = sender.indexOfSelectedItem
+        let id = index >= 2 && index - 2 < sources.count ? sources[index - 2].id : nil
+        editLayer(L("Change Tangent")) { $0.sourceA = id }
+    }
+
+    @objc private func anchorEdited(_ sender: NSTextField) {
+        guard let layer = state.selectedLayer else { return }
+        let u = ControlFactory.parse(anchorUField?.stringValue ?? "") ?? layer.anchorU
+        let v = ControlFactory.parse(anchorVField?.stringValue ?? "") ?? layer.anchorV
+        editLayer(L("Change Tangent")) {
+            $0.anchorU = u
+            $0.anchorV = v
+        }
+    }
+
+    @objc private func normalToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Change Tangent")) { $0.drawsNormal = on }
+    }
+
     // MARK: - Projection rows
 
     private var projectableLayers: [Layer] { state.document.layers.filter { $0.kind.isProjectable } }
 
     /// 能当投影目标的平面图层（线性的隐式 / 显式曲面）。
     private var planeLayers: [Layer] {
-        state.compiler.compile(state.document).compactMap { compiled in
-            if case .plane? = SpaceGeometry.recognize(compiled) { return compiled.layer }
+        let all = state.compiler.compile(state.document)
+        return all.compactMap { compiled in
+            if case .plane? = SpaceGeometry.recognize(compiled, in: all) { return compiled.layer }
             return nil
         }
     }
@@ -428,6 +529,11 @@ final class LayerEditorViewController: NSViewController {
         projectionOffsetRow = nil
         projectorsCheckbox = nil
         labelCheckbox = nil
+        tangentSourcePopUp = nil
+        anchorUField = nil
+        anchorVField = nil
+        normalCheckbox = nil
+        tangentReadout = nil
         relationPopUp = nil
         lineColorWell = nil
         lineWidthSlider = nil
@@ -469,7 +575,7 @@ final class LayerEditorViewController: NSViewController {
             return [("x(u, v) =", .primary), ("y(u, v) =", .secondary), ("z(u, v) =", .tertiary)]
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
-        case .surfaceIntersection, .projection: return []
+        case .surfaceIntersection, .projection, .tangent, .tangentPlane: return []
         case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }

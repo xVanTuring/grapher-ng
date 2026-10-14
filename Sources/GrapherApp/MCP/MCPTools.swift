@@ -174,6 +174,9 @@ enum MCPTools {
                 enumValues: ProjectionTarget.allCases.map(\.rawValue)),
             "offset": MCPSchema.number("projection only: position of the xy / yz / xz plane (default 0)"),
             "projectors": MCPSchema.boolean("projection only: draw thin lines from the original to its projection (default true)"),
+            "at": MCPSchema.number("tangent / tangentPlane: the tangent point. tangent: x (explicit), t (parametric) or theta (polar). tangentPlane: x of a surface, u of a parametricSurface"),
+            "at2": MCPSchema.number("tangentPlane only: y of a surface, v of a parametricSurface"),
+            "normal": MCPSchema.boolean("tangent only: draw the normal line instead of the tangent line"),
             "label": MCPSchema.boolean("point only: write the layer name (A, B, C…) next to the point (default true)"),
             "opacity": MCPSchema.number("surface / region fill opacity, 0.05–1 (default 1); below 1 a surface becomes translucent"),
             "color": MCPSchema.string("#RRGGBB"),
@@ -215,6 +218,9 @@ enum MCPTools {
         }
         edit.opacity = try args.optionalDouble("opacity")
         edit.showsLabel = try args.optionalBool("label")
+        edit.anchorU = try args.optionalDouble("at")
+        edit.anchorV = try args.optionalDouble("at2")
+        edit.drawsNormal = try args.optionalBool("normal")
         edit.projectionOffset = try args.optionalDouble("offset")
         edit.showsProjectors = try args.optionalBool("projectors")
         if let color = try args.optionalString("color") { edit.color = try MCPFacade.parseColor(color) }
@@ -233,7 +239,9 @@ enum MCPTools {
                 + "2D documents take explicit, parametric, polar, implicit, region; 3D documents take surface, parametricSurface, spaceCurve, implicitSurface, plus explicit/parametric/polar/implicit (drawn on z=0 or extruded), plus surfaceIntersection "
                 + "(no formula: pass source_a and source_b, the ids of two surface layers; draws their intersection curve). "
                 + "and projection (no formula: source_a = a point / spaceCurve / surfaceIntersection layer, target = xy | yz | xz | plane). "
-                + "Every kind except surfaceIntersection and projection requires 'formula'.",
+                + "and tangent (2D: source_a = an explicit / parametric / polar layer, at = x or t or theta, normal = true for the normal line) "
+                + "and tangentPlane (3D: source_a = a surface / parametricSurface layer, at + at2 = the point's x, y or u, v). "
+                + "Every kind except surfaceIntersection, projection, tangent and tangentPlane requires 'formula'.",
             inputSchema: MCPSchema.object(layerProperties(forAdd: true), required: ["kind"]),
             tier: .write
         ) { args in
@@ -422,6 +430,9 @@ enum MCPTools {
       projection          source_a = id of a point / spaceCurve / surfaceIntersection layer; target = xy (plane z = offset) | yz (x = offset) | xz (y = offset)
                           | plane (source_b = id of a plane layer); projectors = draw projecting lines. Orthogonal projection; no formula.
                           A straight line is a spaceCurve linear in t, e.g. (1+t, 2*t, 3-t); a plane is an implicitSurface linear in x, y, z, e.g. x + 2*y - z - 3.
+      tangent             (2D document) source_a = id of an explicit / parametric / polar layer, at = x (explicit) | t | theta, normal = true for the normal line; no formula
+      tangentPlane        (3D document) source_a = id of a surface / parametricSurface layer, at, at2 = (x, y) or (u, v) of the tangent point; no formula.
+                          The plane shows up in the relations panel like any other plane and can be a projection target.
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.
     Write the F of an implicit layer WITHOUT "= 0": x^2 + y^2 - 4, not x^2 + y^2 = 4.
     Everything in a 3D document is clipped to the axis box (default −4 … 4 on each axis); scale shapes to fit or call set_view.

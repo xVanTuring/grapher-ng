@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 /// Compiles a document's formulas and remembers the results, keyed by the
 /// inputs that actually affect compilation. Changing a parameter changes the
@@ -239,7 +240,8 @@ public enum SceneBuilder2D {
         case .explicit: return layer.usesExplicitDomain
         case .parametric, .polar: return true
         case .implicit, .region: return false
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection:
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
+             .tangent, .tangentPlane:
             return false
         }
     }
@@ -447,7 +449,24 @@ public enum SceneBuilder2D {
                             viewport: viewport, into: &scene)
             }
 
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection:
+        case .tangent:
+            guard let id = layer.sourceA,
+                  let source = request.compiled.first(where: { $0.layer.id == id }),
+                  let tangent = Tangents.tangent(of: source, at: layer.anchorU) else { return }
+            let direction = layer.drawsNormal ? tangent.normal : tangent.direction
+            // 直线两头各伸出一个视口对角线那么长（再加上切点离视口中心的距离），保证铺满画面。
+            let window = viewport.dataBounds
+            let diagonal = hypot(window.maxX - window.minX, window.maxY - window.minY)
+            let centre = SIMD2((window.minX + window.maxX) / 2, (window.minY + window.maxY) / 2)
+            let reach = diagonal + simd_length(tangent.point - centre)
+            collected = [[tangent.point - direction * reach, tangent.point + direction * reach]]
+            appendCurve(collected, color: layer.lineStyle.color, width: strokeWidth, viewport: viewport, into: &scene)
+            scene.append(.markers(MarkerPrimitiveBatch(
+                positions: [viewport.toScreen(x: tangent.point.x, y: tangent.point.y)],
+                radius: strokeWidth * 1.6 + 2, color: layer.lineStyle.color)))
+
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point, .projection,
+             .tangentPlane:
             // 立体图型只在 3D 画布上画（`SceneBuilder3D`）。
             return
         }

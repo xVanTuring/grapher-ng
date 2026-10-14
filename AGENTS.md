@@ -18,7 +18,10 @@ macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**
   「画出结果」用 `GeometryConstruction.makeLayer` 把辅助对象加成新图层（数值快照，不跟来源联动）。
 - `.projection` 图层（`sourceA` 来源：点 / 空间曲线 / 交线；目标：三张坐标面 + `projectionOffset`，或 `sourceB` 指向的平面图层）
   是正投影，在 `SceneBuilder3D` 里和交线一样最后处理；投影线最多 24 根，半透明细线。
-- 以上三种新 `PlotKind` 都要同步：`SceneBuilder2D` 里两处 switch、`LayerEditorViewController`、`MCPFacade.variables`、`MCPTests`、两份用法文档。
+- 切线 / 法线（`.tangent`，平面图）和切平面（`.tangentPlane`，立体图）也是引用来源图层、没有公式的图层（`sourceA` + `anchorU/V`）。
+  导数在 `Tangents` 里用中心差分求，来源是编译好的公式；切平面经 `SpaceGeometry.recognize(_:in:)`（要看得到来源图层）
+  当平面用，所以能进位置关系面板、当投影目标。**认平面请用带 `in:` 的重载**，单参数那个认不出切平面。
+- 以上几种新 `PlotKind` 都要同步：`SceneBuilder2D` 里两处 switch、`LayerEditorViewController`、`MCPFacade.variables`、`MCPTests`、两份用法文档。
 
 **选中联动 / 半透明**（立体图）：
 - 场景里每个 `Mesh3D` / `Polyline3D` 都带 `layerID`（`SceneBuilder3D.tag`，用 `defer` 在每个图层处理完后统一打；坐标盒线框不属于任何图层）。

@@ -202,3 +202,18 @@
 "Change Projection" = "Change Projection";
 "Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection." = "Orthogonal projection of a point, space curve or surface intersection. Hide the original to keep only the projection.";
 "Show name" = "Show name";
+
+/* Tangent layers */
+"Of" = "Of";
+"At" = "At";
+"At u or x" = "At u or x";
+"At v or y" = "At v or y";
+"Draw the normal line instead" = "Draw the normal line instead";
+"Pick a source layer." = "Pick a source layer.";
+"slope" = "slope";
+"vertical tangent" = "vertical tangent";
+"Point" = "Point";
+"Normal" = "Normal";
+"Change Tangent" = "Change Tangent";
+"The curve has no tangent at this position." = "The curve has no tangent at this position.";
+"The surface has no tangent plane at this position." = "The surface has no tangent plane at this position.";

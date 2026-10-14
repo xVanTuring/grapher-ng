@@ -129,7 +129,17 @@ public enum SceneBuilder3D {
                 ))
                 fit = DataBox3D(min: p, max: p).intersection(box)?.union(fit) ?? fit
 
-            case .region, .surfaceIntersection, .projection:
+            case .tangentPlane:
+                guard let id = layer.sourceA,
+                      let source = request.compiled.first(where: { $0.layer.id == id }),
+                      let plane = Tangents.tangentPlane(of: source, u: layer.anchorU, v: layer.anchorV)
+                else { continue }
+                let (mesh, lines, extent) = tangentPlaneGeometry(plane, layer: layer, request: request)
+                scene.meshes.append(contentsOf: mesh)
+                scene.polylines.append(contentsOf: lines)
+                fit = extent.intersection(box)?.union(fit) ?? fit
+
+            case .region, .surfaceIntersection, .projection, .tangent:
                 continue
             }
         }
@@ -461,6 +471,45 @@ public enum SceneBuilder3D {
         return MeshIntersection.curves(meshes[0], meshes[1]).map { $0.map { request.view.data($0) } }
     }
 
+    // MARK: - 切平面
+
+    /// 切平面：切点上一小块半透明方片（边长约盒子的 40%）、方片的边框、从切点伸出的法线、切点处的小球。
+    static func tangentPlaneGeometry(
+        _ plane: Tangents.TangentPlane,
+        layer: Layer,
+        request: SceneBuild3DRequest
+    ) -> (meshes: [Mesh3D], lines: [Polyline3D], extent: DataBox3D) {
+        let view = request.view
+        let half = 0.2 * view.halfExtent
+        let e1 = simd_normalize(plane.tangentU)
+        let e2 = simd_cross(plane.normal, e1)
+        let limit = SurfaceMesher.coordinateLimit
+        func place(_ p: SIMD3<Double>) -> SIMD3<Float> {
+            simd_clamp(SIMD3<Float>(view.normalized(p)), SIMD3(repeating: -limit), SIMD3(repeating: limit))
+        }
+
+        let color = layer.lineStyle.color
+        let corners = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)].map { a, b in
+            plane.point + e1 * (a * half) + e2 * (b * half)
+        }
+        let normalF = SIMD3<Float>(plane.normal)
+        var patch = Mesh3D(color: color.withAlpha(0.38))
+        patch.vertices = corners.map {
+            MeshVertex3D(position: place($0), normal: normalF, parameter: SIMD2(.nan, .nan))
+        }
+        patch.indices = [0, 1, 2, 0, 2, 3]
+
+        let width = max(layer.lineStyle.width * request.backingScale, 0.5)
+        let outline = Polyline3D(points: (corners + [corners[0]]).map(place), color: color, width: width)
+        let tip = plane.point + plane.normal * (1.6 * half)
+        let normalLine = Polyline3D(points: [place(plane.point), place(tip)], color: color, width: width)
+        let marker = PointMarker.mesh(
+            center: place(plane.point), radius: PointMarker.radius(width: layer.lineStyle.width * 1.6), color: color)
+
+        let extent = DataBox3D.enclosing(corners + [tip, plane.point]) ?? DataBox3D(min: plane.point, max: plane.point)
+        return ([patch, marker], [outline, normalLine], extent)
+    }
+
     // MARK: - 投影
 
     /// 投影图层的来源：点、空间曲线、曲面交线的折线（数据坐标）；点是长度为 1 的一段。
@@ -502,7 +551,7 @@ public enum SceneBuilder3D {
             normal = axis
             offset = layer.projectionOffset
         } else if let id = layer.sourceB, let target = request.compiled.first(where: { $0.layer.id == id }),
-                  case let .plane(n, c)? = SpaceGeometry.recognize(target) {
+                  case let .plane(n, c)? = SpaceGeometry.recognize(target, in: request.compiled) {
             normal = n
             offset = c
         } else {

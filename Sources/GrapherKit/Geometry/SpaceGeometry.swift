@@ -55,6 +55,46 @@ public enum GeometryConstruction: Equatable, Sendable {
     }
 }
 
+extension GeometryConstruction {
+    /// 变成一个能加进文档的图层：点是点图层，线段和直线是线性的空间曲线（过的是同一套 `recognize` 认得出的形式）。
+    /// 公式里写的是数值而不是引用，之后不再跟着来源图层变——这是一次「画出来」的快照。
+    /// - Parameter lineExtent: 直线 `p + d t` 的 t 取 ±lineExtent，要大到穿过整个坐标盒。
+    public func makeLayer(index: Int, lineExtent: Double) -> Layer {
+        func number(_ value: Double) -> String {
+            let text = String(format: "%.12g", value == 0 ? 0 : value)
+            return text == "-0" ? "0" : text
+        }
+        func linear(_ origin: Double, _ slope: Double) -> String { "(\(number(origin))) + (\(number(slope)))*t" }
+
+        var layer: Layer
+        switch self {
+        case .point(let p, _):
+            layer = Layer.makeDefault(kind: .point, index: index)
+            layer.formula = number(p.x)
+            layer.secondaryFormula = number(p.y)
+            layer.tertiaryFormula = number(p.z)
+        case .segment(let a, let b, _):
+            layer = Layer.makeDefault(kind: .spaceCurve, index: index)
+            layer.formula = linear(a.x, b.x - a.x)
+            layer.secondaryFormula = linear(a.y, b.y - a.y)
+            layer.tertiaryFormula = linear(a.z, b.z - a.z)
+            layer.domainLower = 0
+            layer.domainUpper = 1
+            layer.lineStyle.isDashed = true
+        case .line(let o, let d, _):
+            layer = Layer.makeDefault(kind: .spaceCurve, index: index)
+            layer.formula = linear(o.x, d.x)
+            layer.secondaryFormula = linear(o.y, d.y)
+            layer.tertiaryFormula = linear(o.z, d.z)
+            layer.domainLower = -lineExtent
+            layer.domainUpper = lineExtent
+        }
+        layer.usesExplicitDomain = true
+        layer.name = name
+        return layer
+    }
+}
+
 /// 两个对象之间的关系：一句话结论、几个量、可以画出来的辅助对象。
 public struct GeometryRelation: Equatable, Sendable {
     public var summary: String

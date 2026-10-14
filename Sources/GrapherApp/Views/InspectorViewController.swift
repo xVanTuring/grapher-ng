@@ -12,12 +12,14 @@ final class InspectorViewController: NSViewController {
     private let contentStack = NSStackView()
     private let layerEditor: LayerEditorViewController
     private let viewSettings: ViewSettingsViewController
+    private let relationPane: RelationPaneViewController
     private var observerID: UUID?
 
     init(state: AppState) {
         self.state = state
         self.layerEditor = LayerEditorViewController(state: state)
         self.viewSettings = ViewSettingsViewController(state: state)
+        self.relationPane = RelationPaneViewController(state: state)
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -42,6 +44,9 @@ final class InspectorViewController: NSViewController {
         contentStack.spacing = ControlFactory.Metric.sectionSpacing
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.addArrangedSubview(layerEditor.view)
+        // 点线面关系只在立体图里有（面板自己在平面图里藏起来，连同上面那条分隔线）。
+        addChild(relationPane)
+        contentStack.addArrangedSubview(relationPane.view)
         contentStack.addArrangedSubview(ControlFactory.separator())
         contentStack.addArrangedSubview(viewSettings.view)
 

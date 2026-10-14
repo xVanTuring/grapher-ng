@@ -183,3 +183,12 @@
 "Show" = "Show";
 "Hide" = "Hide";
 "JSON" = "JSON";
+
+/* Relations pane (points, lines, planes) */
+"Relations" = "Relations";
+"Object A" = "Object A";
+"Object B" = "Object B";
+"Draw Results" = "Draw Results";
+"Add Construction" = "Add Construction";
+"Add the foot of the perpendicular, intersection point, common perpendicular or line of intersection as new layers." = "Add the foot of the perpendicular, intersection point, common perpendicular or line of intersection as new layers.";
+"Pick two of: a point, a straight line (a linear space curve), a plane (a linear surface)." = "Pick two of: a point, a straight line (a linear space curve), a plane (a linear surface).";

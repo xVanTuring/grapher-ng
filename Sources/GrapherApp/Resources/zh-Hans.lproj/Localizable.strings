@@ -183,3 +183,12 @@
 "Show" = "显示";
 "Hide" = "隐藏";
 "JSON" = "JSON";
+
+/* Relations pane (points, lines, planes) */
+"Relations" = "位置关系";
+"Object A" = "对象 A";
+"Object B" = "对象 B";
+"Draw Results" = "画出结果";
+"Add Construction" = "添加辅助图形";
+"Add the foot of the perpendicular, intersection point, common perpendicular or line of intersection as new layers." = "把垂足、交点、公垂线段或交线作为新图层加进文档。";
+"Pick two of: a point, a straight line (a linear space curve), a plane (a linear surface)." = "请选两个对象：点、直线（线性的空间曲线）、平面（线性的曲面）。";

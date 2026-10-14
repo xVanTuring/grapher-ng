@@ -225,6 +225,27 @@ final class SpaceGeometryTests: XCTestCase {
         XCTAssertEqual(SpaceGeometry.relation(a, .plane(normal: SIMD3(0, 0, -1), offset: -1)).summary, "两平面重合。")
     }
 
+    /// 「画出结果」生成的图层，再被 `recognize` 认回原来的对象。
+    func testConstructionLayersRecognizeBackAsTheSameObjects() throws {
+        let point = GeometryConstruction.point(SIMD3(1.5, -2, 0.25), name: "P")
+        XCTAssertEqual(recognize(point.makeLayer(index: 0, lineExtent: 10)), .point(SIMD3(1.5, -2, 0.25)))
+        XCTAssertEqual(point.makeLayer(index: 0, lineExtent: 10).name, "P")
+
+        let line = GeometryConstruction.line(origin: SIMD3(1, 2, 3), direction: SIMD3(0, 0.6, 0.8), name: "L")
+        guard case let .line(origin, direction)? = recognize(line.makeLayer(index: 1, lineExtent: 10)) else {
+            return XCTFail("应认回直线")
+        }
+        assertEqual(direction, SIMD3(0, 0.6, 0.8))
+        XCTAssertEqual(simd_length(simd_cross(origin - SIMD3(1, 2, 3), direction)), 0, accuracy: 1e-9)
+
+        let segment = GeometryConstruction.segment(SIMD3(0, 0, 0), SIMD3(0, 0, 2), name: "S")
+        let layer = segment.makeLayer(index: 2, lineExtent: 10)
+        XCTAssertEqual([layer.domainLower, layer.domainUpper], [0, 1])
+        XCTAssertTrue(layer.lineStyle.isDashed)
+        guard case let .line(_, d)? = recognize(layer) else { return XCTFail("线段也是线性曲线") }
+        assertEqual(d, SIMD3(0, 0, 1))
+    }
+
     // MARK: - 投影
 
     func testProjections() throws {

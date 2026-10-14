@@ -365,6 +365,7 @@ final class MCPFacade {
         case .parametricSurface: return "u, v (all three formulas)"
         case .implicitSurface: return "x, y, z"
         case .surfaceIntersection: return "(none; it has no formula)"
+        case .point: return "(none; only parameters and numbers)"
         }
     }
 

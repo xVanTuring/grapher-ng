@@ -22,13 +22,15 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case implicitSurface
     /// 两个曲面图层的交线（引用另外两个图层，自己没有公式）
     case surfaceIntersection
+    /// 空间里的一个点 (x, y, z)，三个公式只能含参数（不含变量）
+    case point
 
     public var id: String { rawValue }
 
     public var dimension: DocumentDimension {
         switch self {
         case .explicit, .parametric, .polar, .implicit, .region: return .plane
-        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection: return .space
+        case .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point: return .space
         }
     }
 
@@ -45,7 +47,8 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     public var canExtrude: Bool {
         switch self {
         case .explicit, .parametric, .polar, .implicit: return true
-        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection: return false
+        case .region, .surface, .parametricSurface, .spaceCurve, .implicitSurface, .surfaceIntersection, .point:
+            return false
         }
     }
 
@@ -61,6 +64,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .spaceCurve: return L("Space curve")
         case .implicitSurface: return L("Implicit surface F(x,y,z)=0")
         case .surfaceIntersection: return L("Surface intersection")
+        case .point: return L("Point (x, y, z)")
         }
     }
 
@@ -76,6 +80,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .spaceCurve: return L("Space curve")
         case .implicitSurface: return L("Implicit surface")
         case .surfaceIntersection: return L("Intersection")
+        case .point: return L("Point")
         }
     }
 
@@ -89,7 +94,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .implicit, .region, .surface: return ["x", "y"]
         case .parametricSurface: return ["u", "v"]
         case .implicitSurface: return ["x", "y", "z"]
-        case .surfaceIntersection: return []
+        case .surfaceIntersection, .point: return []
         }
     }
 
@@ -129,6 +134,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .spaceCurve: return "2*cos(t)"
         case .implicitSurface: return "x^2 + y^2 + z^2 - 4"
         case .surfaceIntersection: return ""
+        case .point: return "1"
         }
     }
 
@@ -137,6 +143,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         case .parametric: return "sin(t)"
         case .parametricSurface: return "(2 + cos(v))*sin(u)"
         case .spaceCurve: return "2*sin(t)"
+        case .point: return "2"
         default: return ""
         }
     }
@@ -145,6 +152,7 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
         switch self {
         case .parametricSurface: return "sin(v)"
         case .spaceCurve: return "t/3"
+        case .point: return "3"
         default: return ""
         }
     }
@@ -161,16 +169,18 @@ public enum PlotKind: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 
     public var needsSecondaryFormula: Bool {
-        self == .parametric || self == .parametricSurface || self == .spaceCurve
+        self == .parametric || self == .parametricSurface || self == .spaceCurve || self == .point
     }
 
-    public var needsTertiaryFormula: Bool { self == .parametricSurface || self == .spaceCurve }
+    public var needsTertiaryFormula: Bool {
+        self == .parametricSurface || self == .spaceCurve || self == .point
+    }
 
     /// 用到参数范围（定义域）的图型。显式曲面与隐式曲面的范围就是坐标盒，不另设。
     public var usesDomain: Bool {
         switch self {
         case .explicit, .parametric, .polar, .spaceCurve, .parametricSurface: return true
-        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection: return false
+        case .implicit, .region, .surface, .implicitSurface, .surfaceIntersection, .point: return false
         }
     }
 
@@ -351,6 +361,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         let name = "\(kind.shortName) \(index + 1)"
         var lower = 0.0
         var upper = 2 * Double.pi
+        var lineWidth = 1.8
 
         switch kind {
         case .explicit:
@@ -372,6 +383,9 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             upper = 2 * Double.pi
         case .surface, .parametricSurface, .implicitSurface, .surfaceIntersection:
             break
+        case .point:
+            // 默认大小比线宽大一点，一眼能看见。
+            lineWidth = 3
         }
 
         return Layer(
@@ -385,7 +399,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
             domain2Lower: 0,
             domain2Upper: 2 * Double.pi,
             usesExplicitDomain: false,
-            lineStyle: LineStyle(color: color, width: 1.8),
+            lineStyle: LineStyle(color: color, width: lineWidth),
             fillStyle: FillStyle(color: color.withAlpha(0.22))
         )
     }

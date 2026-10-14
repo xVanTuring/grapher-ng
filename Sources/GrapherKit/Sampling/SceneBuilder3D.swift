@@ -116,6 +116,17 @@ public enum SceneBuilder3D {
                     fit = flat.flatMap { $0.intersection(box) }?.union(fit) ?? fit
                 }
 
+            case .point:
+                guard let fx = compiled.primary, let fy = compiled.secondary, let fz = compiled.tertiary else { continue }
+                let p = SIMD3(fx.evaluate([]), fy.evaluate([]), fz.evaluate([]))
+                guard p.x.isFinite, p.y.isFinite, p.z.isFinite else { continue }
+                scene.meshes.append(PointMarker.mesh(
+                    center: SIMD3<Float>(view.normalized(p)),
+                    radius: PointMarker.radius(width: layer.lineStyle.width),
+                    color: layer.lineStyle.color
+                ))
+                fit = DataBox3D(min: p, max: p).intersection(box)?.union(fit) ?? fit
+
             case .region, .surfaceIntersection:
                 continue
             }

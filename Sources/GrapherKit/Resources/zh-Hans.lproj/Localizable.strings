@@ -16,6 +16,8 @@
 "Implicit surface" = "隐式曲面";
 "Surface intersection" = "曲面交线";
 "Intersection" = "交线";
+"Point (x, y, z)" = "点 (x, y, z)";
+"Point" = "点";
 
 /* GrapherKit：画质 */
 "Smooth (while dragging)" = "流畅（拖动时）";
@@ -49,3 +51,39 @@
 
 /* GrapherKit：导出 */
 "Could not create the PDF file" = "无法创建 PDF 文件";
+
+/* GrapherKit: point / line / plane relations */
+"point" = "点";
+"line" = "直线";
+"plane" = "平面";
+"The two points coincide." = "两点重合。";
+"Two distinct points." = "两个不同的点。";
+"Distance" = "距离";
+"Angle" = "夹角";
+"Dihedral angle" = "二面角";
+"Segment" = "线段";
+"Midpoint" = "中点";
+"Foot of perpendicular" = "垂足";
+"Perpendicular" = "垂线段";
+"Common perpendicular" = "公垂线段";
+"Intersection point" = "交点";
+"Line of intersection" = "交线";
+"Foot on line A" = "直线 A 上的垂足";
+"Foot on line B" = "直线 B 上的垂足";
+"Normal" = "法线";
+"The point lies on the line." = "点在直线上。";
+"The point is off the line." = "点不在直线上。";
+"The point lies in the plane." = "点在平面内。";
+"The point is off the plane." = "点不在平面内。";
+"The lines coincide." = "两直线重合。";
+"The lines are parallel." = "两直线平行。";
+"The lines intersect." = "两直线相交。";
+"The lines are skew." = "两直线异面。";
+"The line lies in the plane." = "直线在平面内。";
+"The line is parallel to the plane." = "直线与平面平行。";
+"The line is perpendicular to the plane." = "直线与平面垂直。";
+"The line meets the plane at one point." = "直线与平面相交于一点。";
+"The planes coincide." = "两平面重合。";
+"The planes are parallel." = "两平面平行。";
+"The planes are perpendicular." = "两平面垂直。";
+"The planes intersect in a line." = "两平面相交于一条直线。";

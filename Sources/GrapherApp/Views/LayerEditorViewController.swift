@@ -120,7 +120,7 @@ final class LayerEditorViewController: NSViewController {
         case .surface, .parametricSurface, .implicitSurface: return true
         case .explicit, .parametric, .polar, .implicit:
             return state.document.dimension == .space && layer.extrudesInSpace
-        case .region, .spaceCurve, .surfaceIntersection: return false
+        case .region, .spaceCurve, .surfaceIntersection, .point: return false
         }
     }
 
@@ -350,6 +350,7 @@ final class LayerEditorViewController: NSViewController {
         case .spaceCurve: return [("x(t) =", .primary), ("y(t) =", .secondary), ("z(t) =", .tertiary)]
         case .implicitSurface: return [(L("F(x, y, z) = 0 — enter F here"), .primary)]
         case .surfaceIntersection: return []
+        case .point: return [("x =", .primary), ("y =", .secondary), ("z =", .tertiary)]
         }
     }
 

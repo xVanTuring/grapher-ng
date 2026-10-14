@@ -16,6 +16,8 @@
 "Implicit surface" = "Implicit surface";
 "Surface intersection" = "Surface intersection";
 "Intersection" = "Intersection";
+"Point (x, y, z)" = "Point (x, y, z)";
+"Point" = "Point";
 
 /* GrapherKit: sampling quality */
 "Smooth (while dragging)" = "Smooth (while dragging)";
@@ -49,3 +51,39 @@
 
 /* GrapherKit: export */
 "Could not create the PDF file" = "Could not create the PDF file";
+
+/* GrapherKit: point / line / plane relations */
+"point" = "point";
+"line" = "line";
+"plane" = "plane";
+"The two points coincide." = "The two points coincide.";
+"Two distinct points." = "Two distinct points.";
+"Distance" = "Distance";
+"Angle" = "Angle";
+"Dihedral angle" = "Dihedral angle";
+"Segment" = "Segment";
+"Midpoint" = "Midpoint";
+"Foot of perpendicular" = "Foot of perpendicular";
+"Perpendicular" = "Perpendicular";
+"Common perpendicular" = "Common perpendicular";
+"Intersection point" = "Intersection point";
+"Line of intersection" = "Line of intersection";
+"Foot on line A" = "Foot on line A";
+"Foot on line B" = "Foot on line B";
+"Normal" = "Normal";
+"The point lies on the line." = "The point lies on the line.";
+"The point is off the line." = "The point is off the line.";
+"The point lies in the plane." = "The point lies in the plane.";
+"The point is off the plane." = "The point is off the plane.";
+"The lines coincide." = "The lines coincide.";
+"The lines are parallel." = "The lines are parallel.";
+"The lines intersect." = "The lines intersect.";
+"The lines are skew." = "The lines are skew.";
+"The line lies in the plane." = "The line lies in the plane.";
+"The line is parallel to the plane." = "The line is parallel to the plane.";
+"The line is perpendicular to the plane." = "The line is perpendicular to the plane.";
+"The line meets the plane at one point." = "The line meets the plane at one point.";
+"The planes coincide." = "The planes coincide.";
+"The planes are parallel." = "The planes are parallel.";
+"The planes are perpendicular." = "The planes are perpendicular.";
+"The planes intersect in a line." = "The planes intersect in a line.";

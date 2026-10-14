@@ -398,6 +398,7 @@ enum MCPTools {
       parametricSurface   formula = x(u,v), secondary_formula = y(u,v), tertiary_formula = z(u,v), domain = [u0,u1], domain2 = [v0,v1]
       spaceCurve          formula = x(t), secondary_formula = y(t), tertiary_formula = z(t), domain = [t0,t1]
       implicitSurface     formula = F(x,y,z)   draws F = 0
+      point               formula = x, secondary_formula = y, tertiary_formula = z   (numbers and parameters only, no variables); line_width = size
       surfaceIntersection source_a = id of one surface layer, source_b = id of another (surface / parametricSurface / implicitSurface); no formula.
                           Draws the curve where the two surfaces meet. Hiding the source layers keeps the curve.
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.

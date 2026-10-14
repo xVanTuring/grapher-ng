@@ -19,6 +19,8 @@ final class Viewport3DViewController: NSViewController {
     private var metalView: MetalView3D?
     private var lastDragLocation: NSPoint?
     private var dragPans = false
+    /// 这次按下后累计拖动了多少点：很小就算点击。
+    private var dragDistance = 0.0
     private var metricsSyncScheduled = false
     private var observerID: UUID?
 
@@ -81,11 +83,11 @@ final class Viewport3DViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         installMetalView()
-        observerID = state.observe([.scene, .status, .viewport, .document]) { [weak self] change in
+        observerID = state.observe([.scene, .status, .viewport, .document, .selection]) { [weak self] change in
             guard let self else { return }
             switch change {
             case .scene: self.pushContent()
-            case .viewport, .document: self.requestFrame()
+            case .viewport, .document, .selection: self.requestFrame()
             case .status: self.updateStatus()
             default: break
             }
@@ -134,6 +136,7 @@ final class Viewport3DViewController: NSViewController {
             metalView.background = state.document.theme.background
             if metalView.chrome != chrome { metalView.chrome = chrome }
             metalView.viewport = state.document.view3D
+            metalView.highlight = state.selection
         }
         overlay.refresh()
         let view = state.document.view3D
@@ -144,7 +147,7 @@ final class Viewport3DViewController: NSViewController {
         statusBar.update(
             isBuilding: state.isBuilding,
             message: state.statusMessage.isEmpty
-                ? L("Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · ⌥-scroll to resize the box · F fit · R reset")
+                ? L("Click to select · drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · ⌥-scroll to resize the box · F fit · R reset")
                 : state.statusMessage
         )
     }
@@ -204,12 +207,14 @@ final class Viewport3DViewController: NSViewController {
         view.window?.makeFirstResponder(host)
         lastDragLocation = host.convert(event.locationInWindow, from: nil)
         dragPans = event.modifierFlags.contains(.shift)
+        dragDistance = 0
     }
 
     fileprivate func handleMouseDragged(_ event: NSEvent) {
         guard let last = lastDragLocation else { return }
         let current = host.convert(event.locationInWindow, from: nil)
         let delta = SIMD2(Double(current.x - last.x), Double(current.y - last.y))
+        dragDistance += (delta.x * delta.x + delta.y * delta.y).squareRoot()
         lastDragLocation = current
         apply(CanvasInput.drag(delta, modifiers: CanvasInput.Modifiers(event.modifierFlags), space: true,
                                pansFromStart: dragPans, pointScale: backingScale))
@@ -218,6 +223,22 @@ final class Viewport3DViewController: NSViewController {
     fileprivate func handleMouseUp(_ event: NSEvent) {
         lastDragLocation = nil
         dragPans = false
+        // 几乎没拖动：当成点击，选中点到的图层（点空白处取消选中）。
+        if dragDistance < 3 { selectLayer(at: host.convert(event.locationInWindow, from: nil)) }
+        dragDistance = 0
+    }
+
+    /// 点击处命中的图层成为选中图层。几何用最近一次算好的场景（`built3D`），命中测试在 `ScenePicker3D`。
+    private func selectLayer(at point: NSPoint) {
+        guard let built = state.built3D else { return }
+        let scale = backingScale
+        let id = ScenePicker3D.pick(
+            built.scene,
+            source: built.view,
+            view: state.document.view3D,
+            pixel: SIMD2(Double(point.x) * scale, Double(point.y) * scale)
+        )
+        state.selection = id
     }
 
     /// ⌥+滚轮放大盒子，⌘+滚轮缩放图形（改范围，与平面图的 ⌘+滚轮一致），什么都不按是平移。

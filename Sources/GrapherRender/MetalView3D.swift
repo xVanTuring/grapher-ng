@@ -22,6 +22,11 @@ public final class MetalView3D: MTKView, MTKViewDelegate {
         didSet { if viewport != oldValue { requestFrame() } }
     }
 
+    /// 选中的图层：它的曲面和曲线高亮。
+    public var highlight: UUID? {
+        didSet { if highlight != oldValue { requestFrame() } }
+    }
+
     /// 盒子棱线与盒壁网格，按 `viewport` 的盒子归一化。
     public var chrome: Scene3D? {
         didSet {
@@ -144,7 +149,8 @@ public final class MetalView3D: MTKView, MTKViewDelegate {
             passes,
             view: viewport,
             encoder: encoder,
-            viewportSize: SIMD2(Double(drawable.texture.width), Double(drawable.texture.height))
+            viewportSize: SIMD2(Double(drawable.texture.width), Double(drawable.texture.height)),
+            highlight: highlight
         )
         encoder.endEncoding()
         commandBuffer.commit()

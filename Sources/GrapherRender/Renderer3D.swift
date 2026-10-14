@@ -16,14 +16,20 @@ public final class Renderer3D {
 
     private let device: MTLDevice
     private let meshPipeline: MTLRenderPipelineState
+    private let glassPipeline: MTLRenderPipelineState
     private let linePipeline: MTLRenderPipelineState
     private let meshDepth: MTLDepthStencilState
     private let lineDepth: MTLDepthStencilState
+
+    /// 选中高亮的颜色（曲面往它偏、曲线外面加一圈它的光晕）。
+    static let highlightColor = SIMD3<Float>(1.0, 0.58, 0.05)
 
     public init?(context: MetalContext) {
         let device = context.device
         guard let meshPipeline = Self.makePipeline(device: device, library: context.library,
                                                    vertex: "mesh3d_vertex", fragment: "mesh3d_fragment", blends: false),
+              let glassPipeline = Self.makePipeline(device: device, library: context.library,
+                                                    vertex: "mesh3d_vertex", fragment: "mesh3d_fragment", blends: true),
               let linePipeline = Self.makePipeline(device: device, library: context.library,
                                                    vertex: "line3d_vertex", fragment: "line3d_fragment", blends: true)
         else { return nil }
@@ -40,6 +46,7 @@ public final class Renderer3D {
 
         self.device = device
         self.meshPipeline = meshPipeline
+        self.glassPipeline = glassPipeline
         self.linePipeline = linePipeline
         self.meshDepth = meshDepth
         self.lineDepth = lineDepth
@@ -71,39 +78,49 @@ public final class Renderer3D {
                 vertices: vertices,
                 indices: indices,
                 indexCount: mesh.indices.count,
-                color: Self.vector(mesh.color)
+                color: Self.vector(mesh.color),
+                layerID: mesh.layerID,
+                isTranslucent: mesh.isTranslucent
             ))
         }
 
         var instances: [LineInstance3D] = []
+        var ranges: [PreparedScene3D.LineRange] = []
         for polyline in scene.polylines where polyline.points.count >= 2 {
             let color = Self.vector(polyline.color)
             let halfWidth = Float(max(polyline.width, 0) / 2)
+            let start = instances.count
             instances.reserveCapacity(instances.count + polyline.points.count - 1)
             for (a, b) in zip(polyline.points, polyline.points.dropFirst()) {
                 instances.append(LineInstance3D(a: a, b: b, color: color, halfWidth: halfWidth))
+            }
+            if let id = polyline.layerID {
+                ranges.append(PreparedScene3D.LineRange(layerID: id, start: start, count: instances.count - start))
             }
         }
 
         return PreparedScene3D(
             meshes: batches,
             lines: makeBuffer(instances, label: "line3d"),
-            lineCount: instances.count
+            lineCount: instances.count,
+            lineRanges: ranges
         )
     }
 
-    /// 把若干份几何编进一个渲染通道：先画所有曲面（写深度），再画所有线（只测深度、半透明叠加），
-    /// 线才能被挡在曲面后面、又能盖在曲面前面。
+    /// 把若干份几何编进一个渲染通道：先画不透明曲面（写深度），再画半透明曲面（只测深度、不写，两面都画），
+    /// 最后画所有线（只测深度、半透明叠加），线才能被挡在曲面后面、又能盖在曲面前面。
+    /// `highlight` 是选中的图层：它的曲面往高亮色偏、半透明的更实一些，曲线外面加一圈光晕。
     public func encode(
         _ passes: [Pass],
         view: View3D,
         encoder: MTLRenderCommandEncoder,
-        viewportSize: SIMD2<Double>
+        viewportSize: SIMD2<Double>,
+        highlight: UUID? = nil
     ) {
         guard viewportSize.x > 0, viewportSize.y > 0 else { return }
         let viewProjection = Self.floatMatrix(view.viewProjection())
         let eye = SIMD4<Float>(SIMD3<Float>(view.eye), 1)
-        func uniforms(for pass: Pass) -> Uniforms3D {
+        func uniforms(for pass: Pass, lineBoost: Float = 0, tint: SIMD4<Float> = .zero, alphaScale: Float = 1) -> Uniforms3D {
             let (scale, translation) = view.boxTransform(from: pass.source)
             return Uniforms3D(
                 viewProjection: viewProjection,
@@ -111,33 +128,55 @@ public final class Renderer3D {
                 eye: eye,
                 viewportSize: SIMD2<Float>(Float(viewportSize.x), Float(viewportSize.y)),
                 clipToBox: pass.clipToBox ? 1 : 0,
-                pad: 0
+                lineBoost: lineBoost,
+                tint: tint,
+                alphaScale: alphaScale
             )
         }
 
-        encoder.setCullMode(.none)
-        encoder.setRenderPipelineState(meshPipeline)
-        encoder.setDepthStencilState(meshDepth)
-        for pass in passes where !pass.scene.meshes.isEmpty {
-            var u = uniforms(for: pass)
-            encoder.setVertexBytes(&u, length: MemoryLayout<Uniforms3D>.stride, index: 1)
-            encoder.setFragmentBytes(&u, length: MemoryLayout<Uniforms3D>.stride, index: 1)
-            for batch in pass.scene.meshes {
-                var style = MeshStyle3D(color: batch.color)
-                encoder.setVertexBuffer(batch.vertices, offset: 0, index: 0)
-                encoder.setFragmentBytes(&style, length: MemoryLayout<MeshStyle3D>.stride, index: 0)
-                encoder.drawIndexedPrimitives(
-                    type: .triangle,
-                    indexCount: batch.indexCount,
-                    indexType: .uint32,
-                    indexBuffer: batch.indices,
-                    indexBufferOffset: 0
-                )
+        func drawMeshes(translucent: Bool) {
+            encoder.setRenderPipelineState(translucent ? glassPipeline : meshPipeline)
+            encoder.setDepthStencilState(translucent ? lineDepth : meshDepth)
+            for pass in passes {
+                let batches = pass.scene.meshes.filter { $0.isTranslucent == translucent }
+                guard !batches.isEmpty else { continue }
+                var u = uniforms(for: pass)
+                encoder.setVertexBytes(&u, length: MemoryLayout<Uniforms3D>.stride, index: 1)
+                encoder.setFragmentBytes(&u, length: MemoryLayout<Uniforms3D>.stride, index: 1)
+                for batch in batches {
+                    var style = MeshStyle3D(color: batch.color, highlight: batch.layerID != nil && batch.layerID == highlight ? 1 : 0)
+                    encoder.setVertexBuffer(batch.vertices, offset: 0, index: 0)
+                    encoder.setFragmentBytes(&style, length: MemoryLayout<MeshStyle3D>.stride, index: 0)
+                    encoder.drawIndexedPrimitives(
+                        type: .triangle,
+                        indexCount: batch.indexCount,
+                        indexType: .uint32,
+                        indexBuffer: batch.indices,
+                        indexBufferOffset: 0
+                    )
+                }
             }
         }
 
+        encoder.setCullMode(.none)
+        drawMeshes(translucent: false)
+        drawMeshes(translucent: true)
+
         encoder.setRenderPipelineState(linePipeline)
         encoder.setDepthStencilState(lineDepth)
+        // 选中图层的曲线：先画一圈宽的半透明光晕，再画本体盖在上面。
+        if let highlight {
+            for pass in passes {
+                guard let lines = pass.scene.lines else { continue }
+                var halo = uniforms(for: pass, lineBoost: 3.5, tint: SIMD4(Self.highlightColor, 1), alphaScale: 0.45)
+                encoder.setVertexBuffer(lines, offset: 0, index: 0)
+                encoder.setVertexBytes(&halo, length: MemoryLayout<Uniforms3D>.stride, index: 1)
+                for range in pass.scene.lineRanges where range.layerID == highlight {
+                    encoder.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4,
+                                           instanceCount: range.count, baseInstance: range.start)
+                }
+            }
+        }
         for pass in passes {
             guard let lines = pass.scene.lines, pass.scene.lineCount > 0 else { continue }
             var u = uniforms(for: pass)
@@ -208,16 +247,27 @@ public final class PreparedScene3D {
         let indices: MTLBuffer
         let indexCount: Int
         let color: SIMD4<Float>
+        let layerID: UUID?
+        let isTranslucent: Bool
+    }
+
+    /// 某个图层的曲线在线段实例缓冲里占的那一段（画高亮光晕用）。
+    struct LineRange {
+        let layerID: UUID
+        let start: Int
+        let count: Int
     }
 
     let meshes: [MeshBatch]
     let lines: MTLBuffer?
     let lineCount: Int
+    let lineRanges: [LineRange]
 
-    init(meshes: [MeshBatch], lines: MTLBuffer?, lineCount: Int) {
+    init(meshes: [MeshBatch], lines: MTLBuffer?, lineCount: Int, lineRanges: [LineRange]) {
         self.meshes = meshes
         self.lines = lines
         self.lineCount = lineCount
+        self.lineRanges = lineRanges
     }
 
     public var triangleCount: Int { meshes.reduce(0) { $0 + $1.indexCount / 3 } }
@@ -232,11 +282,18 @@ struct Uniforms3D {
     var eye: SIMD4<Float>
     var viewportSize: SIMD2<Float>
     var clipToBox: Float
-    var pad: Float
+    /// 线的半宽再加多少像素（高亮光晕用）。
+    var lineBoost: Float
+    /// 线的颜色往 `tint.rgb` 偏多少（`tint.a`）。
+    var tint: SIMD4<Float>
+    /// 线的不透明度乘数。
+    var alphaScale: Float
 }
 
 struct MeshStyle3D {
     var color: SIMD4<Float>
+    /// 1 = 选中：往高亮色偏。
+    var highlight: Float
 }
 
 struct LineInstance3D {

@@ -22,15 +22,20 @@ public struct Mesh3D: Equatable, Sendable {
     public var vertices: [MeshVertex3D]
     /// 每三个一组，一个三角形。
     public var indices: [UInt32]
+    /// 颜色的 alpha < 1 时半透明（渲染时单独一轮，不写深度）。
     public var color: RGBAColor
+    /// 画出这张面的图层：选中高亮、点选都靠它。坐标盒、辅助线之类不属于任何图层，为 nil。
+    public var layerID: UUID?
 
-    public init(vertices: [MeshVertex3D] = [], indices: [UInt32] = [], color: RGBAColor) {
+    public init(vertices: [MeshVertex3D] = [], indices: [UInt32] = [], color: RGBAColor, layerID: UUID? = nil) {
         self.vertices = vertices
         self.indices = indices
         self.color = color
+        self.layerID = layerID
     }
 
     public var triangleCount: Int { indices.count / 3 }
+    public var isTranslucent: Bool { color.a < 0.999 }
 }
 
 /// 一条空间折线，线宽是屏幕像素（与 2D 描边同一个口径）。
@@ -39,11 +44,14 @@ public struct Polyline3D: Equatable, Sendable {
     public var color: RGBAColor
     /// 线宽，后备像素。
     public var width: Double
+    /// 同 `Mesh3D.layerID`。
+    public var layerID: UUID?
 
-    public init(points: [SIMD3<Float>], color: RGBAColor, width: Double) {
+    public init(points: [SIMD3<Float>], color: RGBAColor, width: Double, layerID: UUID? = nil) {
         self.points = points
         self.color = color
         self.width = width
+        self.layerID = layerID
     }
 }
 

@@ -174,6 +174,7 @@ enum MCPTools {
                 enumValues: ProjectionTarget.allCases.map(\.rawValue)),
             "offset": MCPSchema.number("projection only: position of the xy / yz / xz plane (default 0)"),
             "projectors": MCPSchema.boolean("projection only: draw thin lines from the original to its projection (default true)"),
+            "opacity": MCPSchema.number("surface / region fill opacity, 0.05–1 (default 1); below 1 a surface becomes translucent"),
             "color": MCPSchema.string("#RRGGBB"),
             "line_width": MCPSchema.number("Stroke width in points (default 1.8)"),
             "dashed": MCPSchema.boolean("Dashed stroke"),
@@ -211,6 +212,7 @@ enum MCPTools {
             }
             edit.projectionTarget = parsed
         }
+        edit.opacity = try args.optionalDouble("opacity")
         edit.projectionOffset = try args.optionalDouble("offset")
         edit.showsProjectors = try args.optionalBool("projectors")
         if let color = try args.optionalString("color") { edit.color = try MCPFacade.parseColor(color) }

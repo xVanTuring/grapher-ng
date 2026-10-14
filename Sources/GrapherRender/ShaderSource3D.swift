@@ -18,7 +18,9 @@ enum ShaderSource3D {
         float4   eye;             // 相机位置（当前盒子的归一化坐标）
         float2   viewportSize;    // 像素
         float    clipToBox;       // 1 = 按坐标盒裁剪；0 = 不裁（盒子自己的棱、盒壁网格）
-        float    pad;
+        float    lineBoost;       // 线的半宽再加多少像素（选中光晕）
+        float4   tint;            // 线的颜色往 tint.rgb 偏 tint.a
+        float    alphaScale;      // 线的不透明度乘数
     };
 
     inline float3 placeInBox(float3 p, constant Uniforms3D &u) {
@@ -37,6 +39,7 @@ enum ShaderSource3D {
 
     struct MeshStyle3D {
         float4 color;
+        float  highlight;   // 1 = 选中
     };
 
     struct MeshOut3D {
@@ -101,7 +104,13 @@ enum ShaderSource3D {
 
         float line = max(gridLine(in.parameter.x), gridLine(in.parameter.y));
         rgb = mix(rgb, rgb * 0.55, line * 0.6);
-        return float4(rgb, 1.0);
+        float alpha = style.color.a;
+        if (style.highlight > 0.5) {
+            // 选中：往橙色偏，半透明的也更实一些。
+            rgb = mix(rgb, float3(1.0, 0.58, 0.05), 0.30);
+            alpha = max(alpha, 0.55);
+        }
+        return float4(rgb, alpha);
     }
     """#
 
@@ -155,7 +164,8 @@ enum ShaderSource3D {
         float len = length(dir);
         float2 tangent = len > 1e-4 ? dir / len : float2(1.0, 0.0);
         float2 normal = float2(-tangent.y, tangent.x);
-        float extend = l.halfWidth + 1.0;
+        float halfWidth = l.halfWidth + u.lineBoost;
+        float extend = halfWidth + 1.0;
 
         bool atEnd = (vid & 1) != 0;
         bool above = (vid & 2) != 0;
@@ -166,10 +176,10 @@ enum ShaderSource3D {
 
         LineOut3D out;
         out.position = float4(ndc * c.w, max(c.z - 0.002 * c.w, 0.0), c.w);
-        out.color = l.color;
+        out.color = float4(mix(l.color.rgb, u.tint.rgb, u.tint.a), l.color.a * u.alphaScale);
         out.sa = sa;
         out.sb = sb;
-        out.halfWidth = l.halfWidth;
+        out.halfWidth = halfWidth;
         float3 p = atEnd ? b : a;
         float on = u.clipToBox;
         out.clip[0] = mix(1.0, 1.0 - p.x, on); out.clip[1] = mix(1.0, 1.0 + p.x, on);

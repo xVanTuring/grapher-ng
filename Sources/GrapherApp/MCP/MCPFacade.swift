@@ -207,6 +207,7 @@ final class MCPFacade {
         var extrude: Bool?
         var sourceA: UUID?
         var sourceB: UUID?
+        var opacity: Double?
         var projectionTarget: ProjectionTarget?
         var projectionOffset: Double?
         var showsProjectors: Bool?
@@ -326,6 +327,13 @@ final class MCPFacade {
             }
             if let id = edit.sourceA { layer.sourceA = id }
             if let id = edit.sourceB { layer.sourceB = id }
+        }
+        if let opacity = edit.opacity {
+            guard layer.kind.isSurfaceSource || layer.kind == .region || (layer.kind.canExtrude && layer.extrudesInSpace) else {
+                throw MCPToolError("'\(layer.kind.rawValue)' layers have no opacity; only surfaces and regions do.")
+            }
+            guard (0.05...1).contains(opacity) else { throw MCPToolError("opacity must be between 0.05 and 1.") }
+            layer.fillStyle.opacity = opacity
         }
         if let color = edit.color {
             layer.lineStyle.color = color

@@ -71,7 +71,8 @@ public final class OffscreenRenderer3D {
         contentView: View3D,
         chrome: Scene3D?,
         view: View3D,
-        background: RGBAColor
+        background: RGBAColor,
+        highlight: UUID? = nil
     ) -> CGImage? {
         guard let commandBuffer = queue.makeCommandBuffer() else { return nil }
         let descriptor = MTLRenderPassDescriptor()
@@ -91,7 +92,7 @@ public final class OffscreenRenderer3D {
         if let chrome { passes.append(Renderer3D.Pass(scene: renderer.prepare(chrome), source: view, clipToBox: false)) }
         if let content { passes.append(Renderer3D.Pass(scene: renderer.prepare(content), source: contentView, clipToBox: true)) }
         renderer.encode(passes, view: view, encoder: encoder,
-                        viewportSize: SIMD2(Double(pixelWidth), Double(pixelHeight)))
+                        viewportSize: SIMD2(Double(pixelWidth), Double(pixelHeight)), highlight: highlight)
         encoder.endEncoding()
 
         guard let blit = commandBuffer.makeBlitCommandEncoder() else { return nil }

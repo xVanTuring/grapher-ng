@@ -20,6 +20,17 @@ macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**
   是正投影，在 `SceneBuilder3D` 里和交线一样最后处理；投影线最多 24 根，半透明细线。
 - 以上三种新 `PlotKind` 都要同步：`SceneBuilder2D` 里两处 switch、`LayerEditorViewController`、`MCPFacade.variables`、`MCPTests`、两份用法文档。
 
+**选中联动 / 半透明**（立体图）：
+- 场景里每个 `Mesh3D` / `Polyline3D` 都带 `layerID`（`SceneBuilder3D.tag`，用 `defer` 在每个图层处理完后统一打；坐标盒线框不属于任何图层）。
+  选中高亮靠它：`MetalView3D.highlight`（= `AppState.selection`）→ `Renderer3D.encode(highlight:)`。曲面往橙色偏，曲线先画一圈
+  宽的半透明光晕（`lineBoost` + `tint`）再画本体；光晕用 `baseInstance` 只画该图层那一段线段实例（`PreparedScene3D.lineRanges`）。
+- 点选在 CPU 上做（`ScenePicker3D`，纯逻辑）：射线对三角形求交 + 曲线按屏幕像素距离。曲线只被**不透明**曲面挡住，
+  贴在曲面上的线（交线、投影）深度差在 `lineDepthSlack` 内算曲线在前。`Viewport3DViewController.handleMouseUp` 里累计拖动
+  不到 3 点才当点击；点空白处取消选中。
+- 半透明：曲面图层的 `fillStyle.opacity < 1`（与区域填充同一个字段）→ 网格颜色 alpha → `Mesh3D.isTranslucent`。渲染分三轮：
+  不透明曲面（写深度）→ 半透明曲面（`glassPipeline`，只测深度、不写、两面都画，批之间不排序）→ 线。
+- `Uniforms3D` / `MeshStyle3D` 改动要同步 `ShaderSource3D`，`Renderer3DTests` 里有偏移量断言守着。
+
 测试里 MCP 令牌只放内存（`MCPSettings.token`），不碰真正的 Keychain，免得弄丢 / 改写正在用的令牌。
 
 ## 构建 / 测试 / 运行

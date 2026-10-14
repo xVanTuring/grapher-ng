@@ -53,7 +53,63 @@ final class Renderer3DTests: XCTestCase {
         XCTAssertEqual(MemoryLayout<LineInstance3D>.stride, 64)
         XCTAssertEqual(MemoryLayout<LineInstance3D>.offset(of: \.color), 32)
         XCTAssertEqual(MemoryLayout<LineInstance3D>.offset(of: \.halfWidth), 48)
-        XCTAssertEqual(MemoryLayout<Uniforms3D>.stride, 112)
+        XCTAssertEqual(MemoryLayout<Uniforms3D>.stride, 144)
+        XCTAssertEqual(MemoryLayout<Uniforms3D>.offset(of: \.lineBoost), 108)
+        XCTAssertEqual(MemoryLayout<Uniforms3D>.offset(of: \.tint), 112)
+        XCTAssertEqual(MemoryLayout<Uniforms3D>.offset(of: \.alphaScale), 128)
+        XCTAssertEqual(MemoryLayout<MeshStyle3D>.stride, 32)
+        XCTAssertEqual(MemoryLayout<MeshStyle3D>.offset(of: \.highlight), 16)
+    }
+
+    private func render(_ content: Scene3D, view: View3D, highlight: UUID?) throws -> Raster {
+        let context = try TestHarness.context()
+        let renderer = try XCTUnwrap(OffscreenRenderer3D(context: context, pixelWidth: width, pixelHeight: height))
+        let image = renderer.makeImage(content: content, contentView: view, chrome: nil, view: view,
+                                       background: .white, highlight: highlight)
+        return try XCTUnwrap(Raster(image))
+    }
+
+    /// 半透明的面透出背后的东西：不透明度 0.4 的红面盖在白底上是浅红，盖在不透明蓝面上带蓝。
+    func testTranslucentSurfaceBlendsWithWhatIsBehind() throws {
+        let v = view(elevation: 1.5)
+        var glass = layer(.surface, "1", color: RGBAColor(1, 0, 0))
+        glass.fillStyle.opacity = 0.4
+        let onWhite = try render(scene([glass], view: v), view: v).pixel(x: width / 2, y: height / 2)
+        XCTAssertGreaterThan(onWhite.r, 200, "仍偏红：\(onWhite)")
+        XCTAssertGreaterThan(onWhite.g, 90, "但不是纯红，白底透出来：\(onWhite)")
+        XCTAssertLessThan(onWhite.g, 220, "也不是白：\(onWhite)")
+
+        let blue = layer(.surface, "-1", color: RGBAColor(0, 0, 1))
+        let both = try render(scene([blue, glass], view: v), view: v).pixel(x: width / 2, y: height / 2)
+        XCTAssertGreaterThan(both.b, 100, "透出背后的蓝面：\(both)")
+        XCTAssertGreaterThan(both.r, 60, "红面的颜色也在：\(both)")
+    }
+
+    /// 选中的曲面往橙色偏；没选中的不变。
+    func testHighlightedSurfaceShiftsTowardsOrange() throws {
+        let v = view()
+        let sphere = layer(.implicitSurface, "x^2 + y^2 + z^2 - 4", color: RGBAColor(0.2, 0.3, 0.9))
+        let content = scene([sphere], view: v)
+        let plain = try render(content, view: v, highlight: nil).pixel(x: width / 2, y: height / 2)
+        let other = try render(content, view: v, highlight: UUID()).pixel(x: width / 2, y: height / 2)
+        let selected = try render(content, view: v, highlight: sphere.id).pixel(x: width / 2, y: height / 2)
+        XCTAssertEqual(plain, other, "高亮别的图层不影响它")
+        XCTAssertGreaterThan(selected.r, plain.r + 25, "红分量上去了：\(plain) → \(selected)")
+        XCTAssertLessThan(selected.b, plain.b, "蓝分量下去了：\(plain) → \(selected)")
+    }
+
+    /// 选中的曲线外面有一圈光晕：线旁边几个像素原本是底色，现在偏橙。
+    func testHighlightedCurveHasAHalo() throws {
+        let v = view()
+        let right = SIMD3<Float>(v.basis.right)
+        let id = UUID()
+        let line = Polyline3D(points: [-right * 0.8, right * 0.8], color: RGBAColor(0, 0.4, 0), width: 3, layerID: id)
+        let content = Scene3D(polylines: [line])
+        let beside = (x: width / 2, y: height / 2 - 4)
+        XCTAssertTrue(isBackground(try render(content, view: v, highlight: nil).pixel(x: beside.x, y: beside.y)))
+        let halo = try render(content, view: v, highlight: id).pixel(x: beside.x, y: beside.y)
+        XCTAssertFalse(isBackground(halo), "光晕：\(halo)")
+        XCTAssertGreaterThan(halo.r, halo.b + 20, "偏橙：\(halo)")
     }
 
     func testSphereIsDrawnAtTheCentre() throws {

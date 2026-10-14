@@ -66,7 +66,7 @@
 /* 画布 */
 "Drag or scroll to pan · ⌘-scroll or pinch to zoom · Hover to read values · F fit · R reset" = "拖动或滚动平移 · ⌘+滚轮或捏合缩放 · 移动鼠标读数 · F 适应内容 · R 重置";
 "Zoom %.4g px/unit" = "缩放 %.4g px/单位";
-"Drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · ⌥-scroll to resize the box · F fit · R reset" = "拖动旋转 · ⇧+拖动或滚动平移 · ⌘+滚轮或捏合缩放 · ⌥+滚轮放大盒子 · F 适应内容 · R 重置";
+"Click to select · drag to rotate · ⇧-drag or scroll to pan · ⌘-scroll or pinch to zoom · ⌥-scroll to resize the box · F fit · R reset" = "点击选中 · 拖动旋转 · ⇧+拖动或滚动平移 · ⌘+滚轮或捏合缩放 · ⌥+滚轮放大盒子 · F 适应内容 · R 重置";
 "Box ±%.4g · %.2g×" = "坐标盒 ±%.4g · %.2g×";
 
 /* 侧栏：图层 */

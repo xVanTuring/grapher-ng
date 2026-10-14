@@ -228,6 +228,7 @@ final class LayerEditorViewController: NSViewController {
             // 曲面只有颜色可调：线宽对它没有意义。
             rows.append(ControlFactory.sectionLabel(L("Surface")))
             rows.append(lineRows(layer)[0])
+            rows.append(ControlFactory.formRow(L("Opacity"), opacityControl(layer)))
         } else {
             rows.append(ControlFactory.sectionLabel(L("Line")))
             rows.append(contentsOf: lineRows(layer))
@@ -605,6 +606,23 @@ final class LayerEditorViewController: NSViewController {
             alignment: .centerY
         )
         return [ControlFactory.formRow(L("Color"), well), ControlFactory.formRow(L("Width"), width)]
+    }
+
+    /// 不透明度滑块（区域的填充、曲面共用同一个字段 `fillStyle.opacity`）。
+    private func opacityControl(_ layer: Layer) -> NSView {
+        let slider = ControlFactory.slider(
+            value: layer.fillStyle.opacity,
+            range: 0.05...1,
+            target: self,
+            action: #selector(fillOpacityEdited(_:))
+        )
+        slider.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        fillOpacitySlider = slider
+
+        let value = ControlFactory.monospacedLabel(ControlFactory.format(layer.fillStyle.opacity))
+        value.widthAnchor.constraint(equalToConstant: 34).isActive = true
+        fillOpacityLabel = value
+        return ControlFactory.stack([slider, value], orientation: .horizontal, spacing: 6, alignment: .centerY)
     }
 
     private func fillRows(_ layer: Layer) -> [NSView] {

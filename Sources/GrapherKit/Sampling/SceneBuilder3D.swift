@@ -69,6 +69,8 @@ public enum SceneBuilder3D {
 
         for compiled in request.compiled where compiled.layer.isVisible {
             let layer = compiled.layer
+            let (meshFrom, lineFrom) = (scene.meshes.count, scene.polylines.count)
+            defer { tag(&scene, layer: layer, meshFrom: meshFrom, lineFrom: lineFrom) }
             switch layer.kind {
             case .surface:
                 guard let f = compiled.primary else { continue }
@@ -133,20 +135,38 @@ public enum SceneBuilder3D {
         }
 
         for compiled in request.compiled where compiled.layer.isVisible && compiled.layer.kind == .surfaceIntersection {
+            let (meshFrom, lineFrom) = (scene.meshes.count, scene.polylines.count)
             let (lines, extent) = surfaceIntersection(compiled.layer, cache: &surfaceMeshes, request: request)
             scene.polylines.append(contentsOf: lines)
+            tag(&scene, layer: compiled.layer, meshFrom: meshFrom, lineFrom: lineFrom)
             fit = extent?.intersection(box)?.union(fit) ?? fit
         }
 
         // 投影在最后画：它的来源可能是交线，要等交线算完。
         for compiled in request.compiled where compiled.layer.isVisible && compiled.layer.kind == .projection {
+            let (meshFrom, lineFrom) = (scene.meshes.count, scene.polylines.count)
             let result = projection(compiled.layer, cache: &surfaceMeshes, request: request)
             scene.polylines.append(contentsOf: result.polylines)
             scene.meshes.append(contentsOf: result.meshes)
+            tag(&scene, layer: compiled.layer, meshFrom: meshFrom, lineFrom: lineFrom)
             fit = result.extent?.intersection(box)?.union(fit) ?? fit
         }
 
         return BuiltScene3D(scene: scene, view: view, fitBounds: fit)
+    }
+
+    /// 这个图层刚加进场景的几何打上图层 id；曲面图层按「不透明度」把颜色调成半透明
+    /// （缓存里给交线用的网格不受影响，它们是在打标记之前存下的）。
+    static func tag(_ scene: inout Scene3D, layer: Layer, meshFrom: Int, lineFrom: Int) {
+        let translucent = layer.fillStyle.opacity < 0.999
+            && (layer.kind.isSurfaceSource || (layer.kind.canExtrude && layer.extrudesInSpace))
+        for index in meshFrom..<scene.meshes.count {
+            scene.meshes[index].layerID = layer.id
+            if translucent {
+                scene.meshes[index].color = scene.meshes[index].color.withAlpha(max(layer.fillStyle.opacity, 0.02))
+            }
+        }
+        for index in lineFrom..<scene.polylines.count { scene.polylines[index].layerID = layer.id }
     }
 
     // MARK: - 平面曲线

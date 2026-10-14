@@ -9,6 +9,44 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.1.0</title>
+      <pubDate>Wed, 14 Oct 2026 06:33:34 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.1.0</h3>
+<h4>新功能</h4>
+<ul>
+<li><strong>让 AI 帮你画图</strong>：内置 MCP 服务，Claude Code 等 AI 助手可以新建文档、插入曲线、区域和曲面、设置参数滑块、调整视角，还能生成图片查看结果。AI 的改动可以用 ⌘Z 撤销。</li>
+</ul>
+<p>  - 在「Grapher NG ▸ 设置…」（⌘,）里开启，设置窗口提供现成的连接命令。</p>
+<p>  - 默认关闭；只监听本机，需要访问令牌；另有「允许 AI 修改图形」开关，关闭时 AI 只能读取和看图。</p>
+<p>  - 用法见 [docs/usage.zh-CN.md](<a href="https://github.com/xVanTuring/grapher-ng/blob/main/docs/usage.zh-CN.md)。">https://github.com/xVanTuring/grapher-ng/blob/main/docs/usage.zh-CN.md)。</a></p>
+<h4>其他</h4>
+<ul>
+<li>改用 GPL-3.0-or-later 许可协议发布。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.1.0">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.1.0</h3>
+<h4>What's New</h4>
+<ul>
+<li><strong>Let an AI draw graphs for you</strong>: a built-in MCP server lets AI assistants such as Claude Code create documents, insert curves, regions and surfaces, set parameter sliders, move the camera, and render an image to check the result. Everything the AI does can be undone with ⌘Z.</li>
+</ul>
+<p>  - Turn it on in Grapher NG ▸ Settings… (⌘,); the window has ready-to-copy connection commands.</p>
+<p>  - Off by default; listens on this Mac only and requires an access token. An "Allow AI to modify graphs" switch keeps the AI read-only (it can still look at images) while it is off.</p>
+<p>  - See [docs/usage.md](<a href="https://github.com/xVanTuring/grapher-ng/blob/main/docs/usage.md).">https://github.com/xVanTuring/grapher-ng/blob/main/docs/usage.md).</a></p>
+<h4>Also</h4>
+<ul>
+<li>Now released under GPL-3.0-or-later.</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.1.0">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.1.0/GrapherNG-1.1.0.zip" length="2587193" type="application/octet-stream" sparkle:edSignature="undZqjmM6z8nV/LBubjZFFa5FLuh7mXSlzTs8gznqqWz5BHmJuFGZihKZpiTTxqD6OHj6TDfaxuydqu+y9oRBA==" />
+    </item>
+    <item>
       <title>v1.0.0</title>
       <pubDate>Wed, 14 Oct 2026 03:31:48 +0000</pubDate>
       <sparkle:version>2</sparkle:version>

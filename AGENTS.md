@@ -337,3 +337,20 @@ Tests/GrapherNGTests/   单元测试
 
 **梯度流线的起点也是公式**：`formula` 每行 `x, y` 两栏，每一栏是数或含参数的公式（`GradientSeeds.fields` 按逗号 / 分号 / 制表符切栏，没有这些时按空格切两段），
 `LayerCompiler.resolveSeeds` 逐栏编译、算成 `CompiledLayer.seeds`（最多 40 个，写错的起点跳过、第一个错误记在 `domainError`）。采样读 `compiled.seeds`，**别再用 `ScatterData.parse` 读流线的起点**。
+
+## 文字描述与嵌入（给别的 App 用，UniReader 的 ```grapher 块）
+
+- **`GrapherText`**（`GrapherKit/IO/GrapherText.swift`，只依赖 Foundation）：一行一个内容的小语言 → `GrapherDocument`。写法全文是
+  `GrapherText.reference`（`GrapherTextReference.swift`，MCP `get_text_reference` 返回它，后面拼 `GrapherText.examples`）。
+  一行写错只跳过那一行，错误带行号；公式错误经 `LayerCompiler` 查出来，来源图层的类型也查（切线要曲线、交线要两个曲面……）。
+  **新加图型时**：`allowedOptions` / `setFormulas` / `applyOptions` 各补一处，`kindKeywords` 加写法名，在 `GrapherTextTests.testEveryPlotKindHasAWritableForm`
+  与 `AgentScenarioTests` 里补用例（前者会在漏掉时失败）。
+- **文字是唯一的真源**：块里改视角、参数，是 `GrapherText.patch` 只改 `view:` 行和各 `param` 行的数值，别的字一个不动；不整份重写。
+- **`GraphSnapshot.image(text:…)`**（`GrapherRender`）：文字直接出位图，不要界面。MCP `render_text` 用它，AI 写块前先画一张看。
+- **`GrapherEmbed` framework**（`GrapherBlockView`、`GrapherBlockSession`）：从 Quick Look 的预览画布推广来——平时是图、点一下进入操作状态
+  （边框、工具条、参数滑块 + 播放）、拖动转 / 平移、滚轮缩放、双击回到文字里写的取景、「保存视角」经 `onSourceChange` 把改过的文字交给宿主。
+  会话里 `viewTouched`：用户没动过取景时，画布尺寸变了就按新尺寸重取（`width=8` 永远是横向 8 个单位）。
+  🔴 **文字叠加层必须是图层托管的**（`BlockLabelOverlay`：自己建 `CALayer`、`isGeometryFlipped = true`）。App / Quick Look 那份
+  `labels.root.isGeometryFlipped = !contentsAreFlipped()` 在「文本视图里的子视图」这种层级里会让刻度文字上下颠倒（UniReader 里实测，
+  `testLabelOverlayPlacesTextFromTheTop` 守着）；App 与 Quick Look 的画布没出过这个问题，没动。
+- 集成方式、API、链接方法见 `docs/embedding.md`。UniReader 通过工程引用 `../grapher-ng` 链接三个 framework，改这里要留意它的构建。

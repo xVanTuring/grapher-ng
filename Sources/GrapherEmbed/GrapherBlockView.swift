@@ -19,6 +19,10 @@ public final class GrapherBlockView: NSView {
     public var onSourceChange: ((String) -> Void)?
     /// 进入 / 退出操作状态（宿主可以据此让笔记别抢滚轮）。
     public var onActivationChange: ((Bool) -> Void)?
+    /// 用户点了「编辑文字」：宿主把光标放进这段文字让它露出来。不设就没有这个按钮。
+    public var onEditSource: (() -> Void)? {
+        didSet { editButton.isHidden = onEditSource == nil }
+    }
     /// 宿主指定的主题（笔记的深浅色）。nil = 文字里写了 `theme:` 就听文字的，否则跟系统外观。
     public var themeOverride: Theme? {
         didSet { applyTheme() }
@@ -46,6 +50,7 @@ public final class GrapherBlockView: NSView {
     private let resetButton = NSButton()
     private let saveButton = NSButton()
     private let openButton = NSButton()
+    private let editButton = NSButton()
     private let parameterBar = NSVisualEffectView()
     private let parameterStack = NSStackView()
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
@@ -449,7 +454,9 @@ public final class GrapherBlockView: NSView {
         toolbar.orientation = .horizontal
         toolbar.spacing = 2
         toolbar.edgeInsets = NSEdgeInsets(top: 3, left: 6, bottom: 3, right: 6)
-        toolbar.setViews([resetButton, saveButton, openButton], in: .leading)
+        configure(editButton, symbol: "chevron.left.forwardslash.chevron.right", tip: L("Edit the text"), action: #selector(editTapped))
+        editButton.isHidden = onEditSource == nil
+        toolbar.setViews([editButton, resetButton, saveButton, openButton], in: .leading)
         toolbar.wantsLayer = true
         toolbar.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.88).cgColor
         toolbar.layer?.cornerRadius = 6
@@ -548,6 +555,10 @@ public final class GrapherBlockView: NSView {
             errorLabel.stringValue = lines.joined(separator: "\n") + more
             errorLabel.preferredMaxLayoutWidth = max(bounds.width - 12, 100)
         }
+    }
+
+    @objc private func editTapped() {
+        onEditSource?()
     }
 
     @objc private func resetViewTapped() {
@@ -664,9 +675,15 @@ final class BlockLabelOverlay: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
+        // 图层托管：这个视图的图层完全由我们自己定，AppKit 不碰它的几何，所以「左上角原点、y 朝下」是确定的，
+        // 不会因为宿主视图树（文字视图、滚动视图、SwiftUI 托管）里图层翻转与否不同而上下颠倒。
+        let host = CALayer()
+        host.isGeometryFlipped = true
+        layer = host
         wantsLayer = true
         layerContentsRedrawPolicy = .never
-        layer?.addSublayer(labels.root)
+        labels.root.isGeometryFlipped = false
+        host.addSublayer(labels.root)
     }
 
     @available(*, unavailable)
@@ -683,8 +700,7 @@ final class BlockLabelOverlay: NSView {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        labels.root.frame = layer?.bounds ?? bounds
-        labels.root.isGeometryFlipped = !(layer?.contentsAreFlipped() ?? false)
+        labels.root.frame = bounds
         CATransaction.commit()
     }
 

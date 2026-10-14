@@ -64,6 +64,27 @@ final class GrapherBlockViewTests: XCTestCase {
         XCTAssertEqual(activation, [true, false])
     }
 
+    /// 刻度文字的 y 方向：放在「离顶边 10 点」的字，在视图的左上角坐标里就得是离顶边 10 点（不是离底边）。
+    func testLabelOverlayPlacesTextFromTheTop() throws {
+        let host = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 100))
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        let overlay = BlockLabelOverlay(frame: host.bounds)
+        host.addSubview(overlay)
+        overlay.layoutSubtreeIfNeeded()
+        overlay.begin(scale: 2, appearance: NSAppearance(named: .aqua)!)
+        overlay.labels.place("k", "X", font: .systemFont(ofSize: 10), color: .black, at: CGPoint(x: 50, y: 10), anchor: .center)
+        overlay.end()
+        let layer = try XCTUnwrap(overlay.labels.root.sublayers?.first)
+        let rootLayer = try XCTUnwrap(overlay.layer)
+        // 字的中心在 overlay 图层坐标里的位置，换成「离顶边多远」。
+        let center = rootLayer.convert(CGPoint(x: layer.frame.midX, y: layer.frame.midY), from: overlay.labels.root)
+        // 托管图层 y 朝下：层坐标里的 y 就是离顶边的距离。
+        XCTAssertTrue(rootLayer.isGeometryFlipped)
+        XCTAssertEqual(center.y, 10, accuracy: 1.5)
+    }
+
     func testDoubleClickGoesBackToTheWrittenView() throws {
         let (view, window) = try makeView(space + "\nview: azimuth=20 elevation=10")
         view.setActive(true)

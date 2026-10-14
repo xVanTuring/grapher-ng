@@ -25,6 +25,8 @@ final class GrapherBlockSession {
     var onSceneChange: (() -> Void)?
 
     private var hasSize = false
+    /// 用户拖动 / 缩放过取景（之后改画布尺寸不再回到文字里写的那一块）。
+    private var viewTouched = false
     private var buildInFlight = false
     private var pendingQuality: SampleQuality?
     private var settleTask: Task<Void, Never>?
@@ -49,7 +51,12 @@ final class GrapherBlockSession {
             return
         }
         guard pixelWidth != viewport.widthPixels || pixelHeight != viewport.heightPixels || scaleChanged else { return }
-        // 平面图：画布变宽时按比例多看一些，而不是把图拉伸（倍率不变，中心不变）。
+        // 用户还没动过取景：始终是「文字里写的那一块」，宽度变了就按新尺寸重取（`width=8` 永远是横向 8 个单位）。
+        if !viewTouched {
+            resetView(pixelWidth: pixelWidth, pixelHeight: pixelHeight)
+            return
+        }
+        // 动过了：画布变宽时按比例多看一些，而不是把图拉伸（倍率不变，中心不变）。
         viewport.widthPixels = pixelWidth
         viewport.heightPixels = pixelHeight
         view3D.widthPixels = pixelWidth
@@ -64,6 +71,7 @@ final class GrapherBlockSession {
     }
 
     private func resetView(pixelWidth: Double, pixelHeight: Double) {
+        viewTouched = false
         viewport = GraphSnapshot.planeViewport(of: document, pixelWidth: pixelWidth, pixelHeight: pixelHeight)
         view3D = GraphSnapshot.spaceView(of: document, pixelWidth: pixelWidth, pixelHeight: pixelHeight)
         onViewChange?()
@@ -99,6 +107,7 @@ final class GrapherBlockSession {
 
     /// `anchor` 是指针位置（像素，左上角原点），平面图缩放用。
     func apply(_ action: CanvasInput.Action, anchor: SIMD2<Double>) {
+        if action != .none { viewTouched = true }
         switch action {
         case .none:
             return

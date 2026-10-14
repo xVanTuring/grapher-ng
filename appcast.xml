@@ -8,5 +8,77 @@
     <description>Updates for Grapher NG, a native macOS graphing app.</description>
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
+    <item>
+      <title>v1.0.0</title>
+      <pubDate>Wed, 14 Oct 2026 03:31:48 +0000</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.0.0</h3>
+<p>Grapher NG 的第一个正式版本：macOS 原生的数学绘图工具，输入公式就能画出曲线、区域和曲面。纯 AppKit + Metal 实现，需要 macOS 14 或更高版本。</p>
+<h4>平面图</h4>
+<ul>
+<li>显函数、参数方程、极坐标、隐函数、不等式区域五种图型</li>
+<li>参数滑块：公式里用参数，拖动滑块时图形实时重算</li>
+<li>无限画布：拖动或双指滚动平移，捏合或 ⌘ + 滚动缩放；1/x、tan(x) 这类间断处会正确断开</li>
+<li>鼠标悬停读数，显示最近曲线上的点、坐标和斜率</li>
+</ul>
+<h4>立体图</h4>
+<ul>
+<li>显式曲面、参数曲面、空间曲线、隐式曲面</li>
+<li>平面曲线也能放进立体图，画在 z = 0 上或沿 z 方向延伸成曲面</li>
+<li>拖动旋转，捏合缩放图形，⌥ + 捏合放大坐标盒</li>
+</ul>
+<h4>文件与导出</h4>
+<ul>
+<li><code>.grapher</code> 文档，双击打开；改过没存时标题下显示「已编辑」，关窗或退出时提示保存</li>
+<li>导出 PNG（1× / 2× / 4×，按目标分辨率重新采样）、矢量 PDF、采样点 CSV</li>
+<li>访达里能看到 <code>.grapher</code> 的缩略图；按空格预览时可以直接拖动、缩放，立体图还能旋转</li>
+</ul>
+<h4>其他</h4>
+<ul>
+<li>欢迎窗口：新建平面图 / 立体图、打开示例，列出最近打开的文档</li>
+<li>自动检查更新（Grapher NG ▸ 检查更新…）</li>
+<li>中英文界面，跟随系统语言</li>
+</ul>
+<h4>安装</h4>
+<p>下载 <code>GrapherNG-1.0.0.dmg</code>，打开后把 Grapher NG 拖进“应用程序”。App 已用 Developer ID 签名并经过 Apple 公证。</p>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.0.0">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.0.0</h3>
+<p>The first release of Grapher NG, a native macOS graphing app: type a formula and get curves, regions and surfaces. Built with AppKit and Metal. Requires macOS 14 or later.</p>
+<h4>2D graphs</h4>
+<ul>
+<li>Five plot kinds: explicit functions, parametric curves, polar curves, implicit curves and inequality regions</li>
+<li>Parameter sliders: use a parameter in a formula and the graph redraws live as you drag</li>
+<li>Infinite canvas: drag or two-finger scroll to pan, pinch or ⌘-scroll to zoom; discontinuities such as 1/x and tan(x) are broken correctly</li>
+<li>Hover to read the nearest point on a curve, with its coordinates and slope</li>
+</ul>
+<h4>3D graphs</h4>
+<ul>
+<li>Explicit surfaces, parametric surfaces, space curves and implicit surfaces</li>
+<li>2D curves can be placed in 3D, either on the z = 0 plane or extruded along z into a surface</li>
+<li>Drag to rotate, pinch to zoom the graph, ⌥-pinch to enlarge the box</li>
+</ul>
+<h4>Files and export</h4>
+<ul>
+<li><code>.grapher</code> documents open with a double-click; unsaved changes show "Edited" under the title and prompt to save on close or quit</li>
+<li>Export PNG (1× / 2× / 4×, re-sampled at the target resolution), vector PDF and sample points as CSV</li>
+<li>Finder shows thumbnails of <code>.grapher</code> files, and the Quick Look preview can be panned and zoomed (3D graphs can be rotated)</li>
+</ul>
+<h4>Also</h4>
+<ul>
+<li>A welcome window to start a 2D or 3D graph, open an example, or reopen a recent document</li>
+<li>Automatic update checks (Grapher NG ▸ Check for Updates…)</li>
+<li>English and Chinese interface, following the system language</li>
+</ul>
+<h4>Install</h4>
+<p>Download <code>GrapherNG-1.0.0.dmg</code>, open it and drag Grapher NG into Applications. The app is signed with a Developer ID and notarized by Apple.</p>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.0.0">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.0.0/GrapherNG-1.0.0.zip" length="2401494" type="application/octet-stream" sparkle:edSignature="UNNfSL4olFwMAwQ4u8aXVgkrfbROlS9gLOccEijYFdPla9asMa4Tsl0/gtHsUv2JPvZfwJD1Oty7LdwStSP4BA==" />
+    </item>
   </channel>
 </rss>

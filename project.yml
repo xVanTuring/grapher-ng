@@ -19,8 +19,8 @@ packages:
 settings:
   base:
     # 版本号只在这里改，各 target 的 Info.plist 都引用这两个值。
-    MARKETING_VERSION: "1.1.0"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "1.1.1"
+    CURRENT_PROJECT_VERSION: "4"
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     ENABLE_HARDENED_RUNTIME: YES

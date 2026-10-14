@@ -33,9 +33,9 @@ settings:
     CODE_SIGN_IDENTITY: "-"
   configs:
     # Debug 不用 ad-hoc：每次构建签名都变，Keychain 授权窗、系统按签名记的状态（最近打开）都会反复失效。
-    # 用固定的开发证书；换机器时改成 `security find-identity -v -p codesigning` 里自己的 Apple Development。
+    # 用固定的证书：和发布同一个（公司只有这个 Developer ID 能公证）；换机器时改成 `security find-identity -v -p codesigning` 里对应的证书全名。
     Debug:
-      CODE_SIGN_IDENTITY: "Apple Development: xVan Turing (K9K27993X3)"
+      CODE_SIGN_IDENTITY: "Developer ID Application: shenzhen zhiqishidai technology co ltd (T8F5T6HKG8)"
 
 targets:
   # ── 数学与采样层 ────────────────────────────────────────────────

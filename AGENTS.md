@@ -2,7 +2,7 @@
 
 macOS 上的公式绘图工具（输入公式画曲线、区域、曲面）。**纯 AppKit + Metal**，唯一的第三方包是自动更新用的 Sparkle
 （只链接到 App target，见 `docs/release.md`），**别再加别的依赖**；xcodegen 管理工程
-（`GrapherNG.xcodeproj` 由 `project.yml` 生成，不要手改），macOS 14+，Swift 5 语言模式；Debug 用固定的 Apple Development 证书（**不许用 ad-hoc**），Release 的 Developer ID 签名在 `scripts/package.sh`。
+（`GrapherNG.xcodeproj` 由 `project.yml` 生成，不要手改），macOS 14+，Swift 5 语言模式；Debug 与发布用同一个证书（zqsd 的 Developer ID Application，只有它能公证），**不许用 ad-hoc**；发布签名在 `scripts/package.sh`。
 
 文档分**平面图**与**立体图**两种（新建时定下，`GrapherDocument.dimension`）：平面图有 2D 全部图型（显函数 / 参数方程 /
 极坐标 / 隐函数 / 不等式区域）；立体图有显式曲面、参数曲面、空间曲线、隐式曲面，平面曲线也能放进去（画在 z = 0 上或

@@ -29,7 +29,7 @@ Grapher NG 用 Developer ID 签名、经过 Apple 公证，在 GitHub release �
 
 ## 签名
 
-- `project.yml` 里 Debug 用固定的 Apple Development 证书（不用 ad-hoc：签名每次都变，Keychain 会反复弹授权窗）；
+- `project.yml` 里 Debug 与发布用同一个证书（zqsd 的 Developer ID Application，公司只有它能公证；不用 ad-hoc：签名每次都变，Keychain 会反复弹授权窗）；
   换机器 / 别的开发者要把 `CODE_SIGN_IDENTITY` 改成自己的开发证书。Release 在工程里是 ad-hoc，发布时由 `package.sh` 指定身份。
 - `package.sh` 在命令行指定签名身份：`CODE_SIGN_IDENTITY` 取钥匙串里 team `T8F5T6HKG8` 的
   「Developer ID Application」证书全名（本机还有别的团队的 Developer ID 证书，不能只写类型名），加 `--timestamp`。

@@ -21,7 +21,7 @@ bash scripts/run.sh      # 构建并直接运行，日志输出到终端
 无界面模式（调试与造图用，不开窗口）：
 
 ```sh
-<app>/Contents/MacOS/GrapherNG --render out.png [--doc d.json] [--width W] [--height H] [--quality full|high]
+<app>/Contents/MacOS/GrapherNG --render out.png [--doc d.grapher] [--width W] [--height H] [--quality full|high]
 <app>/Contents/MacOS/GrapherNG --benchmark
 ```
 
@@ -53,18 +53,40 @@ Tests/GrapherNGTests/   单元测试
 
 - 每扇窗口一份 `GraphDocument`（`NSDocument` 子类），持有该窗口的 `AppState`。新建、打开、保存、另存为、窗口标题与代理图标、
   关闭按钮里的小圆点、关窗 / 退出时的「是否保存」提示，全走 AppKit 的标准流程——**不要再手写打开 / 保存面板或窗口标题**。
-- 文档类型登记在 project.yml 的 `CFBundleDocumentTypes`：`public.json`、`LSHandlerRank = Alternate`（只进「打开方式」，
-  不抢 .json 的默认程序），`NSDocumentClass` 指向 `GraphDocument`。文件格式没变，仍是 `DocumentStore` 的 JSON。
+- **文件是 `.grapher`**（内容是 `DocumentStore` 写的 JSON）：project.yml 导出类型 `tech.xvanturing.grapherng.graph`
+  （`UTExportedTypeDeclarations`，遵从 `public.json`），`CFBundleDocumentTypes` 里登记为 Editor，双击就用本 App 打开。
+  `LSHandlerRank` 取构建设置 `GRAPHER_HANDLER_RANK`：**Debug 为 Alternate、Release 为 Owner**（同 FreeMind），
+  装了正式版时双击不会被开发用的 Debug 版抢走；没装正式版时 Debug 版照样能打开。
+- 早先存的 `.json` 登记为 `public.json` 的 **Viewer**（Alternate，不抢 .json 的默认程序）：能打开，⌘S 弹存储面板另存成
+  `.grapher`，不会写回 JSON（`writableTypes` 只有 `.grapher`）。
 - `autosavesInPlace = false`：改过的文档关窗、退出都弹标准的保存提示，不悄悄写回文件。
+  代价是系统不再给标题加「已编辑」（那是自动保存文档才有的），所以 `DocumentWindowController.setDocumentEdited`
+  自己把窗口**子标题**（`window.subtitle`）设成「已编辑」，存过就清掉。
 - **改动计数**：撤销栈用 NSDocument 自己的 `undoManager`，撤销 / 重做自动增减计数；另外 `AppState.markEdited` 经 `onEdit`
   调 `updateChangeCount(.changeDone)`——拖滑块、输入公式要等一串结束才记一步撤销，中途就得先标成已修改。
   新的改文档路径要么走 `mutate`，要么调 `markEdited`，否则关窗时不会提示保存。平移、缩放视口不算改动。
 - `GraphDocumentController` 必须在 `applicationWillFinishLaunching` 里最先建出来才会成为 `shared`。它只补两件事：
-  ⇧⌘N 新建立体图；只开着一扇没动过的空白窗口时打开文件，文件接替这扇窗口（同「文本编辑」）。接替时**先显示新窗口再关空白的**，
-  反过来的话那一刻一扇窗口都没有，`applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
+  新建立体图 / 示例（`newDocument(dimension:example:)`，示例不算改动、标题写明是哪个示例）；只开着一扇没动过的空白窗口时
+  打开文件，文件接替这扇窗口（同「文本编辑」）。接替时**先显示新窗口再关空白的**，反过来的话那一刻一扇窗口都没有，
+  `applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
 - 新窗口默认是空白文档。「文件 → 加载示例」和图层列表空白时的按钮走 `AppState.loadExample`：图层、参数、视角换成示例，
   主题与网格不动，可撤销。示例本身仍是 `GrapherDocument.sample()` / `sample3D()`，无界面渲染也用它们。
-- 启动时没有文件要打开，AppKit 自己开一份未命名平面图（`applicationShouldOpenUntitledFile`，测试宿主里返回 false）。
+
+## 欢迎窗口（照 FreeMind 的做，界面用 AppKit）
+
+- 启动时没有文件要打开、点 Dock 图标时一扇窗口都没有、又启动了一次（单实例转过来）：都走
+  `AppDelegate.applicationOpenUntitledFile` → 欢迎窗口；欢迎窗口里取消了「启动时显示」（UserDefaults `showWelcomeOnLaunch`）
+  的，直接新建空白平面图。测试宿主里 `applicationShouldOpenUntitledFile` 返回 false，什么都不开。⇧⌘1（窗口菜单）随时打开。
+- 左栏：新建平面图 / 新建立体图 / 打开 / 示例（弹菜单选平面或立体示例，各开一扇新窗口）。右栏：最近打开的文档，
+  列表来自 `NSDocumentController.recentDocumentURLs`（打开、保存时系统自动登记），右键可在访达中显示、移除、清空。
+- **缩略图**（`RecentGraphs.thumbnail`）：后台读文件、按文档存下时的视口重新采样并离屏渲染（平面图取没被侧栏盖住的那块铺满、
+  立体图取当时视角；不画刻度文字），按路径 + 修改时间缓存。
+- 任何文档的窗口**显示出来之后**才关欢迎窗口（`GraphDocument.showWindows`）：在 `addDocument` 里就关的话，新窗口还没出来，
+  那一刻一扇窗口都没有，程序会直接退出。没有文档时关掉欢迎窗口，程序同样会退出（最后一扇窗口关了就退出，这是既有约定）。
+- 卡片（`WelcomeCardView`）整块是点击区：`hitTest` 返回自己，子视图不接鼠标；`mouseDownCanMoveWindow = false`，
+  否则窗口「拖背景移动」会把点击吃掉。颜色都在 `draw` 里取动态色，深浅色外观切换时自动跟上。
+- **Debug 版每重新编一次，最近列表就清空一次**（实测）：系统按 App 的签名记这份列表，ad-hoc 签名每次构建都变。
+  正式签名的版本不受影响，别当成代码 bug 去查。
 - `read(from:ofType:)` 在 SDK 里是 nonisolated；没开并发读（`canConcurrentlyReadDocuments` 默认 false），AppKit 在主线程调它，
   所以里面用 `MainActor.assumeIsolated` 把内容交给 `AppState`。
 

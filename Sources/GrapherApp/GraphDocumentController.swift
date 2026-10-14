@@ -3,14 +3,20 @@ import GrapherKit
 
 /// 文档控制器：在 `applicationWillFinishLaunching` 里最先建出来，成为 `NSDocumentController.shared`。
 /// 新建（⌘N）、打开（⌘O）、退出前逐个确认未保存的文档，都用 AppKit 自带的实现；这里只补两件事：
-/// 新建立体图，以及打开文件时接替那扇空白窗口。
+/// 新建立体图 / 示例，以及打开文件时接替那扇空白窗口。
 final class GraphDocumentController: NSDocumentController {
 
-    /// ⇧⌘N。自带的 `newDocument:` 只会建默认的平面图，立体图在这里建，流程同
-    /// `openUntitledDocumentAndDisplay`。
-    func newDocument(dimension: DocumentDimension) {
-        let document = GraphDocument(dimension: dimension)
+    static var graphShared: GraphDocumentController? { shared as? GraphDocumentController }
+
+    /// ⇧⌘N 与欢迎窗口的「示例」。自带的 `newDocument:` 只会建默认的空白平面图，其余的在这里建，
+    /// 流程同 `openUntitledDocumentAndDisplay`。示例不算改动：原样关掉不提示保存。
+    func newDocument(dimension: DocumentDimension, example: Bool = false) {
+        let document = GraphDocument(dimension: dimension, example: example)
         document.fileType = defaultType ?? GraphDocument.typeName
+        // 示例窗口标题写明是哪个示例，存的时候也以它为默认文件名。
+        if example {
+            document.displayName = dimension == .space ? L("3D Example") : L("2D Example")
+        }
         addDocument(document)
         document.makeWindowControllers()
         document.showWindows()

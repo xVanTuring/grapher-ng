@@ -27,19 +27,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate()
     }
 
-    /// 启动时没有要打开的文件，AppKit 会自己开一份未命名的空白平面图；测试宿主里不开。
+    /// 测试宿主里不开任何窗口。
     func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         !Self.isRunningTests
     }
 
+    /// 启动时没有文件要打开、或点 Dock 图标时一扇窗口都没有（同 FreeMind）：显示欢迎窗口；
+    /// 用户在欢迎窗口里关掉了「启动时显示」的，直接新建一份空白平面图。
+    func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
+        if !NSDocumentController.shared.documents.isEmpty { return true }
+        if WelcomeWindowController.showsOnLaunch {
+            WelcomeWindowController.show()
+        } else {
+            NSDocumentController.shared.newDocument(nil)
+        }
+        return true
+    }
+
     /// 用户又打开了一次 GrapherNG（那个进程抢不到单实例锁，已经退出）：调到前面；
-    /// 没有窗口时新建一个。
+    /// 没有窗口时和点 Dock 图标一样，显示欢迎窗口或新建文档。
     @objc private func handleSecondLaunch(_ note: Notification) {
         NSApp.unhide(nil)
         NSApp.activate()
         if !NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) {
-            NSDocumentController.shared.newDocument(nil)
+            _ = applicationOpenUntitledFile(NSApp)
         }
+    }
+
+    /// 右键 Dock 图标：新建平面图 / 立体图、打开（最近打开的文档由系统自动列在上面）。
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        for (title, action) in [
+            (L("New 2D Graph"), #selector(newPlaneFromDock(_:))),
+            (L("New 3D Graph"), #selector(newSpaceDocument(_:))),
+            (L("Open…"), #selector(openFromDock(_:))),
+        ] {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func newPlaneFromDock(_ sender: Any?) {
+        NSApp.activate()
+        NSDocumentController.shared.newDocument(nil)
+    }
+
+    @objc private func openFromDock(_ sender: Any?) {
+        NSApp.activate()
+        NSDocumentController.shared.openDocument(nil)
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
@@ -52,6 +89,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 新建立体图：开一扇新窗口，装着空白的立体图。
     @objc func newSpaceDocument(_ sender: Any?) {
-        (NSDocumentController.shared as? GraphDocumentController)?.newDocument(dimension: .space)
+        NSApp.activate()
+        GraphDocumentController.graphShared?.newDocument(dimension: .space)
+    }
+
+    /// ⇧⌘1：欢迎窗口（最近打开的文档）。
+    @objc func showWelcome(_ sender: Any?) {
+        WelcomeWindowController.show()
     }
 }

@@ -22,6 +22,9 @@ bash scripts/test.sh                       # 跑单元测试
 
 图标可以重新生成：`bash scripts/make-icon.sh`（需要带 Pillow 的 Python），产物是 `Sources/GrapherApp/Resources/Assets.xcassets/AppIcon.appiconset`。
 
+启动时显示欢迎窗口（⇧⌘1 随时打开）：左边新建平面图 / 立体图、打开文件、打开示例，右边是最近打开的文档，带缩略图，
+单击即可打开。不想要的话取消窗口底部的「启动时显示此窗口」，以后启动直接新建空白平面图。右键 Dock 图标也能新建、打开。
+
 ## 五种图型
 
 | 类型 | 公式写法 | 说明 |
@@ -103,7 +106,8 @@ bash scripts/test.sh                       # 跑单元测试
 - **PNG**：1× / 2× / 4×。按目标分辨率**重新采样**，不是把屏幕上的图放大，所以 4× 的曲线本身就有 4 倍的细节。
 - **PDF**：真矢量，放大到任意倍数都不糊。
 - **CSV**：所有可见曲线的采样点，`layer,x,y` 三列，可以直接喂给别的脚本。
-- **文档**：`⌘S` 存成 JSON，`⌘O` 打开。用的是 macOS 标准的文档模型：每份文档一扇窗口，改过没存的文档关窗或退出时会弹系统的保存提示。
+- **文档**：`⌘S` 存成 `.grapher` 文件（内容是 JSON），在访达里双击就能打开，`⌘O` 也行。用的是 macOS 标准的文档模型：
+  每份文档一扇窗口，改过没存的文档关窗或退出时会弹系统的保存提示。早先存的 `.json` 仍能打开，保存时另存成 `.grapher`。
 
 ## 无界面模式
 
@@ -112,7 +116,7 @@ bash scripts/test.sh                       # 跑单元测试
 ```bash
 # 渲染一张图，不打开窗口
 build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG \
-  --render out.png --doc doc.json --width 1600 --height 1200 --quality high
+  --render out.png --doc doc.grapher --width 1600 --height 1200 --quality high
 
 # 渲染立体图示例（立体图文件用 --doc 指定即可），可以换个角度
 build/DerivedData/Build/Products/Debug/GrapherNG.app/Contents/MacOS/GrapherNG \

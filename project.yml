@@ -85,6 +85,13 @@ targets:
         INFOPLIST_FILE: Sources/GrapherApp/Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+      configs:
+        # 同 FreeMind：Debug 把 .grapher 登记为 Alternate、Release 为 Owner。装了正式版时双击 .grapher
+        # 总是用正式版打开，开发编出来的 Debug 版不会抢走；没装正式版时 Debug 版照样能打开。
+        Debug:
+          GRAPHER_HANDLER_RANK: Alternate
+        Release:
+          GRAPHER_HANDLER_RANK: Owner
     info:
       path: Sources/GrapherApp/Resources/Info.plist
       properties:
@@ -101,14 +108,27 @@ targets:
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         CFBundleIconName: AppIcon
-        # NSDocument 文档模型：新建 / 打开 / 保存 / 关窗与退出时的保存提示都靠这一条登记。
-        # 文件仍是 JSON；`Alternate` 只是「打开方式」里列出本 App，不抢 .json 的默认打开程序。
+        # NSDocument 文档模型：新建 / 打开 / 保存 / 关窗与退出时的保存提示都靠这里登记。
+        # 本 App 的文档是 .grapher（内容是 JSON），双击就用本 App 打开。
+        # 早先存的 .json 仍能打开，但只读（Viewer）：⌘S 会弹存储面板另存成 .grapher；
+        # 对 .json 只是 `Alternate`，在「打开方式」里列出本 App，不抢 .json 的默认打开程序。
         CFBundleDocumentTypes:
           - CFBundleTypeName: Grapher NG Graph
             CFBundleTypeRole: Editor
+            LSHandlerRank: "$(GRAPHER_HANDLER_RANK)"
+            LSItemContentTypes: [tech.xvanturing.grapherng.graph]
+            NSDocumentClass: "$(PRODUCT_MODULE_NAME).GraphDocument"
+          - CFBundleTypeName: JSON Graph
+            CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate
             LSItemContentTypes: [public.json]
             NSDocumentClass: "$(PRODUCT_MODULE_NAME).GraphDocument"
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: tech.xvanturing.grapherng.graph
+            UTTypeDescription: Grapher NG Graph
+            UTTypeConformsTo: [public.json]
+            UTTypeTagSpecification:
+              public.filename-extension: [grapher]
 
   # ── 测试 ──────────────────────────────────────────────────────
   # 以 App 为宿主运行（同 FreeMind / Perch）：App 检测到自己在测试宿主里就不开窗口，

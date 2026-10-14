@@ -16,6 +16,20 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
+			<string>$(GRAPHER_HANDLER_RANK)</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>tech.xvanturing.grapherng.graph</string>
+			</array>
+			<key>NSDocumentClass</key>
+			<string>$(PRODUCT_MODULE_NAME).GraphDocument</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>JSON Graph</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
@@ -51,5 +65,25 @@
 	<string>© 2026 xVanTuring</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Grapher NG Graph</string>
+			<key>UTTypeIdentifier</key>
+			<string>tech.xvanturing.grapherng.graph</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>grapher</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

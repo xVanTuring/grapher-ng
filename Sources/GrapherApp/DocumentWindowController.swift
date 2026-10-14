@@ -290,6 +290,18 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         }
     }
 
+    // MARK: - Edited state
+
+    /// 改过没存时，标题下面的子标题写「已编辑」，存过就清掉。系统只给「就地自动保存」的文档显示这个；
+    /// 本 App 关了自动保存（关窗、退出要弹保存提示），所以自己写。NSDocument 改动计数一变就会调到这里。
+    override func setDocumentEdited(_ dirtyFlag: Bool) {
+        super.setDocumentEdited(dirtyFlag)
+        let subtitle = dirtyFlag ? L("Edited") : ""
+        if window?.subtitle != subtitle {
+            window?.subtitle = subtitle
+        }
+    }
+
     // MARK: - Window delegate
 
     /// 文档自己的撤销栈（`GraphDocument` 交给了 `state`）。

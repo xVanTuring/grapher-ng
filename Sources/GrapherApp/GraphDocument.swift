@@ -1,20 +1,20 @@
 import AppKit
 import GrapherKit
-import UniformTypeIdentifiers
 
 /// 一份图形文档，走 AppKit 的 NSDocument 文档模型：打开、保存、另存为、窗口标题与代理图标、
 /// 关闭按钮里的小圆点、关窗 / 退出时「是否保存更改」的提示，全是系统的标准流程。
-/// 文件格式没变，仍是 `DocumentStore` 写的 JSON（Info.plist 里登记的文档类型是 `public.json`）。
+/// 文件是 `.grapher`，内容是 `DocumentStore` 写的 JSON；早先存的 `.json` 也能读，存的时候另存成 `.grapher`。
 final class GraphDocument: NSDocument {
 
-    /// `CFBundleDocumentTypes` 里登记的类型（project.yml），也是 `fileType`。
-    static let typeName = UTType.json.identifier
+    /// 本 App 导出的文档类型（project.yml 的 `UTExportedTypeDeclarations`），新建文档的 `fileType`。
+    static let typeName = "tech.xvanturing.grapherng.graph"
 
     let state: AppState
 
-    /// 新建空白文档：平面图或立体图（⌘N / ⇧⌘N）。打开文件时也先建一份空白的，再由 `read` 换上内容。
-    init(dimension: DocumentDimension) {
-        state = AppState(dimension: dimension)
+    /// 新建文档：平面图或立体图（⌘N / ⇧⌘N），`example` 为真时装着示例（欢迎窗口的「示例」）。
+    /// 打开文件时也先建一份空白的，再由 `read` 换上内容。
+    init(dimension: DocumentDimension, example: Bool = false) {
+        state = AppState(dimension: dimension, example: example)
         super.init()
         // 撤销栈用 NSDocument 自己的：撤销 / 重做时它自动增减改动计数。
         state.undoManager = undoManager
@@ -38,6 +38,13 @@ final class GraphDocument: NSDocument {
 
     override func makeWindowControllers() {
         addWindowController(DocumentWindowController(state: state))
+    }
+
+    /// 任何文档的窗口显示出来就关掉欢迎窗口。必须在显示**之后**关：先关的话那一刻一扇窗口都没有，
+    /// `applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
+    override func showWindows() {
+        super.showWindows()
+        WelcomeWindowController.close()
     }
 
     override func data(ofType typeName: String) throws -> Data {

@@ -9,6 +9,7 @@
 "New 3D Graph" = "新建立体图";
 "Open…" = "打开…";
 "Load Example" = "加载示例";
+"Edited" = "已编辑";
 "Save" = "保存";
 "Save As…" = "另存为…";
 "Export PNG 1×" = "导出 PNG 1×";
@@ -132,3 +133,22 @@
 "Show Grid" = "显示网格";
 "Show Minor Grid" = "显示细分网格";
 "Change Theme" = "切换主题";
+
+/* 欢迎窗口 */
+"Welcome to Grapher NG" = "欢迎使用 Grapher NG";
+"Version %@" = "版本 %@";
+"Curves, polar plots and regions" = "曲线、极坐标与不等式区域";
+"Surfaces and space curves" = "曲面与空间曲线";
+"Open a saved graph" = "打开存好的图形文档";
+"Examples" = "示例";
+"A ready-made 2D or 3D graph" = "现成的平面图或立体图";
+"2D Example" = "平面图示例";
+"3D Example" = "立体图示例";
+"Show this window when Grapher NG starts" = "启动 Grapher NG 时显示此窗口";
+"Recent Graphs" = "最近打开";
+"No recent graphs" = "没有最近打开的文档";
+"Graphs you open will appear here." = "打开过的文档会列在这里。";
+"Open" = "打开";
+"Show in Finder" = "在访达中显示";
+"Remove from Recent Graphs" = "从最近打开中移除";
+"Clear Recent Graphs" = "清空最近打开";

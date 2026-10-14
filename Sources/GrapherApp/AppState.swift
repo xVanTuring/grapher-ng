@@ -111,18 +111,24 @@ final class AppState {
     private var chromeCache: (key: ChromeKey, scene: Scene2D, layout: ChromeLayout)?
     private var chrome3DCache: (key: Chrome3DKey, result: Chrome3D.Result)?
 
-    /// 不给文档时按 `dimension` 开一份空白的平面图或立体图；示例由「加载示例」（`loadExample`）载入。
-    init(document: GrapherDocument? = nil, dimension: DocumentDimension = .plane) {
+    /// 不给文档时按 `dimension` 开一份新的平面图或立体图：默认空白，`example` 为真时是示例
+    /// （欢迎窗口的「示例」）。已开着的窗口要载入示例走 `loadExample`。
+    init(document: GrapherDocument? = nil, dimension: DocumentDimension = .plane, example: Bool = false) {
         if let document {
             self.document = document
         } else {
-            var blank = GrapherDocument(dimension: dimension)
+            var fresh: GrapherDocument
+            if example {
+                fresh = dimension == .space ? GrapherDocument.sample3D() : GrapherDocument.sample()
+            } else {
+                fresh = GrapherDocument(dimension: dimension)
+            }
             // First impressions matter: follow whatever appearance the machine
             // is in rather than assuming a white sheet.
             if UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark" {
-                blank.theme = .dark
+                fresh.theme = .dark
             }
-            self.document = blank
+            self.document = fresh
         }
         self.selection = self.document.layers.first?.id
     }

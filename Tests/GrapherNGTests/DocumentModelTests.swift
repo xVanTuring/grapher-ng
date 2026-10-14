@@ -53,6 +53,28 @@ final class DocumentModelTests: XCTestCase {
         XCTAssertFalse(reopened.isDocumentEdited, "刚读进来的文档不算改过")
     }
 
+    /// 存成 .grapher（双击能打开）；早先的 .json 还能打开，但只能另存成 .grapher，不会写回 JSON。
+    func testDocumentsSaveAsGrapherAndOldJSONStillOpens() {
+        XCTAssertEqual(GraphDocument.writableTypes, [GraphDocument.typeName])
+        XCTAssertTrue(GraphDocument.readableTypes.contains(GraphDocument.typeName))
+        XCTAssertTrue(GraphDocument.readableTypes.contains("public.json"))
+
+        let exported = Bundle.main.object(forInfoDictionaryKey: "UTExportedTypeDeclarations") as? [[String: Any]]
+        let declaration = exported?.first { $0["UTTypeIdentifier"] as? String == GraphDocument.typeName }
+        let tags = declaration?["UTTypeTagSpecification"] as? [String: Any]
+        XCTAssertEqual(tags?["public.filename-extension"] as? [String], ["grapher"])
+
+        let legacy = GraphDocument()
+        legacy.fileType = "public.json"
+        XCTAssertEqual(legacy.writableTypes(for: .saveOperation), [GraphDocument.typeName])
+    }
+
+    func testExampleDocumentsOpenUnedited() {
+        let document = GraphDocument(dimension: .space, example: true)
+        XCTAssertEqual(document.state.document.layers.map(\.kind), GrapherDocument.sample3D().layers.map(\.kind))
+        XCTAssertFalse(document.isDocumentEdited, "示例原样关掉不提示保存")
+    }
+
     func testEditsMarkTheDocumentEdited() throws {
         let document = GraphDocument()
         XCTAssertFalse(document.isDocumentEdited)

@@ -108,6 +108,9 @@ enum MainMenu {
             menu.addItem(self.item(L("Minimize"), #selector(NSWindow.performMiniaturize(_:)), key: "m"))
             menu.addItem(self.item(L("Zoom"), #selector(NSWindow.performZoom(_:))))
             menu.addItem(.separator())
+            menu.addItem(self.item(L("Welcome to Grapher NG"), #selector(AppDelegate.showWelcome(_:)), key: "1",
+                                   modifiers: [.command, .shift]))
+            menu.addItem(.separator())
             menu.addItem(self.item(L("Bring All to Front"), #selector(NSApplication.arrangeInFront(_:)), target: NSApp))
         }
         NSApp.windowsMenu = item.submenu

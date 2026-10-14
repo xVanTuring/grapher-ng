@@ -201,3 +201,9 @@
 
 "Steepness as a heat map" = "用热力图表示陡缓";
 "The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below." = "曲面本身按坡度上色，平缓处是蓝色、陡处是红色，下面地面上再画出梯度场。";
+"A range end must be a finite number." = "范围的端点必须是有限的数。";
+
+"A curve that draws itself" = "自己画出来的曲线";
+"The upper end of t is p·2π. Press play on p and the Lissajous figure and the cycloid are drawn as p grows." = "t 的上限是 p·2π。在 p 上按播放，李萨如图形和摆线随着 p 变大一点点被画出来。";
+"A knot and a torus that build themselves" = "自己生长的结和环面";
+"The ranges of t and u end at p·2π. Press play on p: the trefoil knot is traced and the torus is swept out around its axis." = "t 和 u 的范围都到 p·2π 为止。在 p 上按播放：三叶结被一笔画出，环面绕轴一圈圈扫出来。";

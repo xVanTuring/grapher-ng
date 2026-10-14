@@ -361,6 +361,13 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     /// 第二个参数的范围：参数曲面的 v。
     public var domain2Lower: Double
     public var domain2Upper: Double
+    /// 范围的端点也可以写成表达式（可以含参数，如 `p*2*pi`）：非空时以它为准，上面的数只是没写表达式时用的值。
+    /// 参数一变范围跟着变——让参数从 0 播放到 1，曲线就一点点画出来。`LayerCompiler` 把它算成数，
+    /// 采样代码读到的 `compiled.layer` 里已经是算好的数。
+    public var domainLowerFormula: String
+    public var domainUpperFormula: String
+    public var domain2LowerFormula: String
+    public var domain2UpperFormula: String
     /// When false the domain defaults to whatever the viewport currently shows.
     public var usesExplicitDomain: Bool
     /// 平面曲线放在立体图里时：false 画成 z = 0 平面上的一条曲线，true 沿 z 延伸成竖直曲面。
@@ -410,6 +417,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         domainUpper: Double = 2 * Double.pi,
         domain2Lower: Double = 0,
         domain2Upper: Double = 2 * Double.pi,
+        domainLowerFormula: String = "",
+        domainUpperFormula: String = "",
+        domain2LowerFormula: String = "",
+        domain2UpperFormula: String = "",
         usesExplicitDomain: Bool = false,
         extrudesInSpace: Bool = false,
         sourceA: UUID? = nil,
@@ -445,6 +456,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.domainUpper = domainUpper
         self.domain2Lower = domain2Lower
         self.domain2Upper = domain2Upper
+        self.domainLowerFormula = domainLowerFormula
+        self.domainUpperFormula = domainUpperFormula
+        self.domain2LowerFormula = domain2LowerFormula
+        self.domain2UpperFormula = domain2UpperFormula
         self.usesExplicitDomain = usesExplicitDomain
         self.extrudesInSpace = extrudesInSpace
         self.sourceA = sourceA
@@ -472,6 +487,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, kind, name, isVisible, formula, secondaryFormula, tertiaryFormula, relation
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
+        case domainLowerFormula, domainUpperFormula, domain2LowerFormula, domain2UpperFormula
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
         case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize, showsFit
         case gridDensity, arrowScale, gradientOnFloor, colorsBySlope
@@ -493,6 +509,10 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         domainUpper = try container.decode(Double.self, forKey: .domainUpper)
         domain2Lower = try container.decodeIfPresent(Double.self, forKey: .domain2Lower) ?? 0
         domain2Upper = try container.decodeIfPresent(Double.self, forKey: .domain2Upper) ?? 2 * Double.pi
+        domainLowerFormula = try container.decodeIfPresent(String.self, forKey: .domainLowerFormula) ?? ""
+        domainUpperFormula = try container.decodeIfPresent(String.self, forKey: .domainUpperFormula) ?? ""
+        domain2LowerFormula = try container.decodeIfPresent(String.self, forKey: .domain2LowerFormula) ?? ""
+        domain2UpperFormula = try container.decodeIfPresent(String.self, forKey: .domain2UpperFormula) ?? ""
         usesExplicitDomain = try container.decode(Bool.self, forKey: .usesExplicitDomain)
         extrudesInSpace = try container.decodeIfPresent(Bool.self, forKey: .extrudesInSpace) ?? false
         sourceA = try container.decodeIfPresent(UUID.self, forKey: .sourceA)
@@ -515,6 +535,11 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)
+    }
+
+    /// 有没有哪个范围端点写了表达式（四个里任何一个非空）。
+    public var hasDomainFormulas: Bool {
+        !(domainLowerFormula + domainUpperFormula + domain2LowerFormula + domain2UpperFormula).isEmpty
     }
 
     /// A ready-to-edit layer for the given plot kind, styled with the palette entry.

@@ -86,7 +86,7 @@ Write tools need **Allow AI to modify graphs**:
 |---|---|
 | `create_document` | New empty window, 2D (`plane`) or 3D (`space`). |
 | `open_document` / `save_document` | Open a `.grapher` file; save in place or to a path. |
-| `add_layer` | Insert a graph: `kind`, `formula`, and as needed `secondary_formula`, `tertiary_formula`, `domain`, `domain2`, `relation`, `extrude`, `color`, `line_width`, `dashed`, `name`. |
+| `add_layer` | Insert a graph: `kind`, `formula`, and as needed `secondary_formula`, `tertiary_formula`, `domain`, `domain2`, `domain_formulas`, `domain2_formulas`, `relation`, `extrude`, `color`, `line_width`, `dashed`, `name`. |
 | `update_layer` / `remove_layer` | Change fields of a layer by id (its kind cannot change) or delete it. |
 | `set_parameter` / `remove_parameter` | Create or change a named parameter with a slider range (`name`, `value`, `min`, `max`). |
 | `set_view` | 2D: `center_x`, `center_y`, `scale`. 3D: `center`, `half_extent`, `azimuth`, `elevation` (degrees), `camera_zoom`. Also `fit` and `reset`. |
@@ -147,3 +147,5 @@ Every parameter in the left panel has a **play** button. Play makes the slider s
 ### Seeing the gradient
 
 Put a `surface` layer z = f(x, y) in a 3D document and add a **Gradient field** layer on it: arrows point along the steepest ascent, longer and redder where the slope is larger (none at peaks, pits and saddle points), either on the surface or flat on the floor (the textbook ∇f). **Gradient flow lines** start paths at the points you list and follow ∇f uphill (or −∇f downhill); a ball sits on each path at the position you give (0 to 1), so writing it as a parameter and pressing play rolls the balls along. Tick **Color by slope** on the surface to turn it into a heat map of |∇f|. The **Gradients** group in the example catalog shows each of these.
+
+**Drawing a curve gradually.** The ends of a parameter range (the range of `t`, `theta`, `u`, `v`, or an explicit function's domain) can be formulas as well as numbers, for example `p*2*pi`. Create a parameter `p` from 0 to 1, write `p*2*pi` as the upper end, and play `p`: the curve is drawn up to that point as `p` grows, and a parametric surface is swept out. Through MCP use `domain_formulas` (and `domain2_formulas`), e.g. `["0", "p*2*pi"]`; an empty string keeps that end's plain number.

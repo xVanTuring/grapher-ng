@@ -13,11 +13,15 @@ public final class LayerCompiler {
         public var primaryError: ExpressionError?
         public var secondaryError: ExpressionError?
         public var tertiaryError: ExpressionError?
+        /// 范围端点的表达式出错（第一个出错的那个）。`layer` 里对应的数留着没写表达式时的值。
+        public var domainError: ExpressionError?
 
-        public var hasError: Bool { primaryError != nil || secondaryError != nil || tertiaryError != nil }
+        public var hasError: Bool {
+            primaryError != nil || secondaryError != nil || tertiaryError != nil || domainError != nil
+        }
 
         /// 三个公式里第一个出错的那个，界面上的错误标记用它。
-        public var firstError: ExpressionError? { primaryError ?? secondaryError ?? tertiaryError }
+        public var firstError: ExpressionError? { primaryError ?? secondaryError ?? tertiaryError ?? domainError }
     }
 
     private struct Key: Hashable {
@@ -37,6 +41,7 @@ public final class LayerCompiler {
 
         for layer in document.layers {
             var compiled = CompiledLayer(layer: layer)
+            resolveDomain(of: layer, into: &compiled, parameters: parameters)
             // 梯度流线：`formula` 是起点列表（文字），只有「小球位置」`secondaryFormula` 是公式（可以写参数）。
             if layer.kind == .gradientFlow {
                 let outcome = compileOne(source: layer.secondaryFormula, variables: [], parameters: parameters)
@@ -79,6 +84,30 @@ public final class LayerCompiler {
             result.append(compiled)
         }
         return result
+    }
+
+    /// 范围端点写了表达式的，算成数放进 `compiled.layer`：下游的采样代码照常读 `domainLower` 等，
+    /// 不用知道它们是怎么来的。出错的端点保留原来的数，错误记在 `domainError`。
+    private func resolveDomain(of layer: Layer, into compiled: inout CompiledLayer, parameters: [String: Double]) {
+        guard layer.hasDomainFormulas else { return }
+        let ends: [(String, WritableKeyPath<Layer, Double>)] = [
+            (layer.domainLowerFormula, \.domainLower), (layer.domainUpperFormula, \.domainUpper),
+            (layer.domain2LowerFormula, \.domain2Lower), (layer.domain2UpperFormula, \.domain2Upper),
+        ]
+        for (source, keyPath) in ends where !source.trimmingCharacters(in: .whitespaces).isEmpty {
+            let outcome = compileOne(source: source, variables: [], parameters: parameters)
+            if let error = outcome.1 {
+                compiled.domainError = compiled.domainError ?? error
+            } else if let expression = outcome.0 {
+                let value = expression.evaluate([])
+                if value.isFinite {
+                    compiled.layer[keyPath: keyPath] = value
+                } else if compiled.domainError == nil {
+                    compiled.domainError = ExpressionError(
+                        message: L("A range end must be a finite number."), column: 1, length: max(source.count, 1))
+                }
+            }
+        }
     }
 
     private func compileOne(

@@ -108,6 +108,9 @@ final class MCPFacade {
         if layer.kind.usesDomain {
             object["domain"] = [layer.domainLower, layer.domainUpper]
             object["usesExplicitDomain"] = layer.usesExplicitDomain
+            if !(layer.domainLowerFormula + layer.domainUpperFormula).isEmpty {
+                object["domainFormulas"] = [layer.domainLowerFormula, layer.domainUpperFormula]
+            }
         }
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
@@ -164,6 +167,7 @@ final class MCPFacade {
         }
         if let errors = state.formulaErrors[layer.id] {
             var messages: [String] = []
+            if let error = errors.domain { messages.append("domain_formulas: \(error.description)") }
             if let error = errors.primary { messages.append("formula: \(error.description)") }
             if let error = errors.secondary { messages.append("secondary_formula: \(error.description)") }
             if let error = errors.tertiary { messages.append("tertiary_formula: \(error.description)") }
@@ -242,6 +246,9 @@ final class MCPFacade {
         var relation: RegionRelation?
         var domain: (Double, Double)?
         var domain2: (Double, Double)?
+        /// 范围两端的表达式（可含参数，空串 = 这一端用数）。
+        var domainFormulas: (String, String)?
+        var domain2Formulas: (String, String)?
         var extrude: Bool?
         var sourceA: UUID?
         var sourceB: UUID?
@@ -377,13 +384,31 @@ final class MCPFacade {
             guard domain.0 < domain.1 else { throw MCPToolError("domain must be [min, max] with min < max.") }
             layer.domainLower = domain.0
             layer.domainUpper = domain.1
+            layer.domainLowerFormula = ""
+            layer.domainUpperFormula = ""
             layer.usesExplicitDomain = true
+        }
+        if let formulas = edit.domainFormulas {
+            guard layer.kind.usesDomain else {
+                throw MCPToolError("'\(layer.kind.rawValue)' layers have no parameter range; the range is the axis box / view.")
+            }
+            // 空串 = 这一端回到上面的数。
+            layer.domainLowerFormula = formulas.0.trimmingCharacters(in: .whitespaces)
+            layer.domainUpperFormula = formulas.1.trimmingCharacters(in: .whitespaces)
+            layer.usesExplicitDomain = true
+        }
+        if let formulas = edit.domain2Formulas {
+            guard layer.kind.usesSecondDomain else { throw MCPToolError("Only 'parametricSurface' layers have domain2_formulas.") }
+            layer.domain2LowerFormula = formulas.0.trimmingCharacters(in: .whitespaces)
+            layer.domain2UpperFormula = formulas.1.trimmingCharacters(in: .whitespaces)
         }
         if let domain2 = edit.domain2 {
             guard layer.kind.usesSecondDomain else { throw MCPToolError("Only 'parametricSurface' layers have domain2.") }
             guard domain2.0 < domain2.1 else { throw MCPToolError("domain2 must be [min, max] with min < max.") }
             layer.domain2Lower = domain2.0
             layer.domain2Upper = domain2.1
+            layer.domain2LowerFormula = ""
+            layer.domain2UpperFormula = ""
         }
         if let extrude = edit.extrude {
             guard layer.kind.canExtrude else { throw MCPToolError("'\(layer.kind.rawValue)' layers cannot be extruded.") }
@@ -534,6 +559,7 @@ final class MCPFacade {
         if let error = compiled.primaryError { messages.append("formula: \(error.description)") }
         if let error = compiled.secondaryError { messages.append("secondary_formula: \(error.description)") }
         if let error = compiled.tertiaryError { messages.append("tertiary_formula: \(error.description)") }
+        if let error = compiled.domainError { messages.append("domain_formulas: \(error.description)") }
         throw MCPToolError(
             "The formula was rejected, nothing was changed. " + messages.joined(separator: "; ")
                 + ". Variables for '\(layer.kind.rawValue)': \(Self.variables(of: layer.kind)). "

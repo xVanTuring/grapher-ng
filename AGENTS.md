@@ -327,3 +327,7 @@ Tests/GrapherNGTests/   单元测试
 **按坡度上色**：显式曲面的 `colorsBySlope`。网格顶点带 `scalar`（0…1，`SceneBuilder3D.slopeLevels`：网格中心差分得 |∇f|，按第 99 百分位归一化，
 免得极点把别处压成全蓝），`Mesh3D.colorsByScalar` 为真时着色器用 `slopeColor`（与 `GradientField.color` 同一组颜色）代替图层颜色，图层颜色只剩不透明度。
 `MeshVertex3D`（offset 40）与 `MeshStyle3D.colorMode`（offset 20）的布局由 `Renderer3DTests` 守着，改了要同步 `ShaderSource3D`。
+
+**范围端点的表达式**：`Layer.domainLowerFormula` / `domainUpperFormula` / `domain2…`（空 = 用数）。`LayerCompiler.resolveDomain` 把它们按当前参数算成数，
+写进 `CompiledLayer.layer` 的 `domainLower` 等——**采样代码读 `compiled.layer`，不用知道端点是公式**（所以别在采样里读 `document.layers` 里的原图层范围）。
+出错记在 `CompiledLayer.domainError`（`hasError` 包含它），检查器写在范围那一行下面；出错的端点保留原来的数。范围缩成一点（参数为 0）时什么都不画、不崩（`DomainFormulaTests` 守着各图型）。

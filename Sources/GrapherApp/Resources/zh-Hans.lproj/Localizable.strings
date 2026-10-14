@@ -271,3 +271,6 @@
 /* Color by slope */
 "Color by slope" = "按坡度上色";
 "Blue where the surface is flat, red where it is steep (the size of the gradient)." = "曲面平缓的地方是蓝色，陡的地方是红色（梯度的大小）。";
+
+/* Range formulas */
+"A number, or a formula with parameters such as p*2*pi: the range follows the parameter, so playing it draws the curve gradually." = "填数，或者填含参数的公式（如 p*2*pi）：范围会跟着参数变，播放这个参数曲线就一点点画出来。";

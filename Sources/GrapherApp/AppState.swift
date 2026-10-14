@@ -72,6 +72,8 @@ final class AppState {
         var primary: ExpressionError?
         var secondary: ExpressionError?
         var tertiary: ExpressionError?
+        /// 范围端点表达式的错误（检查器写在范围那一行下面）。
+        var domain: ExpressionError?
     }
     private(set) var isBuilding = false
     private(set) var backingScale: Double = 2
@@ -272,7 +274,8 @@ final class AppState {
                 perField[layer.layer.id] = FormulaErrors(
                     primary: layer.primaryError,
                     secondary: layer.secondaryError,
-                    tertiary: layer.tertiaryError
+                    tertiary: layer.tertiaryError,
+                    domain: layer.domainError
                 )
             }
         }

@@ -84,9 +84,9 @@ final class AgentScenarioTests: XCTestCase {
 
     /// 最后一扇窗口关掉时 App 会退出（既有约定），测试宿主跟着退出、测试被重启。
     /// 所以整个测试期间留一扇不关的窗口，每个用例只关自己开的。
-    private static var sentinel: GraphDocument?
+    static var sentinel: GraphDocument?
 
-    private func session() async throws -> Session {
+    func agentSession() async throws -> Session {
         let controller = try XCTUnwrap(GraphDocumentController.graphShared, "测试宿主里没有文档控制器")
         if Self.sentinel == nil { Self.sentinel = controller.newDocument(dimension: .plane) }
         return Session()
@@ -112,7 +112,7 @@ final class AgentScenarioTests: XCTestCase {
     // MARK: - 立体图：交线 + 投影
 
     func testAgentDrawsASphereCutByAPlaneAndItsShadow() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("space")
 
@@ -145,7 +145,7 @@ final class AgentScenarioTests: XCTestCase {
     }
 
     func testAgentBuildsViviani() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("space")
         let sphere = await session.add("implicitSurface", ["formula": "x^2 + y^2 + z^2 - 9", "opacity": 0.3])
@@ -160,7 +160,7 @@ final class AgentScenarioTests: XCTestCase {
     // MARK: - 立体图：点线面的关系
 
     func testAgentAsksForRelationsAndDrawsTheHelpers() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("space")
 
@@ -203,7 +203,7 @@ final class AgentScenarioTests: XCTestCase {
     }
 
     func testAgentGetsTheRelationOfSkewLinesAndTangentPlane() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("space")
         let first = await session.add("spaceCurve", ["formula": "t", "secondary_formula": "t/2", "tertiary_formula": "-1", "domain": [-3, 3]])
@@ -225,7 +225,7 @@ final class AgentScenarioTests: XCTestCase {
     // MARK: - 立体图：梯度场
 
     func testAgentVisualisesAGradient() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("space")
         let hill = await session.add("surface", ["formula": "3*exp(-(x^2 + y^2)/6)", "opacity": 0.55, "name": "Hill"])
@@ -265,7 +265,7 @@ final class AgentScenarioTests: XCTestCase {
     // MARK: - 平面图：切线、数据、文字
 
     func testAgentDrawsTangentsAndAScatterPlot() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("plane")
 
@@ -289,7 +289,7 @@ final class AgentScenarioTests: XCTestCase {
     }
 
     func testAgentUsesParametersAndTheyDriveTheGraph() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("plane")
         let missing = await session.add("explicit", ["formula": "a*sin(x)"])
@@ -305,7 +305,7 @@ final class AgentScenarioTests: XCTestCase {
     // MARK: - 出错与权限
 
     func testMistakesComeBackAsReadableErrorsAndLeaveNothingHalfAdded() async throws {
-        let session = try await session()
+        let session = try await agentSession()
         defer { session.close() }
         _ = await session.open("space")
         let sphere = await session.add("implicitSurface", ["formula": "x^2 + y^2 + z^2 - 4"])
@@ -336,7 +336,7 @@ final class AgentScenarioTests: XCTestCase {
 
     func testReadOnlyAgentCanLookButNotChange() async throws {
         // 先用有写权限的会话建好一份图，再换成只读会话。
-        let writer = try await session()
+        let writer = try await agentSession()
         defer { writer.close() }
         _ = await writer.open("space")
         let point = await writer.add("point", ["formula": "1", "secondary_formula": "2", "tertiary_formula": "3"])
@@ -358,5 +358,52 @@ final class AgentScenarioTests: XCTestCase {
         XCTAssertEqual(relation.structured["relation"] as? String, "point_off_plane")
         let draw = await reader.call("draw_relation", ["layer_a": point, "layer_b": plane])
         XCTAssertTrue(draw.isError, "draw_relation 要写权限")
+    }
+}
+
+extension AgentScenarioTests {
+    /// 范围写成含参数的公式：调参数曲线跟着变长，写错报清楚，旧的数字范围改回来公式就清掉。
+    func testAgentDrawsACurveGraduallyWithDomainFormulas() async throws {
+        let session = try await agentSession()
+        defer { session.close() }
+        _ = await session.open("plane")
+        _ = await session.call("set_parameter", ["name": "p", "value": 0.25, "min": 0, "max": 1])
+        let curve = await session.add("parametric", [
+            "formula": "3*sin(3*t)", "secondary_formula": "3*sin(2*t)",
+            "domain_formulas": ["0", "p*2*pi"],
+        ])
+        XCTAssertFalse(curve.isEmpty)
+
+        func described() async throws -> MCPObject {
+            let all = await session.layers()
+            return try XCTUnwrap(all.first { $0["id"] as? String == curve })
+        }
+        let first = try await described()
+        XCTAssertEqual(first["domainFormulas"] as? [String], ["0", "p*2*pi"])
+        XCTAssertNil(first["errors"])
+        let small = await session.call("render_image", ["width": 600, "height": 400])
+        _ = await session.call("set_parameter", ["name": "p", "value": 1])
+        let full = await session.call("render_image", ["width": 600, "height": 400])
+        XCTAssertFalse(small.isError || full.isError)
+        let shortInk = inkFraction(of: try XCTUnwrap(small.image))
+        let longInk = inkFraction(of: try XCTUnwrap(full.image))
+        XCTAssertGreaterThan(longInk, shortInk, "p 越大曲线画得越长")
+
+        // 公式里有没定义的名字：报错，原来的图层保持不变。
+        let bad = await session.call("update_layer", ["layer_id": curve, "domain_formulas": ["0", "q*2"]])
+        XCTAssertTrue(bad.isError)
+        XCTAssertTrue(bad.text.contains("domain_formulas"), bad.text)
+        let wrongShape = await session.call("update_layer", ["layer_id": curve, "domain_formulas": ["0"]])
+        XCTAssertTrue(wrongShape.isError)
+        let unchanged = try await described()
+        XCTAssertEqual(unchanged["domainFormulas"] as? [String], ["0", "p*2*pi"])
+
+        // 改回数字范围：公式清掉。
+        _ = await session.call("update_layer", ["layer_id": curve, "domain": [0, 6.28]])
+        let reset = try await described()
+        XCTAssertNil(reset["domainFormulas"])
+        // 不是参数范围的图型：报错。
+        let surface = await session.call("add_layer", ["kind": "surface", "formula": "x", "domain_formulas": ["0", "1"]])
+        XCTAssertTrue(surface.isError)
     }
 }

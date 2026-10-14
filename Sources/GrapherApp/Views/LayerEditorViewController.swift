@@ -42,6 +42,7 @@ final class LayerEditorViewController: NSViewController {
     private var builtAsSurface: Bool?
     private var domainCheckbox: NSButton?
     private var domainGroup: NSStackView?
+    private var domainErrorLabel: NSTextField?
     private var domainLowerField: NSTextField?
     private var domainUpperField: NSTextField?
     private var domain2LowerField: NSTextField?
@@ -415,9 +416,19 @@ final class LayerEditorViewController: NSViewController {
 
         domainCheckbox?.state = layer.usesExplicitDomain ? .on : .off
         domainGroup?.isHidden = layer.kind == .explicit && !layer.usesExplicitDomain
-        for (field, value) in [(domainLowerField, layer.domainLower), (domainUpperField, layer.domainUpper),
-                               (domain2LowerField, layer.domain2Lower), (domain2UpperField, layer.domain2Upper)] {
-            if let field, field.currentEditor() == nil { field.stringValue = ControlFactory.format(value) }
+        for (field, formula, value) in [
+            (domainLowerField, layer.domainLowerFormula, layer.domainLower),
+            (domainUpperField, layer.domainUpperFormula, layer.domainUpper),
+            (domain2LowerField, layer.domain2LowerFormula, layer.domain2Lower),
+            (domain2UpperField, layer.domain2UpperFormula, layer.domain2Upper),
+        ] {
+            if let field, field.currentEditor() == nil { field.stringValue = endpointText(formula, value) }
+        }
+        if let domainError = errors?.domain {
+            domainErrorLabel?.stringValue = domainError.description
+            domainErrorLabel?.isHidden = false
+        } else {
+            domainErrorLabel?.isHidden = true
         }
         extrudeCheckbox?.state = layer.extrudesInSpace ? .on : .off
         labelCheckbox?.state = layer.showsLabel ? .on : .off
@@ -774,6 +785,7 @@ final class LayerEditorViewController: NSViewController {
         tertiaryField = nil
         domainCheckbox = nil
         domainGroup = nil
+        domainErrorLabel = nil
         domainLowerField = nil
         domainUpperField = nil
         domain2LowerField = nil
@@ -912,8 +924,17 @@ final class LayerEditorViewController: NSViewController {
     /// 一个参数范围：「x [  ] 到 [  ]」加一排快捷按钮。`second` 是参数曲面的 v。
     private func domainGroup(_ layer: Layer, second: Bool) -> NSStackView {
         let action = second ? #selector(domain2Edited(_:)) : #selector(domainEdited(_:))
-        let lower = ControlFactory.numberField(second ? layer.domain2Lower : layer.domainLower, target: self, action: action)
-        let upper = ControlFactory.numberField(second ? layer.domain2Upper : layer.domainUpper, target: self, action: action)
+        // 端点既能写数也能写含参数的表达式（如 p*2*pi）：参数一变范围跟着变，播放参数曲线就一点点画出来。
+        let lower = ControlFactory.textField(
+            endpointText(second ? layer.domain2LowerFormula : layer.domainLowerFormula, second ? layer.domain2Lower : layer.domainLower),
+            monospaced: true, target: self, action: action)
+        let upper = ControlFactory.textField(
+            endpointText(second ? layer.domain2UpperFormula : layer.domainUpperFormula, second ? layer.domain2Upper : layer.domainUpper),
+            monospaced: true, target: self, action: action)
+        for field in [lower, upper] {
+            field.alignment = .right
+            field.toolTip = L("A number, or a formula with parameters such as p*2*pi: the range follows the parameter, so playing it draws the curve gradually.")
+        }
         lower.setContentHuggingPriority(.defaultLow, for: .horizontal)
         upper.setContentHuggingPriority(.defaultLow, for: .horizontal)
         if second {
@@ -949,13 +970,29 @@ final class LayerEditorViewController: NSViewController {
         let shortcuts = ControlFactory.stack(buttons, orientation: .horizontal, spacing: 6, alignment: .centerY)
 
         let symbol = second ? "v" : domainSymbol(layer.kind)
-        return ControlFactory.stack(
-            [
-                ControlFactory.formRow(symbol, bounds),
-                ControlFactory.formRow("", shortcuts),
-            ],
-            spacing: ControlFactory.Metric.rowSpacing
-        )
+        var rows: [NSView] = [ControlFactory.formRow(symbol, bounds), ControlFactory.formRow("", shortcuts)]
+        if !second {
+            // 端点的表达式出错时写在这里（一个图层只有一处，放在第一组下面）。
+            let error = ControlFactory.caption("")
+            error.textColor = ControlFactory.Palette.error
+            error.isHidden = true
+            domainErrorLabel = error
+            rows.append(error)
+        }
+        return ControlFactory.stack(rows, spacing: ControlFactory.Metric.rowSpacing)
+    }
+
+    /// 端点输入框里显示什么：写了表达式显示表达式，否则是数。
+    private func endpointText(_ formula: String, _ number: Double) -> String {
+        formula.isEmpty ? ControlFactory.format(number) : formula
+    }
+
+    /// 输入框里的字变成（数, 表达式）：空 = 保持原来的数、没有表达式；能读成数 = 那个数；否则当表达式。
+    private func endpoint(from text: String, keeping number: Double) -> (number: Double, formula: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return (number, "") }
+        if let value = ControlFactory.parse(trimmed) { return (value, "") }
+        return (number, trimmed)
     }
 
     private func domainSymbol(_ kind: PlotKind) -> String {
@@ -1075,16 +1112,36 @@ final class LayerEditorViewController: NSViewController {
 
     @objc private func domainEdited(_ sender: NSTextField) {
         guard let layer = state.selectedLayer else { return }
-        let lower = ControlFactory.parse(domainLowerField?.stringValue ?? "") ?? layer.domainLower
-        let upper = ControlFactory.parse(domainUpperField?.stringValue ?? "") ?? layer.domainUpper
-        setDomain(lower: lower, upper: upper)
+        setDomainEnds(
+            lower: endpoint(from: domainLowerField?.stringValue ?? "", keeping: layer.domainLower),
+            upper: endpoint(from: domainUpperField?.stringValue ?? "", keeping: layer.domainUpper), second: false)
     }
 
     @objc private func domain2Edited(_ sender: NSTextField) {
         guard let layer = state.selectedLayer else { return }
-        let lower = ControlFactory.parse(domain2LowerField?.stringValue ?? "") ?? layer.domain2Lower
-        let upper = ControlFactory.parse(domain2UpperField?.stringValue ?? "") ?? layer.domain2Upper
-        setDomain(lower: lower, upper: upper, second: true)
+        setDomainEnds(
+            lower: endpoint(from: domain2LowerField?.stringValue ?? "", keeping: layer.domain2Lower),
+            upper: endpoint(from: domain2UpperField?.stringValue ?? "", keeping: layer.domain2Upper), second: true)
+    }
+
+    private func setDomainEnds(
+        lower: (number: Double, formula: String), upper: (number: Double, formula: String), second: Bool
+    ) {
+        guard let id = state.selectedLayer?.id else { return }
+        state.mutate(L("Change Domain")) { document in
+            guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
+            if second {
+                document.layers[index].domain2Lower = lower.number
+                document.layers[index].domain2LowerFormula = lower.formula
+                document.layers[index].domain2Upper = upper.number
+                document.layers[index].domain2UpperFormula = upper.formula
+            } else {
+                document.layers[index].domainLower = lower.number
+                document.layers[index].domainLowerFormula = lower.formula
+                document.layers[index].domainUpper = upper.number
+                document.layers[index].domainUpperFormula = upper.formula
+            }
+        }
     }
 
     @objc private func domainPreset(_ sender: NSButton) {
@@ -1208,12 +1265,17 @@ final class LayerEditorViewController: NSViewController {
         guard let id = state.selectedLayer?.id else { return }
         state.mutate(L("Change Domain")) { document in
             guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
+            // 快捷按钮给的是确定的数：把写着的表达式清掉。
             if second {
                 document.layers[index].domain2Lower = lower
                 document.layers[index].domain2Upper = upper
+                document.layers[index].domain2LowerFormula = ""
+                document.layers[index].domain2UpperFormula = ""
             } else {
                 document.layers[index].domainLower = lower
                 document.layers[index].domainUpper = upper
+                document.layers[index].domainLowerFormula = ""
+                document.layers[index].domainUpperFormula = ""
             }
         }
     }

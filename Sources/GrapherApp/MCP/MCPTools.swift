@@ -166,6 +166,9 @@ enum MCPTools {
             "relation": MCPSchema.string("region only: which side of F=0 to fill", enumValues: ["<", "<=", ">", ">="]),
             "domain": MCPSchema.numbers("[min, max] of t / theta / u (explicit, parametric, polar, spaceCurve, parametricSurface)", count: 2),
             "domain2": MCPSchema.numbers("[min, max] of v (parametricSurface only)", count: 2),
+            "domain_formulas": MCPSchema.strings(
+                "[lower, upper] of t / theta / u as formulas that may use parameters, e.g. [\"0\", \"p*2*pi\"]: the range follows the parameter, so playing p draws the curve gradually. An empty string keeps that end's number from 'domain'", count: 2),
+            "domain2_formulas": MCPSchema.strings("[lower, upper] of v as formulas (parametricSurface only), see domain_formulas", count: 2),
             "extrude": MCPSchema.boolean("3D documents, 2D curve kinds only: sweep the curve along z into a vertical surface"),
             "source_a": MCPSchema.string("surfaceIntersection only: id of the first surface layer (surface, parametricSurface or implicitSurface)"),
             "source_b": MCPSchema.string("surfaceIntersection only: id of the second surface layer"),
@@ -215,6 +218,8 @@ enum MCPTools {
         if let relation = try args.optionalString("relation") { edit.relation = try MCPFacade.parseRelation(relation) }
         if let domain = try args.optionalDoubles("domain", count: 2) { edit.domain = (domain[0], domain[1]) }
         if let domain2 = try args.optionalDoubles("domain2", count: 2) { edit.domain2 = (domain2[0], domain2[1]) }
+        if let formulas = try args.optionalStrings("domain_formulas", count: 2) { edit.domainFormulas = (formulas[0], formulas[1]) }
+        if let formulas = try args.optionalStrings("domain2_formulas", count: 2) { edit.domain2Formulas = (formulas[0], formulas[1]) }
         edit.extrude = try args.optionalBool("extrude")
         edit.sourceA = try args.optionalUUID("source_a")
         edit.sourceB = try args.optionalUUID("source_b")
@@ -508,6 +513,8 @@ enum MCPTools {
       explicit / parametric / polar / implicit also work: drawn on the z = 0 plane, or with extrude = true swept along z into a vertical surface.
     Write the F of an implicit layer WITHOUT "= 0": x^2 + y^2 - 4, not x^2 + y^2 = 4.
     Everything in a 3D document is clipped to the axis box (default −4 … 4 on each axis); scale shapes to fit or call set_view.
+    Ranges (domain, domain2) can be formulas with parameters via domain_formulas / domain2_formulas, e.g. ["0", "p*2*pi"]: the curve or surface is drawn only up to that end,
+    so animating p from 0 to 1 draws it gradually. Constants like pi work there too.
 
     SYNTAX
       Constants   pi π e tau τ

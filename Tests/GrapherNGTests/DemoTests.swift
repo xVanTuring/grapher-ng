@@ -44,7 +44,7 @@ final class DemoTests: XCTestCase {
         XCTAssertEqual(Demos.categories(for: .space), [.surfaces, .intersections, .geometry, .projections, .gradients])
         XCTAssertNotNil(Demos.demo(id: "space.sphere-plane"))
         XCTAssertNil(Demos.demo(id: "nope"))
-        XCTAssertGreaterThanOrEqual(Demos.all.count, 33)
+        XCTAssertGreaterThanOrEqual(Demos.all.count, 35)
     }
 
     /// 测试固定用简体中文跑：标题、说明、分类名都得有中文，说明没漏翻译。

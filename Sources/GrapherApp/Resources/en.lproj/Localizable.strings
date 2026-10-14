@@ -271,3 +271,6 @@
 /* Color by slope */
 "Color by slope" = "Color by slope";
 "Blue where the surface is flat, red where it is steep (the size of the gradient)." = "Blue where the surface is flat, red where it is steep (the size of the gradient).";
+
+/* Range formulas */
+"A number, or a formula with parameters such as p*2*pi: the range follows the parameter, so playing it draws the curve gradually." = "A number, or a formula with parameters such as p*2*pi: the range follows the parameter, so playing it draws the curve gradually.";

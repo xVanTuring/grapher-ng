@@ -123,6 +123,14 @@ public enum Demos {
                 b.add(.explicit, "y = a cos(bx + c)", "a*cos(b*x + c)") { $0.lineStyle.isDashed = true }
                 return b.document
             },
+            Demo(id: "plane.draw-in", category: .parameters, title: L("A curve that draws itself"),
+                 summary: L("The upper end of t is p·2π. Press play on p and the Lissajous figure and the cycloid are drawn as p grows.")) {
+                var b = DemoBuilder(.plane, centerX: 3, scale: 34)
+                b.document.parameters = [ParameterDefinition(name: "p", value: 0.6, lowerBound: 0, upperBound: 1)]
+                b.add(.parametric, "Lissajous", "3*sin(3*t)", "3*sin(2*t)", domain: 0...(2 * .pi)) { $0.domainUpperFormula = "p*2*pi" }
+                b.add(.parametric, "Cycloid", "t - sin(t)", "1 - cos(t)", domain: 0...(4 * .pi)) { $0.domainUpperFormula = "p*4*pi" }
+                return b.document
+            },
             Demo(id: "plane.conics", category: .parameters, title: L("Ellipse and hyperbola"),
                  summary: L("Change the semi-axes a and b to see how an ellipse and a hyperbola with the same a and b relate.")) {
                 var b = DemoBuilder(.plane, scale: 42)
@@ -189,6 +197,22 @@ public enum Demos {
                       domain: 0...(2 * .pi), domain2: 0...(2 * .pi)) { $0.fillStyle.opacity = 0.6 }
                 b.add(.parametricSurface, "Sphere", "1.4*cos(u)*sin(v)", "1.4*sin(u)*sin(v)", "1.4*cos(v)",
                       domain: 0...(2 * .pi), domain2: 0...(.pi))
+                return b.document
+            },
+            Demo(id: "space.draw-in", category: .surfaces, title: L("A knot and a torus that build themselves"),
+                 summary: L("The ranges of t and u end at p·2π. Press play on p: the trefoil knot is traced and the torus is swept out around its axis.")) {
+                var b = DemoBuilder(.space, azimuth: 0.6, elevation: 0.6)
+                b.document.parameters = [ParameterDefinition(name: "p", value: 0.65, lowerBound: 0, upperBound: 1)]
+                b.add(.spaceCurve, "Trefoil knot", "sin(t) + 2*sin(2*t)", "cos(t) - 2*cos(2*t)", "-sin(3*t) + 2.6",
+                      domain: 0...(2 * .pi)) {
+                    $0.domainUpperFormula = "p*2*pi"
+                    $0.lineStyle.width = 3
+                }
+                b.add(.parametricSurface, "Torus", "(2.6 + 0.7*cos(v))*cos(u)", "(2.6 + 0.7*cos(v))*sin(u)",
+                      "0.7*sin(v) - 2.4", domain: 0...(2 * .pi), domain2: 0...(2 * .pi)) {
+                    $0.domainUpperFormula = "p*2*pi"
+                    $0.fillStyle.opacity = 0.8
+                }
                 return b.document
             },
             Demo(id: "space.curves", category: .surfaces, title: L("Space curves"),

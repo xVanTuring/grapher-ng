@@ -52,6 +52,15 @@ struct MCPArgs {
         return text
     }
 
+    /// 恰好 `count` 个字符串的数组（没传返回 nil）。
+    func optionalStrings(_ key: String, count: Int) throws -> [String]? {
+        guard let value = value(key) else { return nil }
+        guard let array = value as? [Any], array.count == count, let strings = array as? [String] else {
+            throw MCPInvalidParams("'\(key)' must be an array of \(count) strings")
+        }
+        return strings
+    }
+
     func optionalString(_ key: String) throws -> String? {
         guard let value = value(key) else { return nil }
         guard let text = value as? String else { throw MCPInvalidParams("'\(key)' must be a string") }
@@ -137,6 +146,10 @@ enum MCPSchema {
 
     static func boolean(_ description: String) -> MCPObject {
         ["type": "boolean", "description": description]
+    }
+
+    static func strings(_ description: String, count: Int) -> MCPObject {
+        ["type": "array", "items": ["type": "string"], "minItems": count, "maxItems": count, "description": description]
     }
 
     static func numbers(_ description: String, count: Int) -> MCPObject {

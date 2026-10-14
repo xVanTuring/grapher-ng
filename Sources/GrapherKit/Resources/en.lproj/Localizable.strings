@@ -201,3 +201,9 @@
 
 "Steepness as a heat map" = "Steepness as a heat map";
 "The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below." = "The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below.";
+"A range end must be a finite number." = "A range end must be a finite number.";
+
+"A curve that draws itself" = "A curve that draws itself";
+"The upper end of t is p·2π. Press play on p and the Lissajous figure and the cycloid are drawn as p grows." = "The upper end of t is p·2π. Press play on p and the Lissajous figure and the cycloid are drawn as p grows.";
+"A knot and a torus that build themselves" = "A knot and a torus that build themselves";
+"The ranges of t and u end at p·2π. Press play on p: the trefoil knot is traced and the torus is swept out around its axis." = "The ranges of t and u end at p·2π. Press play on p: the trefoil knot is traced and the torus is swept out around its axis.";

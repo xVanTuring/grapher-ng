@@ -267,3 +267,7 @@
 "Go downhill" = "Go downhill";
 "Off: the path lies on the surface. On: it is drawn flat on the floor of the box." = "Off: the path lies on the surface. On: it is drawn flat on the floor of the box.";
 "Each path starts at a point below and follows the gradient. Make the ball position a parameter (for example p) and press play on it to roll the ball along." = "Each path starts at a point below and follows the gradient. Make the ball position a parameter (for example p) and press play on it to roll the ball along.";
+
+/* Color by slope */
+"Color by slope" = "Color by slope";
+"Blue where the surface is flat, red where it is steep (the size of the gradient)." = "Blue where the surface is flat, red where it is steep (the size of the gradient).";

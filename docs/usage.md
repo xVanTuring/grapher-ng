@@ -143,3 +143,7 @@ Hover over an example in the menu for a one-line explanation.
 ### Animating with parameters
 
 Every parameter in the left panel has a **play** button. Play makes the slider sweep its range by itself, so every graph that uses the parameter moves: a plane sliding through a surface (and its intersection curve with it), a wave changing phase, a gradient field following a hill that widens and narrows, a ball rolling along a gradient path (write the ball position as a parameter such as `p`). The gear next to **+** sets the speed (slow / medium / fast) and whether it goes back and forth or repeats. Several parameters can play at once; undo returns to the values before playing.
+
+### Seeing the gradient
+
+Put a `surface` layer z = f(x, y) in a 3D document and add a **Gradient field** layer on it: arrows point along the steepest ascent, longer and redder where the slope is larger (none at peaks, pits and saddle points), either on the surface or flat on the floor (the textbook ∇f). **Gradient flow lines** start paths at the points you list and follow ∇f uphill (or −∇f downhill); a ball sits on each path at the position you give (0 to 1), so writing it as a parameter and pressing play rolls the balls along. Tick **Color by slope** on the surface to turn it into a heat map of |∇f|. The **Gradients** group in the example catalog shows each of these.

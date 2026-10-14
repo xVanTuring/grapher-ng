@@ -345,8 +345,18 @@ public enum Demos {
                  summary: L("Drag s to make the hill wider or narrower: the steepest ring moves and the arrows follow live.")) {
                 var b = DemoBuilder(.space, azimuth: 0.8, elevation: 0.6)
                 b.document.parameters = [ParameterDefinition(name: "s", value: 6, lowerBound: 1.5, upperBound: 14)]
-                let hill = b.add(.surface, "z = 3e^(−(x²+y²)/s)", "3*exp(-(x^2 + y^2)/s)") { $0.fillStyle.opacity = 0.55 }
+                let hill = b.add(.surface, "z = 3e^(−(x²+y²)/s)", "3*exp(-(x^2 + y^2)/s)") {
+                    $0.fillStyle.opacity = 0.75
+                    $0.colorsBySlope = true
+                }
                 b.gradient("∇f", of: hill, density: 14, scale: 1.2)
+                return b.document
+            },
+            Demo(id: "space.gradient-heat", category: .gradients, title: L("Steepness as a heat map"),
+                 summary: L("The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below.")) {
+                var b = DemoBuilder(.space, azimuth: 0.75, elevation: 0.7)
+                let waves = b.add(.surface, "z = sin x · cos y + x/4", "sin(x)*cos(y) + x/4") { $0.colorsBySlope = true }
+                b.gradient("∇f on the floor", of: waves, density: 15, scale: 0.9, onFloor: true)
                 return b.document
             },
             Demo(id: "space.gradient-climb", category: .gradients, title: L("Climbing to two summits"),

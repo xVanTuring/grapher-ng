@@ -9,11 +9,14 @@ public struct MeshVertex3D: Equatable, Sendable {
     public var normal: SIMD3<Float>
     /// 画网格线用的参数坐标：取整数值的地方画线。分量为 NaN 表示这个方向不画。
     public var parameter: SIMD2<Float>
+    /// 按数值上色用的 0…1 标量（目前是坡度 |∇f| 相对最大值）。网格的 `colorsByScalar` 为真时着色器用它查色带。
+    public var scalar: Float
 
-    public init(position: SIMD3<Float>, normal: SIMD3<Float>, parameter: SIMD2<Float>) {
+    public init(position: SIMD3<Float>, normal: SIMD3<Float>, parameter: SIMD2<Float>, scalar: Float = 0) {
         self.position = position
         self.normal = normal
         self.parameter = parameter
+        self.scalar = scalar
     }
 }
 
@@ -26,12 +29,16 @@ public struct Mesh3D: Equatable, Sendable {
     public var color: RGBAColor
     /// 画出这张面的图层：选中高亮、点选都靠它。坐标盒、辅助线之类不属于任何图层，为 nil。
     public var layerID: UUID?
+    /// 颜色按顶点的 `scalar` 查色带（蓝 → 黄 → 红），`color` 只提供不透明度。
+    public var colorsByScalar: Bool
 
-    public init(vertices: [MeshVertex3D] = [], indices: [UInt32] = [], color: RGBAColor, layerID: UUID? = nil) {
+    public init(vertices: [MeshVertex3D] = [], indices: [UInt32] = [], color: RGBAColor, layerID: UUID? = nil,
+                colorsByScalar: Bool = false) {
         self.vertices = vertices
         self.indices = indices
         self.color = color
         self.layerID = layerID
+        self.colorsByScalar = colorsByScalar
     }
 
     public var triangleCount: Int { indices.count / 3 }

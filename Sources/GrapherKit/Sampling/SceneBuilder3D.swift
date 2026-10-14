@@ -371,9 +371,31 @@ public enum SceneBuilder3D {
                 parameters.append(SIMD2(Float(x / lineStep), Float(y / lineStep)))
             }
         }
+        let scalars = layer.colorsBySlope ? slopeLevels(zs, n: n, step: step) : nil
         let mesh = SurfaceMesher.mesh(points: points, cols: n, rows: n, parameters: parameters,
-                                      view: view, color: layer.lineStyle.color)
+                                      view: view, color: layer.lineStyle.color, scalars: scalars)
         return (mesh, DataBox3D.enclosing(points))
+    }
+
+    /// 网格上每点的坡度 |∇f|（中心差分，边上单侧），按第 99 百分位归一化到 0…1：
+    /// 个别极点飞到天上的梯度不会把其余地方全压成蓝色。
+    static func slopeLevels(_ zs: [Double], n: Int, step: Double) -> [Float] {
+        guard n >= 2, zs.count == n * n else { return [] }
+        func z(_ i: Int, _ j: Int) -> Double { zs[min(max(j, 0), n - 1) * n + min(max(i, 0), n - 1)] }
+        var slopes = [Double](repeating: 0, count: n * n)
+        for j in 0..<n {
+            for i in 0..<n {
+                let spanX = Double(min(i + 1, n - 1) - max(i - 1, 0)) * step
+                let spanY = Double(min(j + 1, n - 1) - max(j - 1, 0)) * step
+                let gx = (z(i + 1, j) - z(i - 1, j)) / spanX
+                let gy = (z(i, j + 1) - z(i, j - 1)) / spanY
+                let g = (gx * gx + gy * gy).squareRoot()
+                slopes[j * n + i] = g.isFinite ? g : 0
+            }
+        }
+        let sorted = slopes.sorted()
+        let reference = max(sorted[min(Int(Double(sorted.count - 1) * 0.99), sorted.count - 1)], 1e-12)
+        return slopes.map { Float(min($0 / reference, 1)) }
     }
 
     /// (x, y, z) = F(u, v)：在 u、v 的范围上铺网格，整张曲面都采（与坐标盒无关）。

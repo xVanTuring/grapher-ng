@@ -323,3 +323,7 @@ Tests/GrapherNGTests/   单元测试
 整个播放期间是一次 `beginLiveEdit` / `commitLiveEdit`，撤销回到播放前的值；`replaceDocument`、撤销、删参数都会停播放。播放状态和速度是窗口状态，不进文档。
 **梯度流线**（`.gradientFlow`）：`formula` 是起点文本（`ScatterData.parse`）、不当公式编译，只有 `secondaryFormula`（小球位置 0…1，可写参数）
 被 `LayerCompiler` 编译；路径在 `GradientFlow.path`（xy 平面上 RK4、按弧长匀速，到临界点 / 出盒 / 900 步停）。
+
+**按坡度上色**：显式曲面的 `colorsBySlope`。网格顶点带 `scalar`（0…1，`SceneBuilder3D.slopeLevels`：网格中心差分得 |∇f|，按第 99 百分位归一化，
+免得极点把别处压成全蓝），`Mesh3D.colorsByScalar` 为真时着色器用 `slopeColor`（与 `GradientField.color` 同一组颜色）代替图层颜色，图层颜色只剩不透明度。
+`MeshVertex3D`（offset 40）与 `MeshStyle3D.colorMode`（offset 20）的布局由 `Renderer3DTests` 守着，改了要同步 `ShaderSource3D`。

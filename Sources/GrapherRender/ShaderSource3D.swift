@@ -35,11 +35,13 @@ enum ShaderSource3D {
         float3 position;
         float3 normal;
         float2 parameter;
+        float  scalar;      // 0…1，colorMode = 1 时查色带
     };
 
     struct MeshStyle3D {
         float4 color;
         float  highlight;   // 1 = 选中
+        float  colorMode;   // 1 = 按顶点 scalar 查色带
     };
 
     struct MeshOut3D {
@@ -47,6 +49,7 @@ enum ShaderSource3D {
         float3 normal;
         float3 world;
         float2 parameter;
+        float  scalar;
         float  clip [[clip_distance]] [6];
     };
 
@@ -55,7 +58,17 @@ enum ShaderSource3D {
         float3 normal;
         float3 world;
         float2 parameter;
+        float  scalar;
     };
+
+    /// 蓝（平缓）→ 黄 → 红（陡）的色带，与 `GradientField.color` 同一组颜色。
+    inline float3 slopeColor(float t) {
+        t = clamp(t, 0.0, 1.0);
+        float3 blue = float3(0.20, 0.40, 0.90);
+        float3 yellow = float3(0.95, 0.80, 0.15);
+        float3 red = float3(0.88, 0.15, 0.12);
+        return t < 0.5 ? mix(blue, yellow, t * 2.0) : mix(yellow, red, (t - 0.5) * 2.0);
+    }
 
     vertex MeshOut3D mesh3d_vertex(uint vid [[vertex_id]],
                                    const device MeshVertex3D *vertices [[buffer(0)]],
@@ -68,6 +81,7 @@ enum ShaderSource3D {
         out.normal = v.normal;
         out.world = p;
         out.parameter = v.parameter;
+        out.scalar = v.scalar;
         out.clip[0] = 1.0 - p.x; out.clip[1] = 1.0 + p.x;
         out.clip[2] = 1.0 - p.y; out.clip[3] = 1.0 + p.y;
         out.clip[4] = 1.0 - p.z; out.clip[5] = 1.0 + p.z;
@@ -99,7 +113,8 @@ enum ShaderSource3D {
         float3 halfway = normalize(key + toEye);
         float specular = pow(max(dot(n, halfway), 0.0), 48.0) * 0.18;
 
-        float3 base = style.color.rgb * (back ? 0.78 : 1.0);
+        float3 baseColor = style.colorMode > 0.5 ? slopeColor(in.scalar) : style.color.rgb;
+        float3 base = baseColor * (back ? 0.78 : 1.0);
         float3 rgb = base * (0.30 + diffuse) + specular;
 
         float line = max(gridLine(in.parameter.x), gridLine(in.parameter.y));

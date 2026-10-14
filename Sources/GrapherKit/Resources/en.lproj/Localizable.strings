@@ -198,3 +198,6 @@
 "Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along." = "Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along.";
 "Gradient descent in a narrow valley" = "Gradient descent in a narrow valley";
 "Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p." = "Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p.";
+
+"Steepness as a heat map" = "Steepness as a heat map";
+"The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below." = "The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below.";

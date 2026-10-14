@@ -390,6 +390,8 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
     public var gridDensity: Int
     public var arrowScale: Double
     public var gradientOnFloor: Bool
+    /// 显式曲面：按坡度 |∇f| 给曲面上色（蓝 = 平缓，红 = 陡），不再用图层颜色。
+    public var colorsBySlope: Bool
     public var lineStyle: LineStyle
     public var fillStyle: FillStyle
     /// Extra contour levels drawn in addition to zero, for `implicit` layers.
@@ -426,6 +428,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         gridDensity: Int = 12,
         arrowScale: Double = 1,
         gradientOnFloor: Bool = false,
+        colorsBySlope: Bool = false,
         lineStyle: LineStyle = LineStyle(),
         fillStyle: FillStyle = FillStyle(),
         extraLevels: [Double] = []
@@ -460,6 +463,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         self.gridDensity = gridDensity
         self.arrowScale = arrowScale
         self.gradientOnFloor = gradientOnFloor
+        self.colorsBySlope = colorsBySlope
         self.lineStyle = lineStyle
         self.fillStyle = fillStyle
         self.extraLevels = extraLevels
@@ -470,7 +474,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         case domainLower, domainUpper, domain2Lower, domain2Upper, usesExplicitDomain, extrudesInSpace
         case sourceA, sourceB, projectionTarget, projectionOffset, showsProjectors, showsLabel
         case anchorU, anchorV, drawsNormal, projectionDirection, anchorW, fontSize, showsFit
-        case gridDensity, arrowScale, gradientOnFloor
+        case gridDensity, arrowScale, gradientOnFloor, colorsBySlope
         case lineStyle, fillStyle, extraLevels
     }
 
@@ -507,6 +511,7 @@ public struct Layer: Identifiable, Codable, Equatable, Sendable {
         gridDensity = try container.decodeIfPresent(Int.self, forKey: .gridDensity) ?? 12
         arrowScale = try container.decodeIfPresent(Double.self, forKey: .arrowScale) ?? 1
         gradientOnFloor = try container.decodeIfPresent(Bool.self, forKey: .gradientOnFloor) ?? false
+        colorsBySlope = try container.decodeIfPresent(Bool.self, forKey: .colorsBySlope) ?? false
         lineStyle = try container.decode(LineStyle.self, forKey: .lineStyle)
         fillStyle = try container.decode(FillStyle.self, forKey: .fillStyle)
         extraLevels = try container.decode([Double].self, forKey: .extraLevels)

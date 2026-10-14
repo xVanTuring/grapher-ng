@@ -75,9 +75,10 @@ enum SurfaceMesher {
         rows: Int,
         parameters: [SIMD2<Float>]?,
         view: View3D,
-        color: RGBAColor
+        color: RGBAColor,
+        scalars: [Float]? = nil
     ) -> Mesh3D {
-        var mesh = Mesh3D(color: color)
+        var mesh = Mesh3D(color: color, colorsByScalar: scalars != nil)
         guard cols >= 2, rows >= 2, points.count == cols * rows else { return mesh }
 
         let limit = coordinateLimit
@@ -130,7 +131,8 @@ enum SurfaceMesher {
             return MeshVertex3D(
                 position: positions[index],
                 normal: length > 0 ? sum / length : SIMD3(0, 0, 1),
-                parameter: parameters?[index] ?? none
+                parameter: parameters?[index] ?? none,
+                scalar: scalars?[index] ?? 0
             )
         }
         mesh.indices = indices

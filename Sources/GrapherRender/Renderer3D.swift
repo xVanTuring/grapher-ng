@@ -80,7 +80,8 @@ public final class Renderer3D {
                 indexCount: mesh.indices.count,
                 color: Self.vector(mesh.color),
                 layerID: mesh.layerID,
-                isTranslucent: mesh.isTranslucent
+                isTranslucent: mesh.isTranslucent,
+                colorsByScalar: mesh.colorsByScalar
             ))
         }
 
@@ -144,7 +145,10 @@ public final class Renderer3D {
                 encoder.setVertexBytes(&u, length: MemoryLayout<Uniforms3D>.stride, index: 1)
                 encoder.setFragmentBytes(&u, length: MemoryLayout<Uniforms3D>.stride, index: 1)
                 for batch in batches {
-                    var style = MeshStyle3D(color: batch.color, highlight: batch.layerID != nil && batch.layerID == highlight ? 1 : 0)
+                    var style = MeshStyle3D(
+                        color: batch.color,
+                        highlight: batch.layerID != nil && batch.layerID == highlight ? 1 : 0,
+                        colorMode: batch.colorsByScalar ? 1 : 0)
                     encoder.setVertexBuffer(batch.vertices, offset: 0, index: 0)
                     encoder.setFragmentBytes(&style, length: MemoryLayout<MeshStyle3D>.stride, index: 0)
                     encoder.drawIndexedPrimitives(
@@ -249,6 +253,7 @@ public final class PreparedScene3D {
         let color: SIMD4<Float>
         let layerID: UUID?
         let isTranslucent: Bool
+        let colorsByScalar: Bool
     }
 
     /// 某个图层的曲线在线段实例缓冲里占的那一段（画高亮光晕用）。
@@ -294,6 +299,8 @@ struct MeshStyle3D {
     var color: SIMD4<Float>
     /// 1 = 选中：往高亮色偏。
     var highlight: Float
+    /// 1 = 颜色由顶点的 scalar 查色带，`color` 只提供不透明度。
+    var colorMode: Float
 }
 
 struct LineInstance3D {

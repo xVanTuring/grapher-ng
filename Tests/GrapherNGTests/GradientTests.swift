@@ -140,3 +140,53 @@ final class GradientTests: XCTestCase {
         XCTAssertFalse(old.gradientOnFloor)
     }
 }
+
+/// 曲面按坡度上色：标量的数值、网格带标量、真的渲染成「平缓蓝、陡处红」。
+final class SlopeColoringTests: XCTestCase {
+
+    func testSlopeLevelsOfRampsAndBowls() {
+        let n = 21, step = 0.5
+        // 斜面 z = 2x：坡度处处相同，归一化后都是 1。
+        let ramp = (0..<n * n).map { 2 * Double($0 % n) * step }
+        XCTAssertTrue(SceneBuilder3D.slopeLevels(ramp, n: n, step: step).allSatisfy { abs($0 - 1) < 1e-6 })
+        // 碗 z = x²：中心 0，越往外越大。
+        let bowl = (0..<n * n).map { index -> Double in
+            let x = (Double(index % n) - 10) * step
+            return x * x
+        }
+        let levels = SceneBuilder3D.slopeLevels(bowl, n: n, step: step)
+        XCTAssertEqual(levels[10 * n + 10], 0, accuracy: 1e-6, "碗底平")
+        XCTAssertGreaterThan(levels[10 * n + 20], levels[10 * n + 15])
+        XCTAssertTrue(levels.allSatisfy { (0...1).contains($0) })
+        XCTAssertTrue(SceneBuilder3D.slopeLevels([], n: 0, step: 1).isEmpty)
+        // 有无穷大的点（极点）不把别处压成全蓝：夹在 0…1 里且没有 NaN。
+        var poles = ramp
+        poles[5 * n + 5] = .infinity
+        XCTAssertTrue(SceneBuilder3D.slopeLevels(poles, n: n, step: step).allSatisfy { $0.isFinite && $0 <= 1 })
+    }
+
+    func testSlopeColoringMarksTheMeshAndRoundTrips() throws {
+        var layer = Layer.makeDefault(kind: .surface, index: 0)
+        layer.formula = "x^2/8"
+        layer.colorsBySlope = true
+        var document = GrapherDocument(dimension: .space)
+        document.layers = [layer]
+        func mesh() throws -> Mesh3D {
+            try XCTUnwrap(SceneBuilder3D.build(SceneBuild3DRequest(
+                document: document, compiled: LayerCompiler().compile(document), view: .standard,
+                quality: .interactive, backingScale: 1)).scene.meshes.first)
+        }
+        let colored = try mesh()
+        XCTAssertTrue(colored.colorsByScalar)
+        XCTAssertGreaterThan(colored.vertices.map(\.scalar).max() ?? 0, 0.9)
+        XCTAssertEqual(colored.vertices.map(\.scalar).min() ?? 1, 0, accuracy: 0.05)
+        document.layers[0].colorsBySlope = false
+        XCTAssertFalse(try mesh().colorsByScalar)
+
+        let data = try JSONEncoder().encode(layer)
+        XCTAssertEqual(try JSONDecoder().decode(Layer.self, from: data), layer)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object.removeValue(forKey: "colorsBySlope")
+        XCTAssertFalse(try JSONDecoder().decode(Layer.self, from: JSONSerialization.data(withJSONObject: object)).colorsBySlope)
+    }
+}

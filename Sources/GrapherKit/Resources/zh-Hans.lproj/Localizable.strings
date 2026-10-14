@@ -198,3 +198,6 @@
 "Paths that follow the gradient from different starting points end on different summits. Press play on p to roll the balls along." = "从不同起点沿梯度走的路径，会停在不同的山顶上。在参数 p 上按播放，小球就沿路径滚动。";
 "Gradient descent in a narrow valley" = "窄谷里的梯度下降";
 "Following −∇f downhill into the valley: the path first drops across the steep walls, then slides along the floor. Press play on p." = "沿 −∇f 往谷里走：路径先沿陡峭的谷壁下坠，再沿谷底滑行。在参数 p 上按播放。";
+
+"Steepness as a heat map" = "用热力图表示陡缓";
+"The surface itself is coloured by slope, blue where it is flat and red where it is steep, with the gradient field on the floor below." = "曲面本身按坡度上色，平缓处是蓝色、陡处是红色，下面地面上再画出梯度场。";

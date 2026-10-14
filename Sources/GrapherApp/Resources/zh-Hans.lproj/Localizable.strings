@@ -267,3 +267,7 @@
 "Go downhill" = "往下坡走";
 "Off: the path lies on the surface. On: it is drawn flat on the floor of the box." = "关：路径在曲面上。开：把路径平放在坐标盒底面上画。";
 "Each path starts at a point below and follows the gradient. Make the ball position a parameter (for example p) and press play on it to roll the ball along." = "每条路径从下面列出的一个点出发，沿梯度走。把小球位置写成参数（例如 p），在参数面板里播放它，小球就沿路径滚动。";
+
+/* Color by slope */
+"Color by slope" = "按坡度上色";
+"Blue where the surface is flat, red where it is steep (the size of the gradient)." = "曲面平缓的地方是蓝色，陡的地方是红色（梯度的大小）。";

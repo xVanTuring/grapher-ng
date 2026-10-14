@@ -180,6 +180,7 @@ enum MCPTools {
             "at3": MCPSchema.number("text in a 3D document only: z of the text position"),
             "font_size": MCPSchema.number("text only: font size in points, 6–96 (default 14)"),
             "normal": MCPSchema.boolean("tangent only: draw the normal line instead of the tangent line"),
+            "color_by_slope": MCPSchema.boolean("surface (z = f(x, y)) only: color the surface by its slope |∇f|, blue where flat to red where steep"),
             "density": MCPSchema.integer("gradientField only: arrows per axis, 2–40 (default 12)", minimum: 2, maximum: 40),
             "arrow_scale": MCPSchema.number("gradientField only: arrow length multiplier 0.1–5 (default 1); negative draws the descent direction −∇f"),
             "on_floor": MCPSchema.boolean("gradientField only: draw ∇f flat on the floor of the box instead of along the surface"),
@@ -226,6 +227,7 @@ enum MCPTools {
         edit.opacity = try args.optionalDouble("opacity")
         edit.showsLabel = try args.optionalBool("label")
         edit.showsFit = try args.optionalBool("fit")
+        edit.colorsBySlope = try args.optionalBool("color_by_slope")
         edit.gridDensity = try args.optionalInt("density")
         edit.arrowScale = try args.optionalDouble("arrow_scale")
         edit.gradientOnFloor = try args.optionalBool("on_floor")
@@ -486,7 +488,7 @@ enum MCPTools {
       implicit            formula = F(x,y)     draws F(x,y) = 0
       region              formula = F(x,y), relation one of < <= > >=   fills where F relation 0
     3D document:
-      surface             formula = f(x,y)     z = f(x,y), over the axis box's x/y range
+      surface             formula = f(x,y)     z = f(x,y), over the axis box's x/y range; color_by_slope = true colors it by steepness (blue flat → red steep)
       parametricSurface   formula = x(u,v), secondary_formula = y(u,v), tertiary_formula = z(u,v), domain = [u0,u1], domain2 = [v0,v1]
       spaceCurve          formula = x(t), secondary_formula = y(t), tertiary_formula = z(t), domain = [t0,t1]
       implicitSurface     formula = F(x,y,z)   draws F = 0

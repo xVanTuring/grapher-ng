@@ -59,6 +59,7 @@ final class LayerEditorViewController: NSViewController {
     private var obliqueCheckbox: NSButton?
     private var directionFields: [NSTextField] = []
     private var directionRowView: NSView?
+    private var slopeCheckbox: NSButton?
     private var gradientSourcePopUp: NSPopUpButton?
     private var densityField: NSTextField?
     private var arrowScaleField: NSTextField?
@@ -375,6 +376,12 @@ final class LayerEditorViewController: NSViewController {
             rows.append(ControlFactory.sectionLabel(L("Surface")))
             rows.append(lineRows(layer)[0])
             rows.append(ControlFactory.formRow(L("Opacity"), opacityControl(layer)))
+            if layer.kind == .surface {
+                let slope = ControlFactory.checkbox(L("Color by slope"), target: self, action: #selector(slopeToggled(_:)))
+                slope.toolTip = L("Blue where the surface is flat, red where it is steep (the size of the gradient).")
+                slopeCheckbox = slope
+                rows.append(slope)
+            }
         } else {
             rows.append(ControlFactory.sectionLabel(L("Line")))
             rows.append(contentsOf: lineRows(layer))
@@ -461,7 +468,13 @@ final class LayerEditorViewController: NSViewController {
 
     // MARK: - Gradient rows
 
+    @objc private func slopeToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Color by slope")) { $0.colorsBySlope = on }
+    }
+
     private func refreshGradient(_ layer: Layer) {
+        slopeCheckbox?.state = layer.colorsBySlope ? .on : .off
         guard let popUp = gradientSourcePopUp else { return }
         let sources = state.document.layers.filter { $0.kind.isGradientSource }
         popUp.removeAllItems()
@@ -778,6 +791,7 @@ final class LayerEditorViewController: NSViewController {
         obliqueCheckbox = nil
         directionFields = []
         directionRowView = nil
+        slopeCheckbox = nil
         gradientSourcePopUp = nil
         densityField = nil
         arrowScaleField = nil

@@ -128,6 +128,7 @@ final class MCPFacade {
             if state.document.dimension == .space { object["at3"] = layer.anchorW }
             object["fontSize"] = layer.fontSize
         }
+        if layer.kind == .surface { object["colorBySlope"] = layer.colorsBySlope }
         if layer.kind == .gradientField {
             object["sourceA"] = layer.sourceA?.uuidString ?? NSNull()
             object["density"] = layer.gridDensity
@@ -244,6 +245,7 @@ final class MCPFacade {
         var extrude: Bool?
         var sourceA: UUID?
         var sourceB: UUID?
+        var colorsBySlope: Bool?
         var gridDensity: Int?
         var arrowScale: Double?
         var gradientOnFloor: Bool?
@@ -461,6 +463,10 @@ final class MCPFacade {
                 layer.arrowScale = scale
             }
             if let onFloor = edit.gradientOnFloor { layer.gradientOnFloor = onFloor }
+        }
+        if let byslope = edit.colorsBySlope {
+            guard layer.kind == .surface else { throw MCPToolError("Only 'surface' layers (z = f(x, y)) can be colored by slope.") }
+            layer.colorsBySlope = byslope
         }
         if let fit = edit.showsFit {
             guard layer.kind == .scatter else { throw MCPToolError("Only 'scatter' layers have fit.") }

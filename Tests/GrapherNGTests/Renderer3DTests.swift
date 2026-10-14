@@ -59,6 +59,8 @@ final class Renderer3DTests: XCTestCase {
         XCTAssertEqual(MemoryLayout<Uniforms3D>.offset(of: \.alphaScale), 128)
         XCTAssertEqual(MemoryLayout<MeshStyle3D>.stride, 32)
         XCTAssertEqual(MemoryLayout<MeshStyle3D>.offset(of: \.highlight), 16)
+        XCTAssertEqual(MemoryLayout<MeshStyle3D>.offset(of: \.colorMode), 20)
+        XCTAssertEqual(MemoryLayout<MeshVertex3D>.offset(of: \.scalar), 40)
     }
 
     private func render(_ content: Scene3D, view: View3D, highlight: UUID?) throws -> Raster {
@@ -167,5 +169,31 @@ final class Renderer3DTests: XCTestCase {
         let raster = try render(content, view: v)
         let centre = raster.pixel(x: width / 2, y: height / 2)
         XCTAssertGreaterThan(Int(centre.r) + Int(centre.g) + Int(centre.b), 3 * 120, "黑线藏在球里，看到的是球面：\(centre)")
+    }
+}
+
+extension Renderer3DTests {
+    /// 按坡度上色的山丘从正上方看：山脚（平缓）偏蓝，最陡的那一圈（r = √3）偏红。
+    func testSlopeColoredHillIsBlueWhereFlatAndRedWhereSteep() throws {
+        let v = view(elevation: 1.5)
+        var hill = Layer.makeDefault(kind: .surface, index: 0)
+        hill.formula = "3*exp(-(x^2 + y^2)/6)"
+        hill.colorsBySlope = true
+        var document = GrapherDocument(dimension: .space)
+        document.layers = [hill]
+        let content = SceneBuilder3D.build(SceneBuild3DRequest(
+            document: document, compiled: LayerCompiler().compile(document),
+            view: v, quality: .full, backingScale: 1)).scene
+        XCTAssertTrue(content.meshes.first?.colorsByScalar ?? false)
+        let raster = try render(content, view: v)
+
+        func pixel(atData p: SIMD3<Double>) -> Pixel {
+            let screen = v.project(v.normalized(p))!
+            return raster.pixel(x: Int(screen.x), y: Int(screen.y))
+        }
+        let foot = pixel(atData: SIMD3(3.6, 3.6, 0.1))                    // 平缓
+        let ring = pixel(atData: SIMD3(1.73, 0, 3 * exp(-0.5)))         // 最陡
+        XCTAssertGreaterThan(foot.b, foot.r + 25, "山脚偏蓝：\(foot)")
+        XCTAssertGreaterThan(ring.r, ring.b + 40, "最陡的一圈偏红：\(ring)")
     }
 }

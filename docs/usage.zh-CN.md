@@ -76,6 +76,8 @@ curl -s -X POST http://127.0.0.1:8776/mcp \
 | `get_document` | 一份文档的全部内容：图层（含 id、公式、颜色、错误）、参数、视角、外观。 |
 | `get_reference` | 图型、公式语法、函数与示例。 |
 | `render_image` | 把文档画成 PNG 给助手看。默认 900×600，最大 2400×2400。 |
+| `get_text_reference` | Markdown 笔记里图形块（```` ```grapher ```` 代码块，如 UniReader）的文字格式说明：一行一个图层、滑块、视角、示例。 |
+| `render_text` | 把一段文字描述画成 PNG，错误按行号列出，不碰任何打开着的文档。往笔记里放图形块之前先用它检查。 |
 | `relate`（只读） | 立体图：两个点 / 直线 / 平面的位置关系（关系代码、距离、夹角、垂足、交点、公垂线、交线），带坐标。直线是对 `t` 线性的 `spaceCurve`，平面是对 x、y、z 线性的 `implicitSurface` / `surface` 或 `tangentPlane`。 |
 
 修改类工具需要打开「允许 AI 修改图形」：

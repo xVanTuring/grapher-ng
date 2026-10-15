@@ -78,6 +78,8 @@ Read tools always work:
 | `get_document` | Everything in one document: layers with ids, formulas, colours and errors; parameters; view; appearance. |
 | `get_reference` | Plot kinds, formula syntax, functions and examples. |
 | `render_image` | Renders the document as a PNG the assistant can look at. Defaults to 900×600, up to 2400×2400. |
+| `get_text_reference` | The short text format for a graph block in a Markdown note (a ```` ```grapher ```` fenced block, e.g. in UniReader): one layer per line, sliders, camera, examples. |
+| `render_text` | Draws a text block as a PNG and lists errors by line number, without touching any open document. Use it to check a block before putting it in a note. |
 | `relate` | 3D: how two points / straight lines / planes relate (relation code, distance, angle, foot of the perpendicular, intersection, common perpendicular, line of intersection) with coordinates. A line is a `spaceCurve` linear in `t`, a plane an `implicitSurface` / `surface` linear in x, y, z or a `tangentPlane`. |
 
 Write tools need **Allow AI to modify graphs**:

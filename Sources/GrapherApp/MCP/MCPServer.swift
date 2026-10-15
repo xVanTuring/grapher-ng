@@ -6,7 +6,8 @@ enum MCPSettings {
     static let enabledKey = "mcpServerEnabled"
     static let portKey = "mcpServerPort"
     static let allowWriteKey = "mcpAllowWrite"
-    static let defaultPort = 8775
+    /// 同一台机器上的其他 App 已占用：UniReader 8773、Perch 8774、FreeMind 8775。
+    static let defaultPort = 8776
     private static let tokenAccount = "mcp-token"
 
     static var isEnabled: Bool {

@@ -16,7 +16,7 @@ Open **Grapher NG ▸ Settings…** (⌘,):
 | Setting | Meaning |
 |---|---|
 | Enable MCP server | Starts or stops the server immediately. Off by default. |
-| Port | Default `8775`. Changing it restarts the server. |
+| Port | Default `8776`. Changing it restarts the server. |
 | Allow AI to modify graphs | Off by default. While off, the AI can only read documents and render images; every tool that changes something is refused with a clear message. |
 | Access token | Every request must carry it. It is stored in the Keychain. Regenerate it any time to cut off old clients. |
 
@@ -29,7 +29,7 @@ The Settings window shows ready-to-copy snippets with your port and token filled
 **Claude Code**
 
 ```bash
-claude mcp add --transport http grapher-ng http://127.0.0.1:8775/mcp \
+claude mcp add --transport http grapher-ng http://127.0.0.1:8776/mcp \
   --header "Authorization: Bearer <your token>"
 ```
 
@@ -40,7 +40,7 @@ claude mcp add --transport http grapher-ng http://127.0.0.1:8775/mcp \
   "mcpServers": {
     "grapher-ng": {
       "type": "http",
-      "url": "http://127.0.0.1:8775/mcp",
+      "url": "http://127.0.0.1:8776/mcp",
       "headers": { "Authorization": "Bearer <your token>" }
     }
   }
@@ -50,7 +50,7 @@ claude mcp add --transport http grapher-ng http://127.0.0.1:8775/mcp \
 Grapher NG has to be running. A quick check from a terminal:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8775/mcp \
+curl -s -X POST http://127.0.0.1:8776/mcp \
   -H "Authorization: Bearer <your token>" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```

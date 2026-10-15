@@ -15,7 +15,7 @@ Grapher NG 内置了一个 [MCP](https://modelcontextprotocol.io) 服务。Claud
 | 设置项 | 说明 |
 |---|---|
 | 启用 MCP 服务 | 立即启动或停止。默认关闭。 |
-| 端口 | 默认 `8775`。改动后服务会自动重启。 |
+| 端口 | 默认 `8776`。改动后服务会自动重启。 |
 | 允许 AI 修改图形 | 默认关闭。关闭时 AI 只能读取文档、生成图片；所有会改动内容的工具都会被拒绝，并给出明确的提示。 |
 | 访问令牌 | 每个请求都必须带上它，存放在钥匙串里。随时可以重新生成，旧客户端立即失效。 |
 
@@ -28,7 +28,7 @@ Grapher NG 内置了一个 [MCP](https://modelcontextprotocol.io) 服务。Claud
 **Claude Code**
 
 ```bash
-claude mcp add --transport http grapher-ng http://127.0.0.1:8775/mcp \
+claude mcp add --transport http grapher-ng http://127.0.0.1:8776/mcp \
   --header "Authorization: Bearer <你的令牌>"
 ```
 
@@ -39,7 +39,7 @@ claude mcp add --transport http grapher-ng http://127.0.0.1:8775/mcp \
   "mcpServers": {
     "grapher-ng": {
       "type": "http",
-      "url": "http://127.0.0.1:8775/mcp",
+      "url": "http://127.0.0.1:8776/mcp",
       "headers": { "Authorization": "Bearer <你的令牌>" }
     }
   }
@@ -49,7 +49,7 @@ claude mcp add --transport http grapher-ng http://127.0.0.1:8775/mcp \
 需要 Grapher NG 正在运行。在终端里快速验证：
 
 ```bash
-curl -s -X POST http://127.0.0.1:8775/mcp \
+curl -s -X POST http://127.0.0.1:8776/mcp \
   -H "Authorization: Bearer <你的令牌>" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```

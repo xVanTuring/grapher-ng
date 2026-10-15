@@ -93,7 +93,7 @@ usage is in [docs/usage.md](docs/usage.md).
 Quick manual check with the app running and MCP enabled:
 
 ```bash
-curl -s -X POST http://127.0.0.1:8775/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+curl -s -X POST http://127.0.0.1:8776/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_state","arguments":{}}}'
 ```
 

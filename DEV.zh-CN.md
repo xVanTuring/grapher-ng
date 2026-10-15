@@ -82,7 +82,7 @@ Tests/
 App 运行且已开启 MCP 时，手动验证：
 
 ```bash
-curl -s -X POST http://127.0.0.1:8775/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+curl -s -X POST http://127.0.0.1:8776/mcp -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_state","arguments":{}}}'
 ```
 

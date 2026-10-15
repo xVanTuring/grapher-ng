@@ -356,3 +356,33 @@ Tests/GrapherNGTests/   单元测试
   `labels.root.isGeometryFlipped = !contentsAreFlipped()` 在「文本视图里的子视图」这种层级里会让刻度文字上下颠倒（UniReader 里实测，
   `testLabelOverlayPlacesTextFromTheTop` 守着）；App 与 Quick Look 的画布没出过这个问题，没动。
 - 集成方式、API、链接方法见 `docs/embedding.md`。UniReader 通过工程引用 `../grapher-ng` 链接三个 framework，改这里要留意它的构建。
+
+## 讲解（分步推导）
+
+- **模型**（`GrapherKit/Model/Lesson.swift`）：`GrapherDocument.lessonSteps: [LessonStep]`（`decodeIfPresent`，旧文件照开）。一步 = 标题、讲解文字、
+  `visibleLayers`、可选 `focus` / `camera`（`LessonCamera`：立体图存 `View3D`，平面图存中心 + 横向宽度）、`parameters`（名 → 值）、`plays`。
+  **归讲解管的图层**是至少在一步里显示过的；没出现过的按自己的 `isVisible`。`setLayer(_:visible:inStep:)` 改一个原来不归管的图层时，
+  先按它自己的开关补进其余各步（别的步骤看起来不变）。`lessonState(at:)` 是「一路讲到这一步」的参数与相机（跳页、出图用）。
+- **讲解中只改画出来的样子，不改文档**：`AppState.presentedDocument` = 按当前这一步改了显示的文档副本。**凡是要画出来的地方都用它**
+  （采样请求、`buildForExport`、2D / 3D 叠加层的文字与点名、立体图导出）；公式错误仍按整份 `document` 报。新加画图路径时别直接读 `document.layers` 的显示开关。
+- 正在第几步、卡片在不在编辑、过渡动画、进讲解前的参数值都是**窗口状态**（`AppState` 里的 `lesson…` 属性，逻辑在 `AppState+Lesson.swift`）。
+  讲解中参数的变化（过渡、播放、拖滑块）不调 `markEdited`、播放不记撤销；`endLesson` 还原参数，`documentForSaving` 存盘时也换回进讲解前的值。
+  带步骤的文档打开就 `startLesson(at: 0)`（`init` 与 `replaceDocument`），开讲时取消选中（选中高亮会改掉图的本色）。
+- 换步：图层当场换；相机与参数 0.8 秒缓动（`LessonTransition`，方位角走近路、缩放按对数），完了再开 `plays`。**往后翻一页**只用这一步自己写的；
+  跳页 / 往回翻用 `lessonState(at:)`。平面图按「横向看到多宽」取景要画布宽度：画布还没报尺寸时记 `lessonFramePending`，`setViewportMetrics` 里补。
+- **讲解卡片**（`LessonCardViewController`，挂在 `CanvasContainerViewController` 上）：卡片高度经 `AppState.reservedBottomInset` 算进画布的底部遮挡
+  （两种画布的 `syncMetrics` 加上它），图形摆在卡片上方，刻度数字也让开。设置这个值延后一拍（同「不要在 `layout()` 里改观察状态」）。
+  编辑结束 / 结束讲解要 `onFinishEditing` 把键盘焦点交回画布，否则焦点落到图层列表的按钮上，← → 翻不了页（实测）。
+  画布按键先过 `AppState.handleLessonKey`：← → / 空格 / PageUp PageDown 翻页，Esc 结束；讲解中 ← → 不再转视角。
+- 图层列表的眼睛在讲解中改的是**这一步**（`AppState.toggleLayerVisibility` / `isLayerShown`）。
+- **公式排版是自己写的**（不加依赖）：`GrapherKit/Math/MathTeX.swift` 把 TeX 子集解析成 `MathNode`（字母在解析时就换成数学斜体等 Unicode），
+  `LessonText.paragraphs` 拆出正文、`$…$`、`$$…$$`、`**…**`；`GrapherRender/MathTypesetter.swift` 用 Core Text + 系统自带的 **STIX Two Math**
+  排成 `MathBox`（原子间距按 TeX 表、上下标、分数、根号、可伸缩括号、重音；括号与根号自己画路径）；`LessonTextLayout` 把正文折行、公式用
+  `CTRunDelegate` 占位、行间公式居中。**画的时候逐个 `CTRun` 画、跳过占位**：占位字符若设了颜色会改掉上下文填充色，后面跟随上下文颜色的字就全透明了（踩过）。
+  App 的 `LessonTextView`、出图的 `GraphSnapshot.lessonImage`（MCP `render_image` / `render_text` 的 `step`）共用这一份排版。
+- 空间曲线的 `showsArrow`：参数终点画圆锥箭头（`ArrowHead`，线截到锥底），讲解里画向量用。
+- 文字格式：`step 标题: show=…; add=…; hide=…; azimuth=…; <参数>=<数>; play=…; focus=…`，后面 `>` 开头的行是讲解文字（`GrapherText.resolveSteps`）。
+  MCP：`set_lesson`（整份换，先全校验再 `mutate`）、`go_to_step`，`get_document` 带 `lesson`。
+- 测试：`LessonTests`（模型、TeX、排版尺寸、文字格式、每个讲解示例每一步都画得出）；`TEST_RUNNER_GRAPHER_LESSON_DIR=<目录> bash scripts/test.sh`
+  会把公式样张和示例每一步存成 PNG，并存一份 `.grapher` 可直接用 App 打开看卡片。`AgentScenarioTests.testAgentBuildsAStepByStepLesson` 走 MCP 全流程。
+- **嵌入块（UniReader 的 ```grapher 块）还不显示讲解**：块能读带 `step` 的文字（不报错），但只画图层自己的显示开关，没有卡片和翻页。

@@ -60,5 +60,20 @@ extension GrapherText {
         surface S: 2*exp(-((x-1)^2+(y-1)^2)/2) + 1.5*exp(-((x+1.5)^2+(y+1)^2)/1.5); opacity=0.85; slope
         gradient-flow: of=S; 2, 2; -2.5, 0; 0, -2; ball=q; color=#111827
         """),
+        Example(id: "space-lesson", title: "A three-step lesson: a tangent plane and its normal", text: """
+        space
+        param s = 0.8 [-2, 2]
+        view: azimuth=30 elevation=28
+        surface S: (x^2 + y^2)/4; opacity=0.6
+        point P: s; 0.5; (s^2 + 0.25)/4
+        space-curve n: s - s/2*t; 0.5 - 0.25*t; (s^2 + 0.25)/4 + t; t=0..1.2; arrow; color=purple; width=3
+        tangent-plane T: of=S; at=s, 0.5; opacity=0.5; color=orange
+        step The surface: show=S
+        > The graph of $z=\\dfrac{x^2+y^2}{4}$, so $z_x=\\dfrac{x}{2}$ and $z_y=\\dfrac{y}{2}$.
+        step A point and its normal: add=P, n; azimuth=55
+        > At $P=(s,\\ 0.5,\\ z)$ the normal is $\\vec n=(-z_x,-z_y,1)$.
+        step The tangent plane: add=T; s=1.5; play=s
+        > The tangent plane is perpendicular to $\\vec n$; press play on $s$ to slide $P$.
+        """),
     ]
 }

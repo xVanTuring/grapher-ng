@@ -23,6 +23,8 @@
 - **Space geometry**: surface intersection curves, points, orthogonal projections onto coordinate planes or any plane, and
   a relations panel for points, lines and planes (distance, angle, foot of perpendicular, intersection, common perpendicular).
 - **Parameter sliders**: define a parameter such as `a`, use it in any formula, and drag the slider to see the graph change live.
+- **Step-by-step lessons**: split a graph into steps to explain a derivation; each step shows its own layers, moves the camera
+  and sliders smoothly, and comes with a text card whose formulas are typeset from TeX. See the "surface area element" example.
 - **Readable formulas**: implicit multiplication (`2x`, `3sin(x)`), common math functions and constants, piecewise
   functions with `if(...)`, and clear error messages that point at the mistake.
 - **Smooth rendering**: Metal-drawn curves with crisp edges and constant line width at any zoom.

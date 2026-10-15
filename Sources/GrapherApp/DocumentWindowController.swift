@@ -8,6 +8,7 @@ extension NSToolbarItem.Identifier {
     static let zoomIn = NSToolbarItem.Identifier("GrapherNG.zoomIn")
     static let zoomOut = NSToolbarItem.Identifier("GrapherNG.zoomOut")
     static let export = NSToolbarItem.Identifier("GrapherNG.export")
+    static let lesson = NSToolbarItem.Identifier("GrapherNG.lesson")
     static let toggleInspector = NSToolbarItem.Identifier("GrapherNG.toggleInspector")
 }
 
@@ -101,7 +102,7 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
     }
 
     private func buildToolbar() {
-        let toolbar = NSToolbar(identifier: "GrapherNGToolbar.v3")
+        let toolbar = NSToolbar(identifier: "GrapherNGToolbar.v4")
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         toolbar.allowsUserCustomization = true
@@ -154,16 +155,16 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         //
         // Consecutive icon items merge into one glass capsule, so grouping is
         // expressed purely by where the spaces fall:
-        //   ◧ │ …… │ 适应内容 重置 │ 缩放 │ 导出 │ 检查器
+        //   ◧ │ …… │ 适应内容 重置 │ 缩放 │ 讲解 │ 导出 │ 检查器
         [.toggleSidebar, .sidebarTrackingSeparator,
          .fitContent, .resetView, .zoomGroup,
-         .flexibleSpace, .export, .space, .toggleInspector]
+         .flexibleSpace, .lesson, .space, .export, .space, .toggleInspector]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [.toggleSidebar, .sidebarTrackingSeparator,
          .fitContent, .resetView, .zoomGroup,
-         .export, .toggleInspector,
+         .lesson, .export, .toggleInspector,
          .flexibleSpace, .space]
     }
 
@@ -220,6 +221,14 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
                 ),
             ]
             return group
+        case .lesson:
+            return toolbarButton(
+                identifier,
+                symbol: "graduationcap",
+                label: L("Lesson"),
+                tooltip: L("Step through the lesson; with no steps yet, make the first one from what is on screen (⌥⌘L)"),
+                action: #selector(toggleLesson(_:))
+            )
         case .export:
             let item = NSMenuToolbarItem(itemIdentifier: identifier)
             item.image = symbolImage("square.and.arrow.up", L("Export"))
@@ -278,11 +287,25 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
         inspectorItem?.animator().isCollapsed.toggle()
     }
 
+    // MARK: - Lesson actions
+
+    @objc func toggleLesson(_ sender: Any?) { state.toggleLesson() }
+    @objc func nextLessonStep(_ sender: Any?) { state.nextStep() }
+    @objc func previousLessonStep(_ sender: Any?) { state.previousStep() }
+    @objc func addLessonStep(_ sender: Any?) { state.addLessonStep() }
+
     // MARK: - Menu validation
 
     /// 矢量 PDF 与采样点 CSV 只对平面图有意义，立体图先不给。
     @objc func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         switch menuItem.action {
+        case #selector(toggleLesson(_:)):
+            menuItem.title = state.lessonStep == nil ? L("Start Lesson") : L("End Lesson")
+            return true
+        case #selector(nextLessonStep(_:)):
+            return state.lessonStep.map { $0 + 1 < state.document.lessonSteps.count } ?? false
+        case #selector(previousLessonStep(_:)):
+            return state.lessonStep.map { $0 > 0 } ?? false
         case #selector(exportPDFAction(_:)), #selector(exportCSVAction(_:)):
             return state.document.dimension == .plane
         default:

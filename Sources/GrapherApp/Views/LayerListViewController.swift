@@ -122,7 +122,7 @@ final class LayerListViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        observerID = state.observe([.layers, .document, .selection, .errors]) { [weak self] change in
+        observerID = state.observe([.layers, .document, .selection, .errors, .lesson]) { [weak self] change in
             self?.handle(change)
         }
         reloadList()
@@ -165,7 +165,8 @@ final class LayerListViewController: NSViewController {
 
     private func handle(_ change: AppState.Change) {
         switch change {
-        case .document, .layers:
+        case .document, .layers, .lesson:
+            // 讲解中眼睛显示的是这一步显示哪些图层，换一步也要刷新。
             guard !isApplyingDrop else { return }
             reloadList()
         case .selection:
@@ -210,12 +211,9 @@ final class LayerListViewController: NSViewController {
         }
     }
 
+    /// 讲解中改的是当前这一步显示哪些图层（`AppState.toggleLayerVisibility`）。
     private func toggleVisibility(of id: UUID) {
-        let isVisible = state.layer(with: id)?.isVisible ?? false
-        state.mutateLayers(isVisible ? L("Hide Layer") : L("Show Layer")) { document in
-            guard let index = document.layers.firstIndex(where: { $0.id == id }) else { return }
-            document.layers[index].isVisible.toggle()
-        }
+        state.toggleLayerVisibility(id: id)
     }
 
     private func contextMenu(for row: Int) -> NSMenu? {
@@ -344,7 +342,7 @@ extension LayerListViewController: NSTableViewDelegate {
             cell = LayerRowView(frame: .zero)
             cell.identifier = layerRowViewIdentifier
         }
-        cell.configure(layer: layer, hasError: state.expressionErrors[layer.id] != nil)
+        cell.configure(layer: layer, shown: state.isLayerShown(layer), hasError: state.expressionErrors[layer.id] != nil)
         cell.onToggleVisibility = { [weak self] in self?.toggleVisibility(of: layer.id) }
         return cell
     }
@@ -433,14 +431,15 @@ private final class LayerRowView: NSTableCellView {
         didSet { applyColors() }
     }
 
-    func configure(layer: Layer, hasError: Bool) {
+    /// `shown`：眼前显不显示（讲解中按当前这一步，不一定等于图层自己的开关）。
+    func configure(layer: Layer, shown: Bool, hasError: Bool) {
         nameLabel.stringValue = layer.name
         formulaLabel.stringValue = formulaText(for: layer)
         swatch.color = ControlFactory.nsColor(layer.lineStyle.color)
 
-        let symbol = layer.isVisible ? "eye" : "eye.slash"
+        let symbol = shown ? "eye" : "eye.slash"
         visibilityButton.image = NSImage(systemSymbolName: symbol, accessibilityDescription: L("Show/Hide"))
-        visibilityButton.contentTintColor = layer.isVisible ? .secondaryLabelColor : .tertiaryLabelColor
+        visibilityButton.contentTintColor = shown ? .secondaryLabelColor : .tertiaryLabelColor
         setHasError(hasError)
         applyColors()
     }

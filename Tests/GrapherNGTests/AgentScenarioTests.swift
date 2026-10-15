@@ -96,7 +96,8 @@ final class AgentScenarioTests: XCTestCase {
         let tools = (response?["result"] as? MCPObject)?["tools"] as? [MCPObject] ?? []
         let names = Set(tools.compactMap { $0["name"] as? String })
         for name in ["get_state", "get_document", "get_reference", "render_image", "create_document", "add_layer",
-                     "update_layer", "remove_layer", "set_parameter", "set_view", "export_png", "relate", "draw_relation"] {
+                     "update_layer", "remove_layer", "set_parameter", "set_view", "export_png", "relate", "draw_relation",
+                     "set_lesson", "go_to_step"] {
             XCTAssertTrue(names.contains(name), "缺工具 \(name)")
         }
         // 每个图型的字段说明都在 get_reference 里。
@@ -128,6 +129,64 @@ final class AgentScenarioTests: XCTestCase {
         let image = try XCTUnwrap(good.image)
         XCTAssertEqual(image.width, 600)
         XCTAssertEqual(image.height, 400, "高度按 aspect 默认 3:2")
+    }
+
+    // MARK: - 讲解：一步一步讲推导
+
+    /// AI 先画好全部图层（带箭头的法向量），再用 set_lesson 分步，逐步出图检查，在窗口里翻到某一步；写错的步骤整份不改。
+    func testAgentBuildsAStepByStepLesson() async throws {
+        let session = try await agentSession()
+        defer { session.close() }
+        _ = await session.open("space")
+        _ = await session.call("set_parameter", ["name": "h", "value": 0.6, "min": 0.1, "max": 1])
+        _ = await session.add("surface", ["name": "S", "formula": "3 - (x^2 + y^2)/2", "opacity": 0.5])
+        _ = await session.add("point", ["name": "P", "formula": "1", "secondary_formula": "0.5", "tertiary_formula": "2.375"])
+        let normal = await session.add("spaceCurve", [
+            "name": "n", "formula": "1 + t", "secondary_formula": "0.5 + 0.5*t", "tertiary_formula": "2.375 + t",
+            "domain": [0, 1], "arrow": true,
+        ])
+        XCTAssertFalse(normal.isEmpty)
+        let layers = await session.layers()
+        XCTAssertEqual(layers.first { $0["name"] as? String == "n" }?["arrow"] as? Bool, true)
+
+        let wrong = await session.call("set_lesson", ["steps": [["title": "x", "show": ["S", "Nope"]]]])
+        XCTAssertTrue(wrong.isError)
+        XCTAssertTrue(wrong.text.contains("Nope"), wrong.text)
+        let untouched = await session.call("get_document")
+        XCTAssertNil(untouched.structured["lesson"], "写错就什么都不改")
+
+        let set = await session.call("set_lesson", ["steps": [
+            ["title": "曲面 $S$", "text": "设 $z=z(x,y)$。", "show": ["S"], "azimuth": 30, "elevation": 20],
+            ["title": "法向量", "text": "$$\\vec n=(-z_x,-z_y,1)$$", "show": ["S", "P", "n"], "parameters": ["h": 0.3], "play": ["h"]],
+        ]])
+        XCTAssertFalse(set.isError, set.text)
+        let described = await session.call("get_document")
+        let lesson = try XCTUnwrap(described.structured["lesson"] as? MCPObject)
+        XCTAssertEqual(lesson["currentStep"] as? Int, 1, "默认在窗口里从第一步开讲")
+        let steps = try XCTUnwrap(lesson["steps"] as? [MCPObject])
+        XCTAssertEqual(steps.count, 2)
+        XCTAssertEqual(steps[1]["show"] as? [String], ["S", "P", "n"])
+        XCTAssertEqual((steps[0]["view"] as? MCPObject)?["azimuth"] as? Double ?? 0, 30, accuracy: 1e-9)
+
+        let image = await session.call("render_image", ["step": 2, "width": 800, "height": 640])
+        XCTAssertFalse(image.isError, image.text)
+        XCTAssertGreaterThan(inkFraction(of: try XCTUnwrap(image.image)), 0.01)
+        let missing = await session.call("render_image", ["step": 3])
+        XCTAssertTrue(missing.isError, "没有第 3 步")
+
+        _ = await session.call("go_to_step", ["step": 2])
+        let found = GraphDocumentController.graphShared?.graphDocuments.first { $0.mcpID.uuidString == session.documentID }
+        let state = try XCTUnwrap(found?.state)
+        XCTAssertEqual(state.lessonStep, 1)
+        XCTAssertEqual(state.presentedDocument.layers.filter(\.isVisible).count, 3)
+        _ = await session.call("go_to_step", ["end": true])
+        XCTAssertNil(state.lessonStep)
+
+        let text = await session.call("render_text", [
+            "text": "space\nsurface S: x*y\nstep A: show=S\n> $\\dfrac12$\nstep B: azimuth=80", "step": 2, "width": 700,
+        ], document: false)
+        XCTAssertFalse(text.isError, text.text)
+        XCTAssertTrue(text.text.contains("No errors"), text.text)
     }
 
     // MARK: - 立体图：交线 + 投影

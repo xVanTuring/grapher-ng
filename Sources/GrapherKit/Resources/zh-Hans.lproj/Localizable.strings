@@ -271,3 +271,33 @@
 "width must be a number between 0.2 and 20." = "width 要是 0.2 到 20 之间的数。";
 "width must be positive." = "width 必须大于 0。";
 "Write a parameter like: param a = 1.5 [0, 3]" = "参数请写成：param a = 1.5 [0, 3]";
+
+/* 文字格式里的讲解步骤 */
+"A '>' line is the text of a step; write a 'step' line before it." = "以 > 开头的行是某一步的讲解文字，前面要先有一行 step。";
+"A step option looks like key=value, got '%@'." = "步骤的选项要写成 key=value，写的是“%@”。";
+"'%@' in a step needs the same kind of value as in view: (got '%@')." = "步骤里的 %@ 要写成和 view: 里一样的值（写的是“%@”）。";
+"No parameter named '%@' to play." = "没有叫“%@”的参数可以播放。";
+"Unknown step option '%@'. Options: %@." = "步骤没有选项“%@”。可用的选项：%@。";
+
+/* 讲解（分步推导）示例 */
+"Step-by-step derivations" = "分步推导";
+"The surface area element dS" = "曲面面积元 dS";
+"Why dS = √(1 + z_x² + z_y²) dσ, step by step: a small piece dσ, the piece dS above it, the tangent plane, the normal and the angle γ. Turn the pages with ← → or the buttons on the card." = "一步一步看 dS = √(1 + z_x² + z_y²) dσ 是怎么来的：小块 dσ、它上方的曲面小片 dS、切平面、法向量与夹角 γ。用 ← → 或卡片上的按钮翻页。";
+"S coloured by slope" = "S（按坡度上色）";
+"Cylinder over dσ" = "dσ 上的柱面";
+"The surface S: $z=z(x,y)$" = "曲面 $S$：$z=z(x,y)$";
+"We want the area of the surface $S$: $z=z(x,y)$, whose projection onto the $xOy$ plane is the region $D$; $z(x,y)$ has continuous partial derivatives. Here $z=3.6-\\dfrac{x^2+y^2}{2}$, so $z_x=-x$ and $z_y=-y$." = "要求曲面 $S$：$z=z(x,y)$ 的面积，$S$ 在 $xOy$ 面上的投影区域是 $D$，$z(x,y)$ 有连续偏导数。这里取 $z=3.6-\\dfrac{x^2+y^2}{2}$，于是 $z_x=-x$，$z_y=-y$。";
+"Take a small piece $\\mathrm d\\sigma$ of $D$" = "在 $D$ 上取一小块 $\\mathrm d\\sigma$";
+"Cut $D$ into many small pieces and take any one of them, $\\mathrm d\\sigma$: here a small square with one corner at $(x,y)$ and sides $\\mathrm dx=\\mathrm dy=h$. Its area is also written $\\mathrm d\\sigma$." = "把 $D$ 分成许多小块，任取其中一块，记作 $\\mathrm d\\sigma$：这里是一角在 $(x,y)$、边长 $\\mathrm dx=\\mathrm dy=h$ 的小正方形。它的面积也记作 $\\mathrm d\\sigma$。";
+"The piece $\\mathrm dS$ above $\\mathrm d\\sigma$" = "$\\mathrm d\\sigma$ 上方的曲面小片 $\\mathrm dS$";
+"The cylinder whose base is the boundary of $\\mathrm d\\sigma$ and whose rulings are parallel to the $z$-axis cuts a small piece out of $S$; call it $\\mathrm dS$. Its projection onto the $xOy$ plane is exactly $\\mathrm d\\sigma$. Where the surface is steeper, $\\mathrm dS$ is larger than $\\mathrm d\\sigma$." = "以 $\\mathrm d\\sigma$ 的边界为准线、母线平行于 $z$ 轴作柱面，它从 $S$ 上截下一小片，记作 $\\mathrm dS$。$\\mathrm dS$ 在 $xOy$ 面上的投影正是 $\\mathrm d\\sigma$。曲面越陡，$\\mathrm dS$ 比 $\\mathrm d\\sigma$ 大得越多。";
+"Replace $\\mathrm dS$ by a piece of the tangent plane" = "用切平面上的一小块代替 $\\mathrm dS$";
+"Take the tangent plane of $S$ at $P(x,y,z(x,y))$. The same cylinder cuts a parallelogram $\\mathrm dA$ out of it. When $\\mathrm d\\sigma$ is small, $\\mathrm dS\\approx\\mathrm dA$, with an error of higher order than $\\mathrm d\\sigma$." = "在 $P(x,y,z(x,y))$ 处作 $S$ 的切平面，同一个柱面在切平面上截下一个平行四边形 $\\mathrm dA$。$\\mathrm d\\sigma$ 很小时，$\\mathrm dS\\approx\\mathrm dA$，误差是比 $\\mathrm d\\sigma$ 高阶的无穷小。";
+"The normal vector and the angle $\\gamma$" = "法向量与夹角 $\\gamma$";
+"A normal vector of the tangent plane is $\\vec n=(-z_x,-z_y,1)$. Let $\\gamma$ be the angle between $\\vec n$ and the positive $z$-axis $\\vec k$: $$\\cos\\gamma=\\frac{\\vec n\\cdot\\vec k}{|\\vec n|}=\\frac{1}{\\sqrt{1+z_x^2+z_y^2}}.$$" = "切平面的一个法向量是 $\\vec n=(-z_x,-z_y,1)$。记 $\\vec n$ 与 $z$ 轴正向 $\\vec k$ 的夹角为 $\\gamma$：$$\\cos\\gamma=\\frac{\\vec n\\cdot\\vec k}{|\\vec n|}=\\frac{1}{\\sqrt{1+z_x^2+z_y^2}}.$$";
+"Projection multiplies area by $|\\cos\\gamma|$" = "投影：面积乘以 $|\\cos\\gamma|$";
+"Projecting a plane figure onto another plane multiplies its area by the cosine of the angle between the planes. The angle between the tangent plane and the $xOy$ plane equals the angle $\\gamma$ between their normals $\\vec n$ and $\\vec k$, and the projection of $\\mathrm dA$ is $\\mathrm d\\sigma$, so $$\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dA\\approx|\\cos\\gamma|\\,\\mathrm dS.$$" = "平面图形投影到另一个平面上，面积要乘以两平面夹角的余弦。切平面与 $xOy$ 面的夹角等于它们的法向量 $\\vec n$ 与 $\\vec k$ 的夹角 $\\gamma$，而 $\\mathrm dA$ 的投影正是 $\\mathrm d\\sigma$，所以 $$\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dA\\approx|\\cos\\gamma|\\,\\mathrm dS.$$";
+"The area element" = "面积元";
+"From $\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dS$ and $|\\cos\\gamma|=\\dfrac{1}{\\sqrt{1+z_x^2+z_y^2}}$: $$\\mathrm dS=\\sqrt{1+z_x^2(x,y)+z_y^2(x,y)}\\,\\mathrm d\\sigma.$$ As $h$ shrinks (it is playing now), $\\mathrm dS$ and $\\mathrm dA$ fit closer and closer." = "由 $\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dS$ 与 $|\\cos\\gamma|=\\dfrac{1}{\\sqrt{1+z_x^2+z_y^2}}$ 得 $$\\mathrm dS=\\sqrt{1+z_x^2(x,y)+z_y^2(x,y)}\\,\\mathrm d\\sigma.$$ 参数 $h$ 正在播放：$h$ 越小，$\\mathrm dS$ 与 $\\mathrm dA$ 贴得越紧。";
+"Add up the pieces: the area of $S$" = "累加：$S$ 的面积";
+"Summing over all the pieces gives $$S=\\iint_D\\sqrt{1+z_x^2+z_y^2}\\,\\mathrm d\\sigma.$$ The surface is now coloured by slope: where it is steeper (red), $\\sqrt{1+z_x^2+z_y^2}$ is larger and the same $\\mathrm d\\sigma$ carries a larger $\\mathrm dS$. Drag $a$ and $b$ to move the piece around." = "把所有小片加起来，得 $$S=\\iint_D\\sqrt{1+z_x^2+z_y^2}\\,\\mathrm d\\sigma.$$ 曲面现在按坡度上色：越陡（红）的地方，$\\sqrt{1+z_x^2+z_y^2}$ 越大，同样大小的 $\\mathrm d\\sigma$ 对应的 $\\mathrm dS$ 越大。拖动参数 $a$、$b$ 把小块挪到别处看看。";

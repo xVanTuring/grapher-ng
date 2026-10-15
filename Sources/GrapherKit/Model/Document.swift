@@ -46,6 +46,8 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
     public var showMinorGrid: Bool
     public var showAxes: Bool
     public var showTickLabels: Bool
+    /// 讲解：一步一步讲推导，每一步规定显示哪些图层、相机、参数（见 `LessonStep`）。空 = 没有讲解。
+    public var lessonSteps: [LessonStep]
 
     public init(
         formatVersion: Int = GrapherDocument.currentFormatVersion,
@@ -58,7 +60,8 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         showGrid: Bool = true,
         showMinorGrid: Bool = false,
         showAxes: Bool = true,
-        showTickLabels: Bool = true
+        showTickLabels: Bool = true,
+        lessonSteps: [LessonStep] = []
     ) {
         self.formatVersion = formatVersion
         self.dimension = dimension
@@ -71,11 +74,13 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         self.showMinorGrid = showMinorGrid
         self.showAxes = showAxes
         self.showTickLabels = showTickLabels
+        self.lessonSteps = lessonSteps
     }
 
     private enum CodingKeys: String, CodingKey {
         case formatVersion, dimension, layers, parameters, viewport, view3D
         case theme, showGrid, showMinorGrid, showAxes, showTickLabels
+        case lessonSteps
     }
 
     /// 2D 时代的文件没有 `dimension` 与 `view3D`：读成平面图、默认视角。
@@ -92,6 +97,8 @@ public struct GrapherDocument: Codable, Equatable, Sendable {
         showMinorGrid = try container.decode(Bool.self, forKey: .showMinorGrid)
         showAxes = try container.decode(Bool.self, forKey: .showAxes)
         showTickLabels = try container.decode(Bool.self, forKey: .showTickLabels)
+        // 讲解是后加的，早先的文件没有。
+        lessonSteps = try container.decodeIfPresent([LessonStep].self, forKey: .lessonSteps) ?? []
     }
 
     public var parameterValues: [String: Double] {

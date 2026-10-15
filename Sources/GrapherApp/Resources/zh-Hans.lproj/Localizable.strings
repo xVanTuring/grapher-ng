@@ -276,3 +276,37 @@
 "A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually)." = "填数，或者填含参数的公式（如 p*2*pi）：它会跟着参数走，播放参数它就动起来（范围的端点则让曲线一点点画出来）。";
 "%ld of %ld points drawn" = "画出 %ld 个，共写了 %ld 个起点";
 "Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q)." = "每一栏可以是数，也可以是含参数的公式，例如 3*cos(q), 3*sin(q)。";
+
+/* 讲解 */
+"Lesson" = "讲解";
+"Step through the lesson; with no steps yet, make the first one from what is on screen (⌥⌘L)" = "一步一步看讲解；还没有步骤时，用眼前的样子建第一步（⌥⌘L）";
+"Start Lesson" = "开始讲解";
+"End Lesson" = "结束讲解";
+"Next Step" = "下一步";
+"Previous Step" = "上一步";
+"Add Step from Current View" = "用眼前的样子加一步";
+"Hide in This Step" = "这一步不显示";
+"Show in This Step" = "这一步显示";
+"Step %ld" = "第 %ld 步";
+"%ld / %ld" = "%ld / %ld";
+"Add Step" = "加一步";
+"Record View in Step" = "把视角记进这一步";
+"Edit Step" = "编辑步骤";
+"Delete Step" = "删除这一步";
+"Move Step" = "挪动步骤";
+"Edit Lesson" = "编辑讲解";
+"Previous Step (←)" = "上一步（←）";
+"Next Step (→ or Space)" = "下一步（→ 或空格）";
+"Edit This Step" = "编辑这一步";
+"End Lesson (Esc)" = "结束讲解（Esc）";
+"Jump to a step" = "跳到某一步";
+"Step title" = "这一步的标题";
+"Inline formula: $…$; a formula on its own line: $$…$$; **bold**. The eye buttons in the layer list choose which layers this step shows." = "行内公式写 $…$，单独一行的公式写 $$…$$，加粗写 **…**。这一步显示哪些图层，由图层列表里的眼睛决定。";
+"Record View and Parameters" = "记下视角和参数";
+"Store the current camera and every parameter value in this step" = "把眼前的视角和各参数的当前值记进这一步";
+"Add Step After" = "在后面加一步";
+"Move Step Earlier" = "往前挪";
+"Move Step Later" = "往后挪";
+"Done" = "完成";
+"Arrow at the end" = "末端画箭头";
+"Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent." = "在参数终点那一头画箭头，用来画法向量、切向量这类向量。";

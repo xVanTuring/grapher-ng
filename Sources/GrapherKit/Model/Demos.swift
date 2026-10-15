@@ -14,11 +14,12 @@ public enum DemoCategory: String, CaseIterable, Sendable {
     case geometry
     case projections
     case gradients
+    case lessons
 
     public var dimension: DocumentDimension {
         switch self {
         case .curves, .parameters, .tangents, .data: return .plane
-        case .surfaces, .intersections, .geometry, .projections, .gradients: return .space
+        case .surfaces, .intersections, .geometry, .projections, .gradients, .lessons: return .space
         }
     }
 
@@ -33,6 +34,7 @@ public enum DemoCategory: String, CaseIterable, Sendable {
         case .geometry: return L("Points, lines and planes")
         case .projections: return L("Projections and tangent planes")
         case .gradients: return L("Gradients")
+        case .lessons: return L("Step-by-step derivations")
         }
     }
 }
@@ -431,7 +433,145 @@ public enum Demos {
                 b.gradient("−∇f", of: valley, density: 10, scale: -0.8, onFloor: true)
                 return b.document
             },
+
+            Demo(id: "space.lesson-surface-area", category: .lessons, title: L("The surface area element dS"),
+                 summary: L("Why dS = √(1 + z_x² + z_y²) dσ, step by step: a small piece dσ, the piece dS above it, the tangent plane, the normal and the angle γ. Turn the pages with ← → or the buttons on the card.")) {
+                surfaceAreaLesson()
+            },
         ]
+    }
+
+    // MARK: - 讲解
+
+    /// 曲面面积元的推导：z = 3.6 − (x² + y²)/2（z_x = −x，z_y = −y），在 (a, b) 处取边长 h 的小方块 dσ。
+    /// 坐标盒的底面就是 xOy 面（盒子 z 从 −0.05 起，底面上的东西不被裁掉）。
+    static func surfaceAreaLesson() -> GrapherDocument {
+        var b = DemoBuilder(.space)
+        b.document.view3D = View3D(center: SIMD3(0, 0, 2.75), halfExtent: 2.8, azimuth: 35 * .pi / 180, elevation: 22 * .pi / 180)
+        b.document.parameters = [
+            ParameterDefinition(name: "a", value: 1, lowerBound: -1.8, upperBound: 1.2),
+            ParameterDefinition(name: "b", value: 0.5, lowerBound: -1.8, upperBound: 1.2),
+            ParameterDefinition(name: "h", value: 0.6, lowerBound: 0.08, upperBound: 1),
+        ]
+        let z = "3.6 - (x^2 + y^2)/2"
+        let zP = "(3.6 - (a^2 + b^2)/2)"
+        let ink = RGBAColor(0.15, 0.15, 0.2)
+        let blue = RGBAColor(0.12, 0.42, 0.95)
+        let orange = RGBAColor(0.92, 0.36, 0.1)
+        let green = RGBAColor(0.13, 0.6, 0.3)
+        let purple = RGBAColor(0.55, 0.22, 0.78)
+        let amber = RGBAColor(0.93, 0.56, 0.05)
+        func patch(_ layer: inout Layer) {
+            layer.domainLowerFormula = "a"
+            layer.domainUpperFormula = "a + h"
+            layer.domain2LowerFormula = "b"
+            layer.domain2UpperFormula = "b + h"
+        }
+        func paint(_ layer: inout Layer, _ color: RGBAColor, opacity: Double) {
+            layer.lineStyle.color = color
+            layer.fillStyle.color = color.withAlpha(0.22)
+            layer.fillStyle.opacity = opacity
+        }
+
+        let surface = b.add(.surface, "S", z) { paint(&$0, RGBAColor(0.32, 0.56, 0.9), opacity: 0.42) }
+        let slope = b.add(.surface, L("S coloured by slope"), z) {
+            $0.colorsBySlope = true
+            $0.fillStyle.opacity = 0.8
+        }
+        let region = b.add(.parametricSurface, "D", "u*cos(v)", "u*sin(v)", "0",
+                           domain: 0...2.6833, domain2: 0...(2 * .pi)) { paint(&$0, RGBAColor(0.45, 0.47, 0.55), opacity: 0.2) }
+        let dSigma = b.add(.parametricSurface, "dσ", "u", "v", "0.012", domain: 1...1.6, domain2: 0.5...1.1) {
+            patch(&$0)
+            paint(&$0, blue, opacity: 0.9)
+        }
+        let dS = b.add(.parametricSurface, "dS", "u", "v", "3.6 - (u^2 + v^2)/2 + 0.015", domain: 1...1.6, domain2: 0.5...1.1) {
+            patch(&$0)
+            paint(&$0, orange, opacity: 1)
+        }
+        // 以 dσ 的边界为准线、母线平行于 z 轴的柱面：u 绕边界一圈（0…4，每条边占 1），v 从 xOy 面升到曲面。
+        let rimX = "(a + h*clamp(u, 0, 1) - h*clamp(u - 2, 0, 1))"
+        let rimY = "(b + h*clamp(u - 1, 0, 1) - h*clamp(u - 3, 0, 1))"
+        let walls = b.add(.parametricSurface, L("Cylinder over dσ"), rimX, rimY, "v*(3.6 - (\(rimX)^2 + \(rimY)^2)/2)",
+                          domain: 0...4, domain2: 0...1) { paint(&$0, RGBAColor(0.42, 0.44, 0.5), opacity: 0.2) }
+        let dA = b.add(.parametricSurface, "dA", "u", "v", "\(zP) - a*(u - a) - b*(v - b) + 0.03",
+                       domain: 1...1.6, domain2: 0.5...1.1) {
+            patch(&$0)
+            paint(&$0, green, opacity: 0.72)
+        }
+        let point = b.add(.point, "P", "a", "b", zP) {
+            $0.lineStyle.color = ink
+            $0.lineStyle.width = 2.6
+        }
+        // 法向量 n = (−z_x, −z_y, 1) = (a, b, 1)，画成长 1.6 的箭头。
+        let normal = b.add(.spaceCurve, "n", "a + a*t", "b + b*t", "\(zP) + t", domain: 0...1) {
+            $0.domainUpperFormula = "1.6/sqrt(1 + a^2 + b^2)"
+            $0.showsArrow = true
+            $0.lineStyle.color = purple
+            $0.lineStyle.width = 3
+        }
+        let up = b.add(.spaceCurve, "k", "a", "b", "\(zP) + t", domain: 0...1.6) {
+            $0.showsArrow = true
+            $0.lineStyle.color = RGBAColor(0.35, 0.36, 0.42)
+            $0.lineStyle.width = 2.4
+        }
+        // n 与 k 的夹角 γ：在 k、n 张成的竖直平面里画一段半径 0.7 的圆弧，tan γ = √(a² + b²)。
+        let g = "sqrt(a^2 + b^2)"
+        let angle = b.add(.spaceCurve, "γ", "a + 0.7*sin(t)*a/\(g)", "b + 0.7*sin(t)*b/\(g)", "\(zP) + 0.7*cos(t)",
+                          domain: 0...1) {
+            $0.domainUpperFormula = "atan(\(g))"
+            $0.lineStyle.color = amber
+            $0.lineStyle.width = 2.6
+        }
+
+        // 小片的名字：dσ、dS 写在 +y 一侧（多数步骤里是画面右边），dA 写在 −y 一侧，免得和 dS 叠在一起。
+        let labelS = b.text("S", x: "-1.3", y: "1.5", z: "1.9", color: RGBAColor(0.2, 0.4, 0.75))
+        let labelD = b.text("D", x: "2.0", y: "-1.0", z: "0.05", color: RGBAColor(0.35, 0.37, 0.45))
+        let labelSigma = b.text("dσ", x: "a + h/2", y: "b + h + 0.15", z: "0.03", color: blue)
+        let labelDS = b.text("dS", x: "a + h/2", y: "b + h + 0.15", z: "3.6 - ((a + h/2)^2 + (b + h)^2)/2 + 0.12", color: orange)
+        let labelDA = b.text("dA", x: "a + h/2", y: "b - 0.35", z: "\(zP) - a*h/2 + 0.35*b + 0.1", color: green)
+        let s = "1.6/sqrt(1 + a^2 + b^2)"
+        let labelN = b.text("n", x: "a + a*\(s) + 0.08", y: "b + b*\(s)", z: "\(zP) + \(s) + 0.08", color: purple)
+        let labelK = b.text("k", x: "a + 0.1", y: "b", z: "\(zP) + 1.62", color: RGBAColor(0.35, 0.36, 0.42))
+        let half = "atan(\(g))/2"
+        let labelGamma = b.text("γ", x: "a + 0.95*sin(\(half))*a/\(g)", y: "b + 0.95*sin(\(half))*b/\(g)",
+                                z: "\(zP) + 0.95*cos(\(half))", color: amber)
+
+        b.step(L("The surface S: $z=z(x,y)$"),
+               L("We want the area of the surface $S$: $z=z(x,y)$, whose projection onto the $xOy$ plane is the region $D$; $z(x,y)$ has continuous partial derivatives. Here $z=3.6-\\dfrac{x^2+y^2}{2}$, so $z_x=-x$ and $z_y=-y$."),
+               show: [surface, region, labelS, labelD], azimuth: 35, elevation: 22, zoom: 1,
+               parameters: ["a": 1, "b": 0.5, "h": 0.6])
+        b.step(L("Take a small piece $\\mathrm d\\sigma$ of $D$"),
+               L("Cut $D$ into many small pieces and take any one of them, $\\mathrm d\\sigma$: here a small square with one corner at $(x,y)$ and sides $\\mathrm dx=\\mathrm dy=h$. Its area is also written $\\mathrm d\\sigma$."),
+               show: [surface, region, dSigma, labelS, labelD, labelSigma], azimuth: 30, elevation: 30, zoom: 1.15)
+        b.step(L("The piece $\\mathrm dS$ above $\\mathrm d\\sigma$"),
+               L("The cylinder whose base is the boundary of $\\mathrm d\\sigma$ and whose rulings are parallel to the $z$-axis cuts a small piece out of $S$; call it $\\mathrm dS$. Its projection onto the $xOy$ plane is exactly $\\mathrm d\\sigma$. Where the surface is steeper, $\\mathrm dS$ is larger than $\\mathrm d\\sigma$."),
+               show: [surface, dSigma, walls, dS, labelSigma, labelDS], azimuth: 24, elevation: 26, zoom: 1.35)
+        b.step(L("Replace $\\mathrm dS$ by a piece of the tangent plane"),
+               L("Take the tangent plane of $S$ at $P(x,y,z(x,y))$. The same cylinder cuts a parallelogram $\\mathrm dA$ out of it. When $\\mathrm d\\sigma$ is small, $\\mathrm dS\\approx\\mathrm dA$, with an error of higher order than $\\mathrm d\\sigma$."),
+               show: [surface, dSigma, walls, dS, dA, point, labelSigma, labelDS, labelDA], azimuth: 14, elevation: 22, zoom: 1.5)
+        b.step(L("The normal vector and the angle $\\gamma$"),
+               L("A normal vector of the tangent plane is $\\vec n=(-z_x,-z_y,1)$. Let $\\gamma$ be the angle between $\\vec n$ and the positive $z$-axis $\\vec k$: $$\\cos\\gamma=\\frac{\\vec n\\cdot\\vec k}{|\\vec n|}=\\frac{1}{\\sqrt{1+z_x^2+z_y^2}}.$$"),
+               show: [surface, dSigma, walls, dA, point, normal, up, angle, labelSigma, labelDA, labelN, labelK, labelGamma],
+               azimuth: -30, elevation: 16, zoom: 1.5)
+        b.step(L("Projection multiplies area by $|\\cos\\gamma|$"),
+               L("Projecting a plane figure onto another plane multiplies its area by the cosine of the angle between the planes. The angle between the tangent plane and the $xOy$ plane equals the angle $\\gamma$ between their normals $\\vec n$ and $\\vec k$, and the projection of $\\mathrm dA$ is $\\mathrm d\\sigma$, so $$\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dA\\approx|\\cos\\gamma|\\,\\mathrm dS.$$"),
+               show: [dSigma, walls, dA, point, normal, up, angle, labelSigma, labelDA, labelN, labelK, labelGamma],
+               azimuth: -50, elevation: 12, zoom: 1.6)
+        b.step(L("The area element"),
+               L("From $\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dS$ and $|\\cos\\gamma|=\\dfrac{1}{\\sqrt{1+z_x^2+z_y^2}}$: $$\\mathrm dS=\\sqrt{1+z_x^2(x,y)+z_y^2(x,y)}\\,\\mathrm d\\sigma.$$ As $h$ shrinks (it is playing now), $\\mathrm dS$ and $\\mathrm dA$ fit closer and closer."),
+               show: [surface, dSigma, walls, dS, dA, point, labelSigma, labelDS, labelDA],
+               azimuth: 28, elevation: 26, zoom: 1.4, plays: ["h"])
+        b.step(L("Add up the pieces: the area of $S$"),
+               L("Summing over all the pieces gives $$S=\\iint_D\\sqrt{1+z_x^2+z_y^2}\\,\\mathrm d\\sigma.$$ The surface is now coloured by slope: where it is steeper (red), $\\sqrt{1+z_x^2+z_y^2}$ is larger and the same $\\mathrm d\\sigma$ carries a larger $\\mathrm dS$. Drag $a$ and $b$ to move the piece around."),
+               show: [slope, region, dSigma, walls, dS, labelD, labelSigma, labelDS],
+               azimuth: 35, elevation: 34, zoom: 1, parameters: ["h": 0.6])
+        // 结束讲解后图层按自己的开关显示：和最后一步一样，不把所有辅助图层一起摊出来。
+        if let last = b.document.lessonSteps.last {
+            for index in b.document.layers.indices {
+                b.document.layers[index].isVisible = last.visibleLayers.contains(b.document.layers[index].id)
+            }
+        }
+        return b.document
     }
 }
 
@@ -490,6 +630,37 @@ struct DemoBuilder {
             $0.anchorV = y
             $0.anchorW = z
         }
+    }
+
+    /// 位置写成含参数的公式的文字（跟着参数动）。
+    @discardableResult
+    mutating func text(_ content: String, x: String, y: String, z: String, color: RGBAColor, size: Double = 16) -> Layer {
+        add(.text, content, content) {
+            $0.anchorUFormula = x
+            $0.anchorVFormula = y
+            $0.anchorWFormula = z
+            $0.fontSize = size
+            $0.lineStyle.color = color
+        }
+    }
+
+    /// 讲解的一步：显示 `show` 里的图层；给了角度（度）、缩放就转相机，`parameters` 是进这一步时参数要变成的值。
+    mutating func step(
+        _ title: String, _ text: String, show: [Layer],
+        azimuth: Double? = nil, elevation: Double? = nil, zoom: Double? = nil,
+        parameters: [String: Double] = [:], plays: [String] = []
+    ) {
+        var camera: LessonCamera?
+        if azimuth != nil || elevation != nil || zoom != nil {
+            var view = document.view3D
+            if let azimuth { view.azimuth = azimuth * .pi / 180 }
+            if let elevation { view.elevation = elevation * .pi / 180 }
+            if let zoom { view.cameraZoom = zoom }
+            camera = LessonCamera(space: view)
+        }
+        document.lessonSteps.append(LessonStep(
+            title: title, text: text, visibleLayers: show.map(\.id), camera: camera,
+            parameters: parameters, plays: plays))
     }
 
     @discardableResult

@@ -271,3 +271,33 @@
 "width must be a number between 0.2 and 20." = "width must be a number between 0.2 and 20.";
 "width must be positive." = "width must be positive.";
 "Write a parameter like: param a = 1.5 [0, 3]" = "Write a parameter like: param a = 1.5 [0, 3]";
+
+/* 文字格式里的讲解步骤 */
+"A '>' line is the text of a step; write a 'step' line before it." = "A '>' line is the text of a step; write a 'step' line before it.";
+"A step option looks like key=value, got '%@'." = "A step option looks like key=value, got '%@'.";
+"'%@' in a step needs the same kind of value as in view: (got '%@')." = "'%@' in a step needs the same kind of value as in view: (got '%@').";
+"No parameter named '%@' to play." = "No parameter named '%@' to play.";
+"Unknown step option '%@'. Options: %@." = "Unknown step option '%@'. Options: %@.";
+
+/* 讲解（分步推导）示例 */
+"Step-by-step derivations" = "Step-by-step derivations";
+"The surface area element dS" = "The surface area element dS";
+"Why dS = √(1 + z_x² + z_y²) dσ, step by step: a small piece dσ, the piece dS above it, the tangent plane, the normal and the angle γ. Turn the pages with ← → or the buttons on the card." = "Why dS = √(1 + z_x² + z_y²) dσ, step by step: a small piece dσ, the piece dS above it, the tangent plane, the normal and the angle γ. Turn the pages with ← → or the buttons on the card.";
+"S coloured by slope" = "S coloured by slope";
+"Cylinder over dσ" = "Cylinder over dσ";
+"The surface S: $z=z(x,y)$" = "The surface S: $z=z(x,y)$";
+"We want the area of the surface $S$: $z=z(x,y)$, whose projection onto the $xOy$ plane is the region $D$; $z(x,y)$ has continuous partial derivatives. Here $z=3.6-\\dfrac{x^2+y^2}{2}$, so $z_x=-x$ and $z_y=-y$." = "We want the area of the surface $S$: $z=z(x,y)$, whose projection onto the $xOy$ plane is the region $D$; $z(x,y)$ has continuous partial derivatives. Here $z=3.6-\\dfrac{x^2+y^2}{2}$, so $z_x=-x$ and $z_y=-y$.";
+"Take a small piece $\\mathrm d\\sigma$ of $D$" = "Take a small piece $\\mathrm d\\sigma$ of $D$";
+"Cut $D$ into many small pieces and take any one of them, $\\mathrm d\\sigma$: here a small square with one corner at $(x,y)$ and sides $\\mathrm dx=\\mathrm dy=h$. Its area is also written $\\mathrm d\\sigma$." = "Cut $D$ into many small pieces and take any one of them, $\\mathrm d\\sigma$: here a small square with one corner at $(x,y)$ and sides $\\mathrm dx=\\mathrm dy=h$. Its area is also written $\\mathrm d\\sigma$.";
+"The piece $\\mathrm dS$ above $\\mathrm d\\sigma$" = "The piece $\\mathrm dS$ above $\\mathrm d\\sigma$";
+"The cylinder whose base is the boundary of $\\mathrm d\\sigma$ and whose rulings are parallel to the $z$-axis cuts a small piece out of $S$; call it $\\mathrm dS$. Its projection onto the $xOy$ plane is exactly $\\mathrm d\\sigma$. Where the surface is steeper, $\\mathrm dS$ is larger than $\\mathrm d\\sigma$." = "The cylinder whose base is the boundary of $\\mathrm d\\sigma$ and whose rulings are parallel to the $z$-axis cuts a small piece out of $S$; call it $\\mathrm dS$. Its projection onto the $xOy$ plane is exactly $\\mathrm d\\sigma$. Where the surface is steeper, $\\mathrm dS$ is larger than $\\mathrm d\\sigma$.";
+"Replace $\\mathrm dS$ by a piece of the tangent plane" = "Replace $\\mathrm dS$ by a piece of the tangent plane";
+"Take the tangent plane of $S$ at $P(x,y,z(x,y))$. The same cylinder cuts a parallelogram $\\mathrm dA$ out of it. When $\\mathrm d\\sigma$ is small, $\\mathrm dS\\approx\\mathrm dA$, with an error of higher order than $\\mathrm d\\sigma$." = "Take the tangent plane of $S$ at $P(x,y,z(x,y))$. The same cylinder cuts a parallelogram $\\mathrm dA$ out of it. When $\\mathrm d\\sigma$ is small, $\\mathrm dS\\approx\\mathrm dA$, with an error of higher order than $\\mathrm d\\sigma$.";
+"The normal vector and the angle $\\gamma$" = "The normal vector and the angle $\\gamma$";
+"A normal vector of the tangent plane is $\\vec n=(-z_x,-z_y,1)$. Let $\\gamma$ be the angle between $\\vec n$ and the positive $z$-axis $\\vec k$: $$\\cos\\gamma=\\frac{\\vec n\\cdot\\vec k}{|\\vec n|}=\\frac{1}{\\sqrt{1+z_x^2+z_y^2}}.$$" = "A normal vector of the tangent plane is $\\vec n=(-z_x,-z_y,1)$. Let $\\gamma$ be the angle between $\\vec n$ and the positive $z$-axis $\\vec k$: $$\\cos\\gamma=\\frac{\\vec n\\cdot\\vec k}{|\\vec n|}=\\frac{1}{\\sqrt{1+z_x^2+z_y^2}}.$$";
+"Projection multiplies area by $|\\cos\\gamma|$" = "Projection multiplies area by $|\\cos\\gamma|$";
+"Projecting a plane figure onto another plane multiplies its area by the cosine of the angle between the planes. The angle between the tangent plane and the $xOy$ plane equals the angle $\\gamma$ between their normals $\\vec n$ and $\\vec k$, and the projection of $\\mathrm dA$ is $\\mathrm d\\sigma$, so $$\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dA\\approx|\\cos\\gamma|\\,\\mathrm dS.$$" = "Projecting a plane figure onto another plane multiplies its area by the cosine of the angle between the planes. The angle between the tangent plane and the $xOy$ plane equals the angle $\\gamma$ between their normals $\\vec n$ and $\\vec k$, and the projection of $\\mathrm dA$ is $\\mathrm d\\sigma$, so $$\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dA\\approx|\\cos\\gamma|\\,\\mathrm dS.$$";
+"The area element" = "The area element";
+"From $\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dS$ and $|\\cos\\gamma|=\\dfrac{1}{\\sqrt{1+z_x^2+z_y^2}}$: $$\\mathrm dS=\\sqrt{1+z_x^2(x,y)+z_y^2(x,y)}\\,\\mathrm d\\sigma.$$ As $h$ shrinks (it is playing now), $\\mathrm dS$ and $\\mathrm dA$ fit closer and closer." = "From $\\mathrm d\\sigma=|\\cos\\gamma|\\,\\mathrm dS$ and $|\\cos\\gamma|=\\dfrac{1}{\\sqrt{1+z_x^2+z_y^2}}$: $$\\mathrm dS=\\sqrt{1+z_x^2(x,y)+z_y^2(x,y)}\\,\\mathrm d\\sigma.$$ As $h$ shrinks (it is playing now), $\\mathrm dS$ and $\\mathrm dA$ fit closer and closer.";
+"Add up the pieces: the area of $S$" = "Add up the pieces: the area of $S$";
+"Summing over all the pieces gives $$S=\\iint_D\\sqrt{1+z_x^2+z_y^2}\\,\\mathrm d\\sigma.$$ The surface is now coloured by slope: where it is steeper (red), $\\sqrt{1+z_x^2+z_y^2}$ is larger and the same $\\mathrm d\\sigma$ carries a larger $\\mathrm dS$. Drag $a$ and $b$ to move the piece around." = "Summing over all the pieces gives $$S=\\iint_D\\sqrt{1+z_x^2+z_y^2}\\,\\mathrm d\\sigma.$$ The surface is now coloured by slope: where it is steeper (red), $\\sqrt{1+z_x^2+z_y^2}$ is larger and the same $\\mathrm d\\sigma$ carries a larger $\\mathrm dS$. Drag $a$ and $b$ to move the piece around.";

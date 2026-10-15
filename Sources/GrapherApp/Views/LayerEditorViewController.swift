@@ -394,6 +394,12 @@ final class LayerEditorViewController: NSViewController {
         } else {
             rows.append(ControlFactory.sectionLabel(L("Line")))
             rows.append(contentsOf: lineRows(layer))
+            if layer.kind == .spaceCurve {
+                let arrow = ControlFactory.checkbox(L("Arrow at the end"), target: self, action: #selector(arrowToggled(_:)))
+                arrow.toolTip = L("Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent.")
+                arrow.state = layer.showsArrow ? .on : .off
+                rows.append(arrow)
+            }
         }
 
         if layer.kind == .region {
@@ -490,6 +496,11 @@ final class LayerEditorViewController: NSViewController {
     @objc private func slopeToggled(_ sender: NSButton) {
         let on = sender.state == .on
         editLayer(L("Color by slope")) { $0.colorsBySlope = on }
+    }
+
+    @objc private func arrowToggled(_ sender: NSButton) {
+        let on = sender.state == .on
+        editLayer(L("Arrow at the end")) { $0.showsArrow = on }
     }
 
     private func refreshGradient(_ layer: Layer) {

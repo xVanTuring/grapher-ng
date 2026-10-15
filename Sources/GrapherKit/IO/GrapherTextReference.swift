@@ -49,7 +49,7 @@ extension GrapherText {
       3D types (also all 2D curve types, drawn on z=0, or extrude: explicit/parametric/polar/implicit as a vertical wall)
         surface            f(x,y)                       surface S: sin(x)*cos(y); slope   (slope = color by steepness)
         parametric-surface x(u,v); y(u,v); z(u,v)       u=0..2*pi; v=0..2*pi
-        space-curve        x(t); y(t); z(t)             t=0..4*pi
+        space-curve        x(t); y(t); z(t)             t=0..4*pi; arrow   (arrow = arrowhead at the end of t, for vectors)
         implicit-surface   F(x,y,z) or F=G              implicit-surface: x^2+y^2+z^2=4
         intersection       of=A, B                      two surface-like layers (surface, parametric-surface, implicit-surface)
         point              x; y; z                      point P: 1; 2; 3     (the name is drawn next to it; label=off hides it)
@@ -63,8 +63,26 @@ extension GrapherText {
       a tangent plane, a ball or a label.
       Layers refer to each other by name (of=S). Put the referred layer anywhere in the block.
 
+    LESSON (optional: explain a derivation step by step; the reader turns pages and the picture changes with them)
+      step <title>: show=A, B; azimuth=30 elevation=20; a=1.2; play=a
+      > The text of this step. Inline TeX $\\mathrm dS$, a formula on its own line $$S=\\iint_D f\\,\\mathrm d\\sigma$$, **bold**.
+      > More '>' lines belong to the same step; an empty '>' line starts a new paragraph.
+      show=A, B      the layers this step shows (by name). add=C / hide=A change the previous step's set.
+                     Nothing given: same as the previous step (a first step without show= shows every layer).
+                     Layers that no step names are always shown.
+      Camera keys as in view: (3D azimuth elevation zoom range center; 2D center width), separated by ';'.
+                     Omitted: the camera stays where the previous step left it.
+      <param>=<number>   moves that slider (animated) when the step opens.   play=<param>   starts playing it.
+      focus=<layer>  highlights that layer.
+      The title may hold TeX too. The first plain ':' ends the title: use '：' or put ':' inside $…$.
+      Steps play in the Grapher NG window and in render_text step=N. A block inside a note does not page through steps yet:
+      it draws every layer that is not hidden, so mark helper layers hidden if the plain picture should stay clean.
+      TeX supported: fractions (\\frac \\dfrac), roots, sub/superscripts, Greek, \\mathrm \\mathbf \\mathbb \\text,
+      \\vec \\hat \\bar, \\left( \\right), \\int \\iint \\oint \\sum \\lim (with \\limits), common relations and arrows.
+
     TIPS
       - Check with render_text before writing it into the note; fix every reported line.
+      - For a lesson, render_text with step=N shows that page with its text card.
       - Prefer a few well-chosen layers and 1–3 sliders; give surfaces opacity=0.5–0.85 when something sits inside or behind them.
       - 3D z range is the axis box: use range= (and center=) to frame the part that matters.
     """

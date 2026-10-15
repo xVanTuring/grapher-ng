@@ -64,7 +64,7 @@ final class GraphDocument: NSDocument {
     }
 
     override func data(ofType typeName: String) throws -> Data {
-        try DocumentStore.encode(state.document)
+        try DocumentStore.encode(state.documentForSaving)
     }
 
     /// 没有声明可以并发读（`canConcurrentlyReadDocuments` 默认 false），AppKit 在主线程上调这里。

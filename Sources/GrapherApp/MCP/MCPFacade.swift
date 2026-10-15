@@ -88,6 +88,7 @@ final class MCPFacade {
                 "yRange": [viewport.yRange.lowerBound, viewport.yRange.upperBound],
             ]
         }
+        if !content.lessonSteps.isEmpty { object["lesson"] = describeLesson(state) }
         return object
     }
 
@@ -115,6 +116,7 @@ final class MCPFacade {
         if layer.kind.usesSecondDomain { object["domain2"] = [layer.domain2Lower, layer.domain2Upper] }
         if layer.kind.canExtrude, state.document.dimension == .space { object["extrude"] = layer.extrudesInSpace }
         if layer.kind == .point { object["label"] = layer.showsLabel }
+        if layer.kind == .spaceCurve { object["arrow"] = layer.showsArrow }
         if layer.kind == .scatter {
             let points = ScatterData.parse(layer.formula)
             object["pointCount"] = points.count
@@ -263,6 +265,7 @@ final class MCPFacade {
         var opacity: Double?
         var showsFit: Bool?
         var showsLabel: Bool?
+        var showsArrow: Bool?
         /// 位置类的数也可以给公式：公式在 `…Formula` 里，数填 0 占位（让「该类型有没有这个字段」的检查照常走）。
         var anchorU: Double?
         var anchorV: Double?
@@ -513,6 +516,10 @@ final class MCPFacade {
         }
         if layer.kind == .scatter, ScatterData.parse(layer.formula).isEmpty {
             throw MCPToolError("The scatter data has no valid points. Write one \"x, y\" pair per line, e.g. \"1, 2.5\\n2, 4.1\".")
+        }
+        if let arrow = edit.showsArrow {
+            guard layer.kind == .spaceCurve else { throw MCPToolError("Only 'spaceCurve' layers can end in an arrow.") }
+            layer.showsArrow = arrow
         }
         if let label = edit.showsLabel {
             guard layer.kind == .point else { throw MCPToolError("Only 'point' layers have a label.") }
@@ -875,16 +882,24 @@ final class MCPFacade {
     // MARK: - 图片
 
     /// 把文档按存下时的取景画成 PNG：给 `render_image`（让模型看结果）与 `export_png`（写文件）共用。
-    func renderPNG(of document: GraphDocument, width: Int, height: Int) throws -> Data {
+    /// `step`（从 1 数）：画讲解的那一步——图层、相机、参数按那一步，底下带讲解卡片。
+    func renderPNG(of document: GraphDocument, width: Int, height: Int, step: Int? = nil) throws -> Data {
         let pointScale = Swift.max(1, Double(width) / 700)
-        guard let image = GraphSnapshot.image(
-            of: document.state.document,
-            pixelWidth: width,
-            pixelHeight: height,
-            pointScale: pointScale,
-            quality: .high,
-            labels: true
-        ) else {
+        let content = document.state.documentForSaving
+        let image: CGImage?
+        if let step {
+            guard (1...Swift.max(content.lessonSteps.count, 1)).contains(step), !content.lessonSteps.isEmpty else {
+                throw MCPToolError(content.lessonSteps.isEmpty
+                    ? "This document has no lesson steps."
+                    : "step must be between 1 and \(content.lessonSteps.count).")
+            }
+            image = GraphSnapshot.lessonImage(of: content, step: step - 1, pixelWidth: width, pixelHeight: height,
+                                              pointScale: pointScale, quality: .high)
+        } else {
+            image = GraphSnapshot.image(of: content, pixelWidth: width, pixelHeight: height, pointScale: pointScale,
+                                        quality: .high, labels: true)
+        }
+        guard let image else {
             throw MCPToolError("Could not initialize the renderer.")
         }
         let data = NSMutableData()
@@ -897,10 +912,22 @@ final class MCPFacade {
     }
 
     /// 文字描述画成 PNG（不动任何打开的文档）。
-    func renderText(_ text: String, width: Int, theme: String?) throws -> (png: Data, errors: [GrapherText.Diagnostic], aspect: Double) {
+    /// `step`（从 1 数）：画讲解的那一步，带讲解卡片（图比块的比例高一些，给卡片留地方）。
+    func renderText(_ text: String, width: Int, theme: String?, step: Int? = nil) throws -> (png: Data, errors: [GrapherText.Diagnostic], aspect: Double) {
         let pointScale = Swift.max(1, Double(width) / 700)
         let chosen: Theme? = theme == "dark" ? .dark : (theme == "light" ? .light : nil)
-        let rendering = GraphSnapshot.image(text: text, pixelWidth: width, theme: chosen, pointScale: pointScale)
+        var rendering = GraphSnapshot.image(text: text, pixelWidth: width, theme: chosen, pointScale: pointScale)
+        if let step {
+            var parsed = GrapherText.parse(text)
+            if let chosen { parsed.document.theme = chosen }
+            let count = parsed.document.lessonSteps.count
+            guard count > 0 else { throw MCPToolError("The text has no 'step' lines.") }
+            guard (1...count).contains(step) else { throw MCPToolError("step must be between 1 and \(count).") }
+            let height = Int((Double(width) / parsed.aspect * 1.35).rounded())
+            rendering.image = GraphSnapshot.lessonImage(of: parsed.document, step: step - 1, pixelWidth: width,
+                                                        pixelHeight: height, pointScale: pointScale, quality: .high)
+            rendering.aspect = Double(width) / Double(height)
+        }
         guard let image = rendering.image else { throw MCPToolError("Could not initialize the renderer.") }
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else {

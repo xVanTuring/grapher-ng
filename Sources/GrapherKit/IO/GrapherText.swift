@@ -178,6 +178,26 @@ public enum GrapherText {
 
     private static let headerKeys: Set<String> = ["view", "theme", "aspect", "grid", "axes", "ticks", "minorgrid"]
 
+    /// `step …` 开头的行（`step` 后面是空格、冒号或行尾）。
+    static func isStepLine(_ line: String) -> Bool {
+        guard line.count >= 4, line.prefix(4).lowercased() == "step" else { return false }
+        guard let next = line.dropFirst(4).first else { return true }
+        return next == " " || next == "\t" || next == ":"
+    }
+
+    /// 第一个不在 `$…$` 里的半角冒号。
+    static func firstColonOutsideMath(_ text: String) -> String.Index? {
+        var inMath = false
+        var previous: Character?
+        for index in text.indices {
+            let c = text[index]
+            if c == "$", previous != "\\" { inMath.toggle() }
+            if c == ":", !inMath { return index }
+            previous = c
+        }
+        return nil
+    }
+
     /// 文件头：维度、`theme:` 之类的设置行（不是图层）。
     private static func isHeader(_ line: String) -> Bool {
         if ["plane", "space", "2d", "3d"].contains(line.lowercased()) { return true }
@@ -212,12 +232,21 @@ public enum GrapherText {
         var pendingRefs: [PendingRef] = []
         var viewLine: (line: Int, options: [String: String])?
         var drawn: [(index: Int, line: Int)] = []
+        var pendingSteps: [PendingStep] = []
 
         struct PendingRef {
             var layerIndex: Int
             var line: Int
             var names: [String]
             var onto: String?
+        }
+
+        /// 讲解的一步：图层名、参数名要等整份读完才认得，先记下原文。
+        struct PendingStep {
+            var line: Int
+            var title: String
+            var options: [(key: String, value: String)]
+            var text: [String] = []
         }
 
         mutating func run(_ source: String) -> Result {
@@ -238,6 +267,7 @@ public enum GrapherText {
             applyView()
             resolveReferences()
             checkFormulas()
+            resolveSteps()
             applyPlaneFrame()
             errors.sort { $0.line < $1.line }
             return Result(document: document, aspect: aspect, themeName: themeName, planeFrame: plane,
@@ -253,6 +283,22 @@ public enum GrapherText {
         mutating func parseLine(_ raw: String, number: Int) {
             let line = raw.trimmingCharacters(in: .whitespaces)
             guard !line.isEmpty, !line.hasPrefix("#"), !line.hasPrefix("//") else { return }
+
+            // 讲解：`step 标题: 选项` 开一步，后面以 `>` 开头的行是这一步的讲解文字。
+            if line.hasPrefix(">") {
+                guard !pendingSteps.isEmpty else {
+                    fail(number, L("A '>' line is the text of a step; write a 'step' line before it."))
+                    return
+                }
+                var text = String(line.dropFirst())
+                if text.hasPrefix(" ") { text.removeFirst() }
+                pendingSteps[pendingSteps.count - 1].text.append(text)
+                return
+            }
+            if GrapherText.isStepLine(line) {
+                parseStep(line, number: number)
+                return
+            }
 
             switch line.lowercased() {
             case "plane", "2d": dimension = .plane; dimensionLine = number; return
@@ -462,7 +508,8 @@ public enum GrapherText {
             case .implicit: return base + ["extrude", "levels"]
             case .region: return ["color", "hidden"]
             case .surface: return base + ["slope"]
-            case .parametricSurface, .implicitSurface, .spaceCurve: return base
+            case .parametricSurface, .implicitSurface: return base
+            case .spaceCurve: return base + ["arrow"]
             case .surfaceIntersection: return base + ["of"]
             case .point: return base + ["label"]
             case .projection: return base + ["of", "onto", "offset", "direction", "projectors"]
@@ -629,6 +676,9 @@ public enum GrapherText {
             if let text = options["slope"] {
                 if let on = Value.bool(text) { layer.colorsBySlope = on } else { fail(String(format: L("'%@' must be on or off."), "slope")) }
             }
+            if let text = options["arrow"] {
+                if let on = Value.bool(text) { layer.showsArrow = on } else { fail(String(format: L("'%@' must be on or off."), "arrow")) }
+            }
             if let text = options["fit"] {
                 if let on = Value.bool(text) { layer.showsFit = on } else { fail(String(format: L("'%@' must be on or off."), "fit")) }
             }
@@ -733,6 +783,126 @@ public enum GrapherText {
                 pendingRefs.append(PendingRef(layerIndex: document.layers.count, line: number, names: names, onto: onto))
             }
             return ok
+        }
+
+        // MARK: 讲解步骤
+
+        /// `step 标题: show=S, D; azimuth=30; h=0.6; play=h`。标题里要用冒号请写全角的「：」或放在 `$…$` 里。
+        mutating func parseStep(_ line: String, number: Int) {
+            let rest = String(line.dropFirst(4)).trimmingCharacters(in: .whitespaces)
+            var title = rest
+            var body = ""
+            if let colon = GrapherText.firstColonOutsideMath(rest) {
+                title = String(rest[..<colon]).trimmingCharacters(in: .whitespaces)
+                body = String(rest[rest.index(after: colon)...])
+            }
+            var options: [(String, String)] = []
+            for raw in Segments.splitTopLevel(body, separator: ";") {
+                let part = raw.trimmingCharacters(in: .whitespaces)
+                guard !part.isEmpty else { continue }
+                guard let equals = part.firstIndex(of: "=") else {
+                    fail(number, String(format: L("A step option looks like key=value, got '%@'."), part))
+                    continue
+                }
+                let key = GrapherText.normalize(String(part[..<equals]))
+                let value = String(part[part.index(after: equals)...]).trimmingCharacters(in: .whitespaces)
+                options.append((key, value))
+            }
+            pendingSteps.append(PendingStep(line: number, title: Self.unquote(title), options: options))
+        }
+
+        /// 把记下的步骤换成 `LessonStep`：图层名换成 id、相机从上一步（第一步从 `view:`）接着改、参数名核对。
+        /// `show=` 定这一步显示哪些图层；`add=` / `hide=` 在上一步的基础上加减；都没写就同上一步（第一步则全部显示）。
+        mutating func resolveSteps() {
+            guard !pendingSteps.isEmpty else { return }
+            func find(_ name: String) -> Layer? {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                return document.layers.first { $0.name == trimmed }
+                    ?? document.layers.first { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }
+            }
+            let isSpace = document.dimension == .space
+            let viewKeys: Set<String> = isSpace ? ["azimuth", "elevation", "zoom", "range", "center"] : ["center", "width"]
+            var visible: Set<UUID>?
+            var view = document.view3D
+            var center = SIMD2(plane.centerX, plane.centerY)
+            var width = plane.width
+
+            for pending in pendingSteps {
+                let number = pending.line
+                var step = LessonStep(title: pending.title, text: pending.text.joined(separator: "\n"))
+                var shown = visible
+                var cameraChanged = false
+                func layers(_ list: String) -> [UUID] {
+                    list.split(separator: ",").compactMap { raw in
+                        let name = String(raw)
+                        guard let layer = find(name) else {
+                            fail(number, String(format: L("No layer named '%@'. Layers: %@."),
+                                                name.trimmingCharacters(in: .whitespaces),
+                                                document.layers.map(\.name).joined(separator: ", ")))
+                            return nil
+                        }
+                        return layer.id
+                    }
+                }
+                for (key, value) in pending.options {
+                    if viewKeys.contains(key) {
+                        let numbers = value.split(separator: ",").compactMap { Value.number(String($0)) }
+                        switch (key, numbers.count) {
+                        case ("azimuth", 1): view.azimuth = remainder(numbers[0] * .pi / 180, 2 * .pi)
+                        case ("elevation", 1):
+                            view.elevation = min(max(numbers[0] * .pi / 180, -View3D.elevationLimit), View3D.elevationLimit)
+                        case ("zoom", 1):
+                            view.cameraZoom = min(max(numbers[0], View3D.cameraZoomRange.lowerBound), View3D.cameraZoomRange.upperBound)
+                        case ("range", 1) where numbers[0] > 0:
+                            view.halfExtent = min(max(numbers[0], View3D.halfExtentRange.lowerBound), View3D.halfExtentRange.upperBound)
+                        case ("center", 3) where isSpace: view.center = SIMD3(numbers[0], numbers[1], numbers[2])
+                        case ("center", 2) where !isSpace: center = SIMD2(numbers[0], numbers[1])
+                        case ("width", 1) where numbers[0] > 0: width = numbers[0]
+                        default:
+                            fail(number, String(format: L("'%@' in a step needs the same kind of value as in view: (got '%@')."), key, value))
+                            continue
+                        }
+                        cameraChanged = true
+                        continue
+                    }
+                    switch key {
+                    case "show":
+                        shown = Set(layers(value))
+                    case "add":
+                        shown = (shown ?? []).union(layers(value))
+                    case "hide":
+                        shown = (shown ?? Set(document.layers.filter(\.isVisible).map(\.id))).subtracting(layers(value))
+                    case "focus":
+                        step.focus = layers(value).first
+                    case "play":
+                        for name in value.split(separator: ",").map({ $0.trimmingCharacters(in: .whitespaces) }) {
+                            if document.parameters.contains(where: { $0.name == name }) {
+                                step.plays.append(name)
+                            } else {
+                                fail(number, String(format: L("No parameter named '%@' to play."), name))
+                            }
+                        }
+                    default:
+                        if let parameter = document.parameters.first(where: { GrapherText.normalize($0.name) == key }) {
+                            if let parsed = Value.number(value) {
+                                step.parameters[parameter.name] = parsed
+                            } else {
+                                fail(number, String(format: L("Parameter '%@' needs a number, got '%@'."), parameter.name, value))
+                            }
+                        } else {
+                            let allowed = ["show", "add", "hide", "focus", "play"] + viewKeys.sorted() + ["<parameter>=<number>"]
+                            fail(number, String(format: L("Unknown step option '%@'. Options: %@."), key, allowed.joined(separator: ", ")))
+                        }
+                    }
+                }
+                let final = shown ?? Set(document.layers.filter(\.isVisible).map(\.id))
+                step.visibleLayers = document.layers.map(\.id).filter { final.contains($0) }
+                visible = final
+                if cameraChanged {
+                    step.camera = isSpace ? LessonCamera(space: view) : LessonCamera(planeCenter: center, planeWidth: width)
+                }
+                document.lessonSteps.append(step)
+            }
         }
 
         // MARK: 引用与公式检查
@@ -915,7 +1085,7 @@ public enum GrapherText {
         }
 
         static let flagKeys: Set<String> = [
-            "dash", "hidden", "extrude", "slope", "fit", "normal", "floor", "label", "projectors",
+            "dash", "hidden", "extrude", "slope", "fit", "normal", "floor", "label", "projectors", "arrow",
         ]
         static let valueKeys: Set<String> = [
             "color", "width", "opacity", "levels", "of", "onto", "offset", "direction", "at",

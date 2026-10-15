@@ -83,12 +83,13 @@ final class Viewport3DViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         installMetalView()
-        observerID = state.observe([.scene, .status, .viewport, .document, .selection]) { [weak self] change in
+        observerID = state.observe([.scene, .status, .viewport, .document, .selection, .lesson]) { [weak self] change in
             guard let self else { return }
             switch change {
             case .scene: self.pushContent()
             case .viewport, .document, .selection: self.requestFrame()
             case .status: self.updateStatus()
+            case .lesson: self.scheduleMetricsSync()
             default: break
             }
         }
@@ -225,7 +226,7 @@ final class Viewport3DViewController: NSViewController {
         guard drawable.width > 1, drawable.height > 1, scale > 0 else { return }
         let probe = safeAreaProbe.frame
         let bounds = host.bounds
-        let insets = probe.width > 0 && probe.height > 0
+        var insets = probe.width > 0 && probe.height > 0
             ? NSEdgeInsets(
                 top: max(probe.minY, 0),
                 left: max(probe.minX, 0),
@@ -233,6 +234,8 @@ final class Viewport3DViewController: NSViewController {
                 right: max(bounds.width - probe.maxX, 0)
             )
             : host.safeAreaInsets
+        // 讲解卡片盖住的底部也算遮挡：坐标盒摆在卡片上方。
+        insets.bottom += state.reservedBottomInset
         state.setViewportMetrics(
             pixelWidth: Double(drawable.width),
             pixelHeight: Double(drawable.height),
@@ -314,6 +317,8 @@ final class Viewport3DViewController: NSViewController {
     }
 
     fileprivate func handleKeyDown(_ event: NSEvent) -> Bool {
+        // 讲解中 ← → 翻页（不再转视角）、空格下一步、Esc 结束讲解。
+        if state.handleLessonKey(event) { return true }
         // 方向键每次转 10°：键盘也能转视角。
         let step = 10 / View3D.orbitRadiansPerPoint * .pi / 180
         switch event.specialKey {
@@ -428,10 +433,13 @@ final class Canvas3DOverlayView: NSView {
         let right = bounds.width - view.insetRight / scale
         let bottom = bounds.height - view.insetBottom / scale
 
+        // 讲解中按当前这一步显示的图层写字。
+        let shown = state.presentedDocument
+        let compiled = state.compiler.compile(shown)
         // 点的名称：写在点的右上方，点在坐标盒外时不写（球也被裁掉了）。
-        if state.document.layers.contains(where: { $0.kind == .point && $0.isVisible && $0.showsLabel }) {
+        if shown.layers.contains(where: { $0.kind == .point && $0.isVisible && $0.showsLabel }) {
             let pointFont = NSFont.systemFont(ofSize: 13, weight: .semibold)
-            for (index, label) in SpaceGeometry.pointLabels(in: state.compiler.compile(state.document), view: view).enumerated() {
+            for (index, label) in SpaceGeometry.pointLabels(in: compiled, view: view).enumerated() {
                 guard let screen = view.project(view.normalized(label.position)) else { continue }
                 let point = CGPoint(x: screen.x / scale + 9, y: screen.y / scale - 9)
                 guard point.x > left, point.x < right - 8, point.y > top + 8, point.y < bottom else { continue }
@@ -441,7 +449,7 @@ final class Canvas3DOverlayView: NSView {
         }
 
         // 自由文字：写在 (x, y, z) 投到屏幕上的位置，不管在不在坐标盒里（盒外的字照样写）。
-        for (index, annotation) in TextAnnotations.all(in: state.document, compiled: state.compiler.compile(state.document)).enumerated() {
+        for (index, annotation) in TextAnnotations.all(in: shown, compiled: compiled).enumerated() {
             guard let screen = view.project(view.normalized(annotation.position)) else { continue }
             let point = CGPoint(x: screen.x / scale, y: screen.y / scale)
             guard point.x > left - 200, point.x < right, point.y > top, point.y < bottom else { continue }

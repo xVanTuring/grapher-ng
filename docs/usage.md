@@ -77,9 +77,9 @@ Read tools always work:
 | `get_state` | Open documents (id, title, 2D/3D, layer count) and whether writing is allowed. Start here. |
 | `get_document` | Everything in one document: layers with ids, formulas, colours and errors; parameters; view; appearance. |
 | `get_reference` | Plot kinds, formula syntax, functions and examples. |
-| `render_image` | Renders the document as a PNG the assistant can look at. Defaults to 900×600, up to 2400×2400. |
+| `render_image` | Renders the document as a PNG the assistant can look at. Defaults to 900×600, up to 2400×2400. For a lesson document, `step` (from 1) renders that step: its layers, camera and slider values, with the step's text card at the bottom. |
 | `get_text_reference` | The short text format for a graph block in a Markdown note (a ```` ```grapher ```` fenced block, e.g. in UniReader): one layer per line, sliders, camera, examples. |
-| `render_text` | Draws a text block as a PNG and lists errors by line number, without touching any open document. Use it to check a block before putting it in a note. |
+| `render_text` | Draws a text block as a PNG and lists errors by line number, without touching any open document. Use it to check a block before putting it in a note. When the text has lesson steps, `step` renders that step. |
 | `relate` | 3D: how two points / straight lines / planes relate (relation code, distance, angle, foot of the perpendicular, intersection, common perpendicular, line of intersection) with coordinates. A line is a `spaceCurve` linear in `t`, a plane an `implicitSurface` / `surface` linear in x, y, z or a `tangentPlane`. |
 
 Write tools need **Allow AI to modify graphs**:
@@ -95,6 +95,8 @@ Write tools need **Allow AI to modify graphs**:
 | `set_appearance` | `theme` (light/dark), grid, minor grid, axes, tick labels. |
 | `export_png` | Write a PNG file at a given size. |
 | `draw_relation` | Same as `relate`, and adds the helper objects (feet, intersection points, common perpendicular, line of intersection) as new layers. |
+| `set_lesson` | Turns the document into a step-by-step lesson by replacing all steps. Each step has `title`, `text` (TeX allowed), `show` (names of the layers it shows), a camera (3D `azimuth` `elevation` `zoom` `range` `center`; 2D `center` `width`), `parameters` (name → value) and `play` (parameters to play). An empty list removes the lesson. Undoable. |
+| `go_to_step` | Shows one step of the lesson in the window (counted from 1), or ends the lesson with `end: true`. |
 
 Every tool that targets a document takes an optional `document_id`. Leave it out and the frontmost graph window is used.
 
@@ -109,7 +111,7 @@ Every tool that targets a document takes an optional `document_id`. Leave it out
 | 2D | `region` | `formula` = F(x, y), `relation` is one of `<` `<=` `>` `>=` |
 | 3D | `surface` | `formula` = f(x, y) |
 | 3D | `parametricSurface` | x(u,v), y(u,v), z(u,v) in the three formula fields, `domain` for u, `domain2` for v |
-| 3D | `spaceCurve` | x(t), y(t), z(t) in the three formula fields, `domain` |
+| 3D | `spaceCurve` | x(t), y(t), z(t) in the three formula fields, `domain`; `arrow: true` draws an arrowhead at the end of t (for vectors) |
 | 3D | `implicitSurface` | `formula` = F(x, y, z), drawn where F = 0 |
 | 3D | `surfaceIntersection` | no formula: `source_a` and `source_b` are the ids of two surface layers (`surface`, `parametricSurface`, `implicitSurface`); draws the curve where they meet, even if the sources are hidden |
 | 2D | `scatter` | `formula` = the data, one `x, y` point per line (commas, semicolons, spaces or tabs; header lines are skipped), `fit: true` draws the least-squares line (`get_document` then reports `slope`, `intercept`, `r`), `line_width` = point size |
@@ -138,9 +140,37 @@ For implicit kinds write F without `= 0` (`x^2 + y^2 - 4`, not `x^2 + y^2 = 4`).
 **File ▸ Open Example** (and the **Examples** card in the welcome window) lists ready-made graphs grouped by topic. Each one opens in a new window, so you can drag the sliders, change formulas and rotate freely without touching your own work.
 
 - **2D**: curves and regions · parameter sliders · tangents and normals · data and fitting
-- **3D**: surfaces and space curves · intersection curves · points, lines and planes · projections and tangent planes
+- **3D**: surfaces and space curves · intersection curves · points, lines and planes · projections and tangent planes · gradients · step-by-step derivations
 
 Hover over an example in the menu for a one-line explanation.
+
+### Step-by-step lessons
+
+A lesson splits a graph into steps to explain a derivation one step at a time (for example, where the surface area element
+dS comes from). Each step has a title and a text that may contain TeX: `$…$` inline, `$$…$$` on its own line, `**…**` for
+bold. Each step also decides which layers are shown, where the camera goes, what the sliders are set to (they move there
+smoothly) and whether a parameter starts playing.
+
+- **Watching**: a document with a lesson opens at step 1 (try **File ▸ Open Example ▸ Step-by-step derivations ▸ The surface
+  area element dS**). The lesson card sits at the bottom of the canvas and the graph is framed above it. Turn pages with ‹ › on
+  the card, or ← → / Space / Page Up / Page Down on the canvas; click "2 / 8" on the card to jump to any step; Esc or ✕ ends
+  the lesson. The menu has **View ▸ Next Step (⌘])** and **Previous Step (⌘[)**. You can still rotate and drag sliders.
+- **Watching does not change the document**: a step only changes what is drawn, never a layer's own visibility; ending the
+  lesson puts the sliders back where they were, and saving saves those values.
+- **Making a lesson**: click the lesson button in the toolbar (mortarboard) or **View ▸ Start Lesson (⌥⌘L)**. With no steps yet
+  it makes the first step from what is on screen and opens the editor. Click the pencil on the card to edit:
+  - the eye buttons in the layer list choose which layers **this step** shows;
+  - set up the camera and the sliders, then **Record View and Parameters**;
+  - edit the title and the text on the card; **Add Step After**, ↑ ↓ to reorder, **Delete Step**. Everything is undoable.
+- Layers that no step mentions follow their own visibility, so layers added after the lesson was written still show.
+- Turning one page forward only applies what that step itself sets (no camera means the camera stays, so your own rotation
+  is kept); jumping or going back restores the state you would have reached by stepping through.
+- **Vectors**: tick **Arrow at the end** on a space curve to draw an arrowhead where its parameter ends (normals, tangents).
+
+To have an assistant build a lesson: add every layer first (helpers included) with `add_layer`, then `set_lesson`, and check
+each step with `render_image` plus `step`. The text format (```` ```grapher ```` blocks) can hold a lesson too:
+`step Title: show=S, P; azimuth=30; h=0.3; play=h`, followed by lines starting with `>` for the step's text (see
+`get_text_reference`).
 
 ### Animating with parameters
 

@@ -29,6 +29,8 @@ final class AppState {
         case playback
         /// Viewport framing changed.
         case viewport
+        /// 讲解：进 / 出讲解、换了一步、步骤内容改了、卡片进 / 出编辑。
+        case lesson
     }
 
     private struct Observer {
@@ -51,7 +53,7 @@ final class AppState {
         observers.removeAll { $0.id == id }
     }
 
-    private func notify(_ change: Change) {
+    func notify(_ change: Change) {
         for observer in observers where observer.changes?.contains(change) ?? true {
             observer.handler(change)
         }
@@ -115,6 +117,38 @@ final class AppState {
     private var chromeCache: (key: ChromeKey, scene: Scene2D, layout: ChromeLayout)?
     private var chrome3DCache: (key: Chrome3DKey, result: Chrome3D.Result)?
 
+    // MARK: 讲解（窗口状态，不进文档；逻辑在 AppState+Lesson.swift）
+
+    /// 正在看讲解的第几步；nil = 没在讲解。
+    var lessonStep: Int?
+    /// 讲解卡片在编辑这一步（标题、文字）。
+    var lessonEditing = false
+    /// 进讲解之前各参数的值：结束讲解时还原，看一遍讲解不改文档。
+    var lessonParameterSnapshot: [UUID: Double] = [:]
+    /// 两步之间的过渡动画（相机、参数）。
+    var lessonAnimation: LessonAnimation?
+    var lessonTimer: Timer?
+    /// 讲解自己开起来的参数播放：换步、结束讲解时停掉。
+    var lessonPlays: Set<UUID> = []
+    /// 画布已经报过尺寸（平面图按「横向看到多宽」取景要知道画布多宽）。
+    var canvasMetricsKnown = false
+    /// 进讲解时画布还没尺寸：等画布报上尺寸再按这一步重新取景。
+    var lessonFramePending = false
+    /// 画布底部被讲解卡片占掉的高度（点）：画布把它算进被遮住的一圈，图形摆在卡片上方。
+    private(set) var reservedBottomInset: CGFloat = 0
+
+    func setReservedBottomInset(_ inset: CGFloat) {
+        guard abs(inset - reservedBottomInset) > 0.5 else { return }
+        reservedBottomInset = inset
+        notify(.lesson)
+    }
+
+    /// 讲解中看到的文档：图层显示按当前这一步；不在讲解时就是文档本身。采样、写字、导出都用它。
+    var presentedDocument: GrapherDocument {
+        guard let lessonStep else { return document }
+        return document.presenting(step: lessonStep)
+    }
+
     /// 不给文档时按 `dimension` 开一份新的平面图或立体图：默认空白，`example` 为真时是示例
     /// （欢迎窗口的「示例」）。已开着的窗口要载入示例走 `loadExample`。
     init(document: GrapherDocument? = nil, dimension: DocumentDimension = .plane, example: Bool = false) {
@@ -135,6 +169,8 @@ final class AppState {
             self.document = fresh
         }
         self.selection = self.document.layers.first?.id
+        // 带讲解的文档（示例）一打开就从第一步讲起。
+        if !self.document.lessonSteps.isEmpty { startLesson(at: 0, animated: false) }
     }
 
     // MARK: - Coordinates
@@ -168,9 +204,14 @@ final class AppState {
         view3D.insetTop = viewport.insetTop
         view3D.insetRight = viewport.insetRight
         view3D.insetBottom = viewport.insetBottom
+        canvasMetricsKnown = true
         guard viewport != document.viewport || view3D != document.view3D || scaleChanged else { return }
         document.viewport = viewport
         document.view3D = view3D
+        if lessonFramePending {
+            lessonFramePending = false
+            frameCurrentLessonStep()
+        }
         notify(.viewport)
         // 立体图换画布尺寸只改投影，坐标盒没变，不用重采（线宽随倍率变时才要）。
         if document.dimension == .plane || scaleChanged {
@@ -303,9 +344,10 @@ final class AppState {
             return
         }
 
+        let (shown, compiled) = compiledForDisplay()
         let request = SceneBuildRequest(
-            document: document,
-            compiled: compileDocument(),
+            document: shown,
+            compiled: compiled,
             viewport: document.viewport,
             quality: quality,
             backingScale: backingScale,
@@ -323,10 +365,20 @@ final class AppState {
         }
     }
 
+    /// 要画出来的文档与它编译好的图层。公式错误照旧按整份文档报（讲解里藏起来的图层写错了也要提示）；
+    /// 讲解中图层的显示按当前这一步。
+    private func compiledForDisplay() -> (GrapherDocument, [LayerCompiler.CompiledLayer]) {
+        let all = compileDocument()
+        guard lessonStep != nil else { return (document, all) }
+        let shown = presentedDocument
+        return (shown, compiler.compile(shown))
+    }
+
     private func startBuild3D(quality: SampleQuality) {
+        let (shown, compiled) = compiledForDisplay()
         let request = SceneBuild3DRequest(
-            document: document,
-            compiled: compileDocument(),
+            document: shown,
+            compiled: compiled,
             view: document.view3D,
             quality: quality,
             backingScale: backingScale
@@ -373,9 +425,10 @@ final class AppState {
         viewport.widthPixels *= scale
         viewport.heightPixels *= scale
         viewport.scale *= scale
-        let compiled = compiler.compile(document)
+        let shown = presentedDocument
+        let compiled = compiler.compile(shown)
         let request = SceneBuildRequest(
-            document: document,
+            document: shown,
             compiled: compiled,
             viewport: viewport,
             quality: quality,
@@ -422,6 +475,7 @@ final class AppState {
             Task { @MainActor in
                 target.restore(previous)
                 target.repairSelection()
+                target.repairLesson()
                 target.requestRebuild(interactive: false)
                 target.notify(.document)
                 target.notify(.layers)
@@ -473,6 +527,7 @@ final class AppState {
             Task { @MainActor in
                 target.restore(snapshot)
                 target.repairSelection()
+                target.repairLesson()
                 target.requestRebuild(interactive: false)
                 target.notify(.document)
                 target.notify(.layers)
@@ -580,8 +635,15 @@ final class AppState {
     func updateParameter(id: UUID, value: Double) {
         guard let index = document.parameters.firstIndex(where: { $0.id == id }) else { return }
         document.parameters[index].value = value
-        markEdited()
+        // 讲解中拖滑块只是看看：结束讲解时参数还原，不算改动。
+        if lessonStep == nil { markEdited() }
         requestInteractiveRebuild()
+    }
+
+    /// 讲解换步、结束讲解时改参数值：不算改动文档、不记撤销（看讲解不改文档），重采由调用方安排。
+    func setParameterValueForLesson(at index: Int, _ value: Double) {
+        guard document.parameters.indices.contains(index) else { return }
+        document.parameters[index].value = value
     }
 
     func addParameter() {
@@ -620,7 +682,8 @@ final class AppState {
         }
         guard document.parameters.contains(where: { $0.id == id }) else { return }
         if playing.isEmpty {
-            playbackOpensLiveEdit = liveEditSnapshot == nil
+            // 讲解中的播放不记撤销：结束讲解时参数本来就还原。
+            playbackOpensLiveEdit = liveEditSnapshot == nil && lessonStep == nil
             if playbackOpensLiveEdit { beginLiveEdit() }
             playbackClock = CACurrentMediaTime()
             let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
@@ -675,7 +738,7 @@ final class AppState {
         }
         if playing.isEmpty { stopAllPlayback(commit: true); return }
         guard changed else { return }
-        markEdited()
+        if lessonStep == nil { markEdited() }
         requestInteractiveRebuild()
         notify(.playback)
     }
@@ -771,14 +834,18 @@ final class AppState {
     /// 这里只换内容。
     func replaceDocument(with loaded: GrapherDocument) {
         stopAllPlayback(commit: false)
+        abandonLesson()
         var loaded = loaded
         adoptCanvasMetrics(&loaded)
         document = loaded
         selection = loaded.layers.first?.id
+        // 带讲解的文档一打开就从第一步讲起。
+        if !loaded.lessonSteps.isEmpty { startLesson(at: 0, animated: false) }
         requestRebuild(interactive: false)
         notify(.document)
         notify(.layers)
         notify(.parameters)
+        notify(.lesson)
     }
 
     /// 「加载示例」：图层、参数和视角换成示例（平面图 / 立体图各一份），主题与网格等显示设置不动。

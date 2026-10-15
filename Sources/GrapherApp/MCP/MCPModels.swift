@@ -73,6 +73,34 @@ struct MCPArgs {
         return strings
     }
 
+    /// 任意个字符串的数组（没传返回 nil）。
+    func optionalStringList(_ key: String) throws -> [String]? {
+        guard let value = value(key) else { return nil }
+        guard let strings = value as? [String] else { throw MCPInvalidParams("'\(key)' must be an array of strings") }
+        return strings
+    }
+
+    /// 对象数组（没传返回 nil）。
+    func optionalObjects(_ key: String) throws -> [MCPObject]? {
+        guard let value = value(key) else { return nil }
+        guard let objects = value as? [MCPObject] else { throw MCPInvalidParams("'\(key)' must be an array of objects") }
+        return objects
+    }
+
+    /// 键为字符串、值为数的对象（没传返回 nil）。
+    func optionalNumberMap(_ key: String) throws -> [String: Double]? {
+        guard let value = value(key) else { return nil }
+        guard let object = value as? MCPObject else { throw MCPInvalidParams("'\(key)' must be an object of numbers") }
+        var result: [String: Double] = [:]
+        for (name, raw) in object {
+            guard let number = raw as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(), number.doubleValue.isFinite else {
+                throw MCPInvalidParams("'\(key).\(name)' must be a number")
+            }
+            result[name] = number.doubleValue
+        }
+        return result
+    }
+
     func optionalString(_ key: String) throws -> String? {
         guard let value = value(key) else { return nil }
         guard let text = value as? String else { throw MCPInvalidParams("'\(key)' must be a string") }
@@ -171,5 +199,18 @@ enum MCPSchema {
 
     static func numbers(_ description: String, count: Int) -> MCPObject {
         ["type": "array", "items": ["type": "number"], "minItems": count, "maxItems": count, "description": description]
+    }
+
+    static func stringList(_ description: String) -> MCPObject {
+        ["type": "array", "items": ["type": "string"], "description": description]
+    }
+
+    static func array(_ description: String, items: MCPObject) -> MCPObject {
+        ["type": "array", "items": items, "description": description]
+    }
+
+    /// 值都是数的对象（参数名 → 值）。
+    static func numberMap(_ description: String) -> MCPObject {
+        ["type": "object", "additionalProperties": ["type": "number"], "description": description]
     }
 }

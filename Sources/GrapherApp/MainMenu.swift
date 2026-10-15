@@ -105,6 +105,13 @@ enum MainMenu {
             menu.addItem(item(L("Zoom In"), #selector(DocumentWindowController.zoomIn(_:)), key: "="))
             menu.addItem(item(L("Zoom Out"), #selector(DocumentWindowController.zoomOut(_:)), key: "-"))
             menu.addItem(.separator())
+            // 讲解：一步一步看推导。画布上还可以用 ← → / 空格翻页、Esc 结束。
+            menu.addItem(item(L("Start Lesson"), #selector(DocumentWindowController.toggleLesson(_:)), key: "l",
+                              modifiers: [.command, .option]))
+            menu.addItem(item(L("Next Step"), #selector(DocumentWindowController.nextLessonStep(_:)), key: "]"))
+            menu.addItem(item(L("Previous Step"), #selector(DocumentWindowController.previousLessonStep(_:)), key: "["))
+            menu.addItem(item(L("Add Step from Current View"), #selector(DocumentWindowController.addLessonStep(_:))))
+            menu.addItem(.separator())
             menu.addItem(item(L("Show/Hide Sidebar"), #selector(NSSplitViewController.toggleSidebar(_:)), key: "s",
                               modifiers: [.command, .control]))
             menu.addItem(item(L("Show/Hide Inspector"), #selector(DocumentWindowController.toggleInspector(_:)), key: "i",

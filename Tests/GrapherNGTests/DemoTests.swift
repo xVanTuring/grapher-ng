@@ -41,7 +41,7 @@ final class DemoTests: XCTestCase {
             XCTAssertEqual(demo.make().dimension, demo.dimension, demo.id)
         }
         XCTAssertEqual(Demos.categories(for: .plane), [.curves, .parameters, .tangents, .data])
-        XCTAssertEqual(Demos.categories(for: .space), [.surfaces, .intersections, .geometry, .projections, .gradients])
+        XCTAssertEqual(Demos.categories(for: .space), [.surfaces, .intersections, .geometry, .projections, .gradients, .lessons])
         XCTAssertNotNil(Demos.demo(id: "space.sphere-plane"))
         XCTAssertNil(Demos.demo(id: "nope"))
         XCTAssertGreaterThanOrEqual(Demos.all.count, 38)

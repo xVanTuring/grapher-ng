@@ -276,3 +276,37 @@
 "A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually)." = "A number, or a formula with parameters such as p*2*pi: it follows the parameter, so playing the parameter moves it (a range end draws the curve gradually).";
 "%ld of %ld points drawn" = "%ld of %ld points drawn";
 "Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q)." = "Each column can be a number or a formula with parameters, for example 3*cos(q), 3*sin(q).";
+
+/* 讲解 */
+"Lesson" = "Lesson";
+"Step through the lesson; with no steps yet, make the first one from what is on screen (⌥⌘L)" = "Step through the lesson; with no steps yet, make the first one from what is on screen (⌥⌘L)";
+"Start Lesson" = "Start Lesson";
+"End Lesson" = "End Lesson";
+"Next Step" = "Next Step";
+"Previous Step" = "Previous Step";
+"Add Step from Current View" = "Add Step from Current View";
+"Hide in This Step" = "Hide in This Step";
+"Show in This Step" = "Show in This Step";
+"Step %ld" = "Step %ld";
+"%ld / %ld" = "%ld / %ld";
+"Add Step" = "Add Step";
+"Record View in Step" = "Record View in Step";
+"Edit Step" = "Edit Step";
+"Delete Step" = "Delete Step";
+"Move Step" = "Move Step";
+"Edit Lesson" = "Edit Lesson";
+"Previous Step (←)" = "Previous Step (←)";
+"Next Step (→ or Space)" = "Next Step (→ or Space)";
+"Edit This Step" = "Edit This Step";
+"End Lesson (Esc)" = "End Lesson (Esc)";
+"Jump to a step" = "Jump to a step";
+"Step title" = "Step title";
+"Inline formula: $…$; a formula on its own line: $$…$$; **bold**. The eye buttons in the layer list choose which layers this step shows." = "Inline formula: $…$; a formula on its own line: $$…$$; **bold**. The eye buttons in the layer list choose which layers this step shows.";
+"Record View and Parameters" = "Record View and Parameters";
+"Store the current camera and every parameter value in this step" = "Store the current camera and every parameter value in this step";
+"Add Step After" = "Add Step After";
+"Move Step Earlier" = "Move Step Earlier";
+"Move Step Later" = "Move Step Later";
+"Done" = "Done";
+"Arrow at the end" = "Arrow at the end";
+"Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent." = "Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent.";

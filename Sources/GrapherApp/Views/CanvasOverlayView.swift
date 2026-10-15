@@ -122,7 +122,8 @@ final class CanvasOverlayView: NSView {
         }
 
         // 自由文字：写在数据坐标 (x, y) 上，文字左边缘对着这一点，跟着画布一起平移缩放。
-        for (index, annotation) in TextAnnotations.all(in: state.document, compiled: state.compiler.compile(state.document)).enumerated() {
+        let shown = state.presentedDocument
+        for (index, annotation) in TextAnnotations.all(in: shown, compiled: state.compiler.compile(shown)).enumerated() {
             let screen = viewport.toScreen(x: annotation.position.x, y: annotation.position.y)
             let point = CGPoint(x: screen.x / scale, y: screen.y / scale)
             guard point.x > -400, point.x < bounds.width + 40, point.y > -40, point.y < bounds.height + 40 else { continue }

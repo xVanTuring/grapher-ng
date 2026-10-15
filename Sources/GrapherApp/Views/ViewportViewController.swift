@@ -81,11 +81,13 @@ final class ViewportViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         installMetalView()
-        observerID = state.observe([.scene, .status, .probe, .viewport, .document, .selection]) { [weak self] change in
+        observerID = state.observe([.scene, .status, .probe, .viewport, .document, .selection, .lesson]) { [weak self] change in
             guard let self else { return }
             switch change {
             case .scene:
                 self.pushContent()
+            case .lesson:
+                self.scheduleMetricsSync()
             case .viewport, .document, .probe, .selection:
                 // 视口一变：网格重画、曲线按新旧视口之差挪过去、刻度数字跟上——都在下一次屏幕
                 // 刷新里一起做（`frameWillDraw`），不等后台采样，也不按事件次数重复画。
@@ -224,13 +226,17 @@ final class ViewportViewController: NSViewController {
     private var obscuredInsets: NSEdgeInsets {
         let probe = safeAreaProbe.frame
         let bounds = host.bounds
-        guard probe.width > 0, probe.height > 0 else { return host.safeAreaInsets }
-        return NSEdgeInsets(
-            top: max(probe.minY, 0),
-            left: max(probe.minX, 0),
-            bottom: max(bounds.height - probe.maxY, 0),
-            right: max(bounds.width - probe.maxX, 0)
-        )
+        var insets = probe.width > 0 && probe.height > 0
+            ? NSEdgeInsets(
+                top: max(probe.minY, 0),
+                left: max(probe.minX, 0),
+                bottom: max(bounds.height - probe.maxY, 0),
+                right: max(bounds.width - probe.maxX, 0)
+            )
+            : host.safeAreaInsets
+        // 讲解卡片盖住的底部也算遮挡：图形摆在卡片上方，刻度数字也让开它。
+        insets.bottom += state.reservedBottomInset
+        return insets
     }
 
     fileprivate func hostDidLayout() {
@@ -344,6 +350,7 @@ final class ViewportViewController: NSViewController {
     }
 
     fileprivate func handleKeyDown(_ event: NSEvent) {
+        if state.handleLessonKey(event) { return }
         switch event.charactersIgnoringModifiers?.lowercased() {
         case "f": state.fitToContent()
         case "r", "0": state.resetView()

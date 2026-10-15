@@ -69,7 +69,7 @@ enum Exporter {
     /// 立体图渲染成图片（含刻度文字），导出与测试共用。画法与 Quick Look 预览同一份（`GraphSnapshot`）。
     static func renderImage3D(state: AppState, scale: Double) -> CGImage? {
         GraphSnapshot.spaceImage(
-            of: state.document,
+            of: state.presentedDocument,
             view: state.exportView3D(scale: scale),
             pointScale: state.backingScale * scale,
             quality: .high,

@@ -88,7 +88,19 @@ public enum SceneBuilder3D {
 
             case .spaceCurve:
                 guard let fx = compiled.primary, let fy = compiled.secondary, let fz = compiled.tertiary else { continue }
-                let (lines, extent) = spaceCurve(fx, fy, fz, layer: layer, request: request)
+                let sampled = spaceCurve(fx, fy, fz, layer: layer, request: request)
+                var lines = sampled.0
+                let extent = sampled.1
+                if layer.showsArrow, let last = lines.indices.last {
+                    // 箭头画在参数终点那一头：线截到圆锥底面，尖正好落在终点上。
+                    let length = ArrowHead.length(width: layer.lineStyle.width)
+                    let tip = lines[last].points.last
+                    if let tip, let trimmed = ArrowHead.trim(lines[last].points, length: length) {
+                        lines[last].points = trimmed.points
+                        scene.meshes.append(ArrowHead.mesh(tip: tip, direction: trimmed.direction, length: length,
+                                                           color: layer.lineStyle.color))
+                    }
+                }
                 scene.polylines.append(contentsOf: lines)
                 fit = extent?.union(fit) ?? fit
 

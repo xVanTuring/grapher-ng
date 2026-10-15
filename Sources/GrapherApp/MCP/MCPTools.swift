@@ -11,6 +11,7 @@ enum MCPTools {
         registerDocumentTools(into: catalog, facade: facade)
         registerLayerTools(into: catalog, facade: facade)
         registerViewTools(into: catalog, facade: facade)
+        registerLessonTools(into: catalog, facade: facade)
     }
 
     private static let documentIDSchema = MCPSchema.string(
@@ -63,20 +64,24 @@ enum MCPTools {
         catalog.register(MCPTool(
             name: "render_image",
             title: "Render image",
-            description: "Render the document as a PNG you can look at, to check that the graph is what you intended. Uses the saved view of the document.",
+            description: "Render the document as a PNG you can look at, to check that the graph is what you intended. Uses the saved view of the document. "
+                + "With step=N (lesson documents) it renders that step: its layers, camera and slider values, with the step's text card at the bottom.",
             inputSchema: MCPSchema.object([
                 "document_id": documentIDSchema,
                 "width": MCPSchema.integer("Image width in pixels (default 900)", minimum: 200, maximum: 2400),
-                "height": MCPSchema.integer("Image height in pixels (default 600)", minimum: 200, maximum: 2400),
+                "height": MCPSchema.integer("Image height in pixels (default 600; 760 with step)", minimum: 200, maximum: 2400),
+                "step": MCPSchema.integer("Lesson step to render, counted from 1", minimum: 1),
             ]),
             tier: .read
         ) { args in
             let document = try await facade.resolve(try args.optionalUUID("document_id"))
+            let step = try args.optionalInt("step")
             let width = try args.optionalInt("width") ?? 900
-            let height = try args.optionalInt("height") ?? 600
+            let height = try args.optionalInt("height") ?? (step == nil ? 600 : 760)
             try checkImageSize(width: width, height: height)
-            let png = try await facade.renderPNG(of: document, width: width, height: height)
-            return MCPToolResult(text: "Rendered \(width)×\(height) PNG.", imagePNG: png)
+            let png = try await facade.renderPNG(of: document, width: width, height: height, step: step)
+            let what = step.map { " of lesson step \($0)" } ?? ""
+            return MCPToolResult(text: "Rendered \(width)×\(height) PNG\(what).", imagePNG: png)
         })
 
         catalog.register(MCPTool(
@@ -99,6 +104,7 @@ enum MCPTools {
                 "text": MCPSchema.string("The block body, one layer per line (see get_text_reference)"),
                 "width": MCPSchema.integer("Image width in pixels (default 900); the height follows the block's aspect", minimum: 200, maximum: 2400),
                 "theme": MCPSchema.string("light or dark; default follows the text, then light", enumValues: ["light", "dark"]),
+                "step": MCPSchema.integer("For a lesson (step lines): render that step, counted from 1, with its text card", minimum: 1),
             ], required: ["text"]),
             tier: .read
         ) { args in
@@ -106,7 +112,7 @@ enum MCPTools {
             let width = try args.optionalInt("width") ?? 900
             try checkImageSize(width: width, height: 200)
             let theme = try args.optionalString("theme")
-            let rendering = try await facade.renderText(text, width: width, theme: theme)
+            let rendering = try await facade.renderText(text, width: width, theme: theme, step: try args.optionalInt("step"))
             let problems = rendering.errors.map { "line \($0.line): \($0.message)" }
             let summary = problems.isEmpty
                 ? "Rendered \(width)×\(Int((Double(width) / rendering.aspect).rounded())) PNG. No errors."
@@ -224,6 +230,7 @@ enum MCPTools {
             "on_floor": MCPSchema.boolean("gradientField only: draw ∇f flat on the floor of the box instead of along the surface"),
             "fit": MCPSchema.boolean("scatter only: draw the least-squares line (get_document then reports slope, intercept and r)"),
             "label": MCPSchema.boolean("point only: write the layer name (A, B, C…) next to the point (default true)"),
+            "arrow": MCPSchema.boolean("spaceCurve only: draw an arrowhead at the end of t, to show a vector (normal, tangent …)"),
             "opacity": MCPSchema.number("surface / region fill opacity, 0.05–1 (default 1); below 1 a surface becomes translucent"),
             "color": MCPSchema.string("#RRGGBB"),
             "line_width": MCPSchema.number("Stroke width in points (default 1.8)"),
@@ -266,6 +273,7 @@ enum MCPTools {
         }
         edit.opacity = try args.optionalDouble("opacity")
         edit.showsLabel = try args.optionalBool("label")
+        edit.showsArrow = try args.optionalBool("arrow")
         edit.showsFit = try args.optionalBool("fit")
         edit.colorsBySlope = try args.optionalBool("color_by_slope")
         edit.gridDensity = try args.optionalInt("density")
@@ -510,6 +518,68 @@ enum MCPTools {
         })
     }
 
+    // MARK: - Lesson
+
+    @MainActor
+    private static func registerLessonTools(into catalog: MCPCatalog, facade: MCPFacade) {
+        let stepSchema = MCPSchema.object([
+            "title": MCPSchema.string("Step title; may contain TeX in $…$"),
+            "text": MCPSchema.string("Explanation. Inline TeX $…$, a formula on its own line $$…$$, **bold**, newlines for paragraphs"),
+            "show": MCPSchema.stringList("Names (or ids) of the layers this step shows. Omit to keep the previous step's set; a first step without it shows every layer"),
+            "focus": MCPSchema.string("Layer name or id to highlight"),
+            "azimuth": MCPSchema.number("3D: camera degrees around z (omitted camera values keep the previous step's)"),
+            "elevation": MCPSchema.number("3D: camera degrees above the xy plane"),
+            "zoom": MCPSchema.number("3D: enlarge the box on screen, 0.25 … 12"),
+            "range": MCPSchema.number("3D: half the axis box size in data units"),
+            "center": MCPSchema.array("3D: [x, y, z] box centre; 2D: [x, y] view centre", items: ["type": "number"]),
+            "width": MCPSchema.number("2D: how many x units are visible across"),
+            "parameters": MCPSchema.numberMap("Slider values for this step, e.g. {\"h\": 0.3}; they move there smoothly"),
+            "play": MCPSchema.stringList("Parameters to start playing when the step opens"),
+        ])
+        catalog.register(MCPTool(
+            name: "set_lesson",
+            title: "Set lesson steps",
+            description: "Turn the document into a step-by-step lesson (for explaining a derivation): replace all steps. "
+                + "Each step chooses which layers are shown, may move the camera and sliders, and has a title and text with TeX formulas. "
+                + "Build every layer first (hidden helpers included), then call this. An empty list removes the lesson. "
+                + "Check each step with render_image step=N. Undoable.",
+            inputSchema: MCPSchema.object([
+                "document_id": documentIDSchema,
+                "steps": MCPSchema.array("The steps in order", items: stepSchema),
+                "start": MCPSchema.boolean("Open the lesson at step 1 in the window (default true)"),
+            ], required: ["steps"]),
+            tier: .write
+        ) { args in
+            let document = try await facade.resolve(try args.optionalUUID("document_id"))
+            guard let steps = try args.optionalObjects("steps") else { throw MCPInvalidParams("missing required array 'steps'") }
+            let count = try await facade.setLesson(in: document, steps: steps, start: try args.optionalBool("start") ?? true)
+            return MCPToolResult(
+                text: count == 0 ? "Lesson removed." : "Lesson set: \(count) step(s).",
+                structured: await facade.describe(document)["lesson"] as? MCPObject)
+        })
+
+        catalog.register(MCPTool(
+            name: "go_to_step",
+            title: "Go to lesson step",
+            description: "Show one step of the document's lesson in its window (counted from 1), or end the lesson with end=true.",
+            inputSchema: MCPSchema.object([
+                "document_id": documentIDSchema,
+                "step": MCPSchema.integer("Step number, counted from 1", minimum: 1),
+                "end": MCPSchema.boolean("End the lesson: every layer goes back to its own visibility"),
+            ]),
+            tier: .write
+        ) { args in
+            let document = try await facade.resolve(try args.optionalUUID("document_id"))
+            if try args.optionalBool("end") == true {
+                try await facade.goToStep(in: document, number: nil)
+                return MCPToolResult(text: "Lesson ended.")
+            }
+            guard let step = try args.optionalInt("step") else { throw MCPInvalidParams("pass step (from 1) or end=true") }
+            try await facade.goToStep(in: document, number: step)
+            return MCPToolResult(text: "Showing step \(step).")
+        })
+    }
+
     private static func checkImageSize(width: Int, height: Int, limit: Int = 2400) throws {
         guard (200...limit).contains(width), (200...limit).contains(height) else {
             throw MCPToolError("width and height must be between 200 and \(limit).")
@@ -531,7 +601,7 @@ enum MCPTools {
     3D document:
       surface             formula = f(x,y)     z = f(x,y), over the axis box's x/y range; color_by_slope = true colors it by steepness (blue flat → red steep)
       parametricSurface   formula = x(u,v), secondary_formula = y(u,v), tertiary_formula = z(u,v), domain = [u0,u1], domain2 = [v0,v1]
-      spaceCurve          formula = x(t), secondary_formula = y(t), tertiary_formula = z(t), domain = [t0,t1]
+      spaceCurve          formula = x(t), secondary_formula = y(t), tertiary_formula = z(t), domain = [t0,t1]; arrow = true puts an arrowhead at t1 (vectors)
       implicitSurface     formula = F(x,y,z)   draws F = 0
       point               formula = x, secondary_formula = y, tertiary_formula = z   (numbers and parameters only, no variables); line_width = size
       surfaceIntersection source_a = id of one surface layer, source_b = id of another (surface / parametricSurface / implicitSurface); no formula.

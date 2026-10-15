@@ -58,6 +58,20 @@ public enum GraphSnapshot {
         }
 
         let viewport = planeViewport(of: document, pixelWidth: Double(pixelWidth), pixelHeight: Double(pixelHeight))
+        return planeImage(of: document, viewport: viewport, pointScale: pointScale, quality: quality, labels: labels)
+    }
+
+    /// 平面图按给定视口出图（视口的像素尺寸就是图的尺寸）。
+    public static func planeImage(
+        of document: GrapherDocument,
+        viewport: Viewport2D,
+        pointScale: Double,
+        quality: SampleQuality,
+        labels: Bool
+    ) -> CGImage? {
+        let pixelWidth = Int(viewport.widthPixels.rounded())
+        let pixelHeight = Int(viewport.heightPixels.rounded())
+        guard pixelWidth > 0, pixelHeight > 0 else { return nil }
         let compiledPlane = LayerCompiler().compile(document)
         let built = SceneBuilder2D.build(SceneBuildRequest(
             document: document, compiled: compiledPlane, viewport: viewport,
@@ -161,7 +175,7 @@ public enum GraphSnapshot {
     }
 
     /// 在渲染好的图上再画一层：交给 `body` 的上下文是像素坐标、左上角原点、y 向下。
-    private static func drawing(on image: CGImage, _ body: (CGContext) -> Void) -> CGImage? {
+    static func drawing(on image: CGImage, _ body: (CGContext) -> Void) -> CGImage? {
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(
                 data: nil, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: 0, space: space,

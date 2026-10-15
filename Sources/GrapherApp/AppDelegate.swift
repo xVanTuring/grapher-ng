@@ -42,6 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// 启动时没有文件要打开、或点 Dock 图标时一扇窗口都没有（同 FreeMind）：显示欢迎窗口；
     /// 用户在欢迎窗口里关掉了「启动时显示」的，直接新建一份空白平面图。
+    /// 关掉最后一扇窗口程序不退出（同 FreeMind，不实现 `applicationShouldTerminateAfterLastWindowClosed`），
+    /// 再点 Dock 图标就走到这里。
     func applicationOpenUntitledFile(_ sender: NSApplication) -> Bool {
         if !NSDocumentController.shared.documents.isEmpty { return true }
         if WelcomeWindowController.showsOnLaunch {
@@ -88,10 +90,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
-
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
-    }
 
     // MARK: - Documents
 

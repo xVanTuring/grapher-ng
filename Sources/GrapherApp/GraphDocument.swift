@@ -57,8 +57,7 @@ final class GraphDocument: NSDocument {
         addWindowController(DocumentWindowController(state: state))
     }
 
-    /// 任何文档的窗口显示出来就关掉欢迎窗口。必须在显示**之后**关：先关的话那一刻一扇窗口都没有，
-    /// `applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
+    /// 任何文档的窗口显示出来就关掉欢迎窗口。在显示**之后**关：先关的话中间有一刻一扇窗口都没有，画面会闪一下。
     override func showWindows() {
         super.showWindows()
         WelcomeWindowController.close()

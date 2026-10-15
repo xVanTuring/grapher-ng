@@ -40,8 +40,7 @@ final class GraphDocumentController: NSDocumentController {
     var graphDocuments: [GraphDocument] { documents.compactMap { $0 as? GraphDocument } }
 
     /// 只开着一扇刚建出来、没动过的空白窗口时打开文件，文件接替这扇窗口（同「文本编辑」）：
-    /// 新窗口摆到它的位置上，再把它关掉。顺序不能反：先关空白窗口的话，那一刻一扇窗口都没有，
-    /// `applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
+    /// 新窗口摆到它的位置上，再把它关掉。先显示新窗口再关空白的：反过来的话中间有一刻一扇窗口都没有，画面会闪一下。
     override func openDocument(
         withContentsOf url: URL,
         display displayDocument: Bool,

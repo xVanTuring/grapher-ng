@@ -119,8 +119,8 @@ Tests/GrapherNGTests/   单元测试
   新的改文档路径要么走 `mutate`，要么调 `markEdited`，否则关窗时不会提示保存。平移、缩放视口不算改动。
 - `GraphDocumentController` 必须在 `applicationWillFinishLaunching` 里最先建出来才会成为 `shared`。它只补两件事：
   新建立体图 / 示例（`newDocument(dimension:example:)`，示例不算改动、标题写明是哪个示例）；只开着一扇没动过的空白窗口时
-  打开文件，文件接替这扇窗口（同「文本编辑」）。接替时**先显示新窗口再关空白的**，反过来的话那一刻一扇窗口都没有，
-  `applicationShouldTerminateAfterLastWindowClosed` 会让程序直接退出。
+  打开文件，文件接替这扇窗口（同「文本编辑」）。接替时**先显示新窗口再关空白的**，反过来的话中间有一刻一扇窗口都没有，
+  画面会闪一下。
 - 新窗口默认是空白文档。「文件 → 加载示例」和图层列表空白时的按钮走 `AppState.loadExample`：图层、参数、视角换成示例，
   主题与网格不动，可撤销。示例本身仍是 `GrapherDocument.sample()` / `sample3D()`，无界面渲染也用它们。
 
@@ -134,7 +134,9 @@ Tests/GrapherNGTests/   单元测试
 - **缩略图**（`RecentGraphs.thumbnail`）：后台读文件、按文档存下时的视口重新采样并离屏渲染（平面图取没被侧栏盖住的那块铺满、
   立体图取当时视角；不画刻度文字），按路径 + 修改时间缓存。
 - 任何文档的窗口**显示出来之后**才关欢迎窗口（`GraphDocument.showWindows`）：在 `addDocument` 里就关的话，新窗口还没出来，
-  那一刻一扇窗口都没有，程序会直接退出。没有文档时关掉欢迎窗口，程序同样会退出（最后一扇窗口关了就退出，这是既有约定）。
+  中间有一刻一扇窗口都没有，画面会闪一下。
+- **关掉所有窗口程序不退出**（同 FreeMind）：`AppDelegate` 不实现 `applicationShouldTerminateAfterLastWindowClosed`，
+  程序留在 Dock 里、MCP 服务照常监听；再点 Dock 图标走 `applicationOpenUntitledFile`，显示欢迎窗口或新建空白图。⌘Q 才退出。
 - 卡片（`WelcomeCardView`）整块是点击区：`hitTest` 返回自己，子视图不接鼠标；`mouseDownCanMoveWindow = false`，
   否则窗口「拖背景移动」会把点击吃掉。颜色都在 `draw` 里取动态色，深浅色外观切换时自动跟上。
 - **Debug 版曾经每重新编一次，最近列表就清空一次**：系统按 App 的签名记这份列表，ad-hoc 签名每次构建都变。
@@ -307,8 +309,8 @@ Tests/GrapherNGTests/   单元测试
 - **`DemoTests`** 守着每个示例：id 不重复、每类有示例、公式没错、引用的图层都在、存取不变、真的画得出东西、渲染出来的图有内容、
   中文都翻了。想肉眼过一遍：`TEST_RUNNER_GRAPHER_DEMO_DIR=<目录> bash scripts/test.sh`，每个示例会存成 PNG。
 - **`AgentScenarioTests`** 把 AI 当用户，走真实的 MCP 工具目录 + JSON-RPC 画图：交线 + 投影、维维亚尼曲线、位置关系
-  （`relate` / `draw_relation`）、切线 + 散点 + 文字、参数、出错不留半成品、只读权限。测试宿主里最后一扇窗口关掉会让 App 退出，
-  所以测试里留一扇「哨兵」窗口不关。新加 MCP 工具 / 图型时，在这里加一个场景。
+  （`relate` / `draw_relation`）、切线 + 散点 + 文字、参数、出错不留半成品、只读权限。每个用例只关自己开的文档。
+  新加 MCP 工具 / 图型时，在这里加一个场景。
 
 ## 梯度场
 

@@ -82,13 +82,8 @@ final class AgentScenarioTests: XCTestCase {
         }
     }
 
-    /// 最后一扇窗口关掉时 App 会退出（既有约定），测试宿主跟着退出、测试被重启。
-    /// 所以整个测试期间留一扇不关的窗口，每个用例只关自己开的。
-    static var sentinel: GraphDocument?
-
     func agentSession() async throws -> Session {
-        let controller = try XCTUnwrap(GraphDocumentController.graphShared, "测试宿主里没有文档控制器")
-        if Self.sentinel == nil { Self.sentinel = controller.newDocument(dimension: .plane) }
+        _ = try XCTUnwrap(GraphDocumentController.graphShared, "测试宿主里没有文档控制器")
         return Session()
     }
 

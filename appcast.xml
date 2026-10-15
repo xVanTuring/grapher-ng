@@ -9,6 +9,40 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.4.0</title>
+      <pubDate>Thu, 15 Oct 2026 06:32:46 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.4.0</h3>
+<h4>改进</h4>
+<ul>
+<li><strong>关掉所有窗口后程序不退出</strong>：程序留在 Dock 里，再点 Dock 图标就打开欢迎窗口（或按设置新建空白图）。要退出请用 ⌘Q。</li>
+<li><strong>AI 助手</strong>：新增 <code>get_text_reference</code> 和 <code>render_text</code>。助手可以用一行一个图层的文字描述写出图形，在 Markdown 笔记（如 UniReader）里放可转动、可拖滑块的图形块；放进笔记之前先用 <code>render_text</code> 画出来检查，错误按行号报。</li>
+</ul>
+<h4>需要注意</h4>
+<ul>
+<li><strong>AI 接入的默认端口从 8775 改为 8776</strong>，原来的端口和 FreeMind 冲突。没在设置里改过端口的，请把 AI 客户端里的地址改成 <code><a href="http://127.0.0.1:8776/mcp">http://127.0.0.1:8776/mcp</a></code>（设置窗口里有填好的片段可以直接复制）。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.4.0">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.4.0</h3>
+<h4>Improvements</h4>
+<ul>
+<li><strong>Closing every window no longer quits the app</strong>: it stays in the Dock, and clicking the Dock icon opens the Welcome window (or a new blank graph, depending on your setting). Use ⌘Q to quit.</li>
+<li><strong>AI assistants</strong>: new <code>get_text_reference</code> and <code>render_text</code> tools. An assistant can describe a graph in a short text format, one layer per line, and put it in a Markdown note (for example in UniReader) as a block you can rotate and drive with sliders. <code>render_text</code> draws the block first so it can be checked, with errors reported by line number.</li>
+</ul>
+<h4>Please note</h4>
+<ul>
+<li><strong>The default port for AI connections changed from 8775 to 8776</strong>, because 8775 clashed with FreeMind. If you never changed the port in Settings, update the address in your AI client to <code><a href="http://127.0.0.1:8776/mcp">http://127.0.0.1:8776/mcp</a></code> (the Settings window has a ready-to-copy snippet).</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.4.0">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.4.0/GrapherNG-1.4.0.zip" length="3201642" type="application/octet-stream" sparkle:edSignature="zRi56F09sei9VaiOCdrrhB0rZcyyr1QUV4XeI5bcgU/79+SStCVvioQv8PXrDoq2d/TjlbZwIhK+0mM9dq+oDg==" />
+    </item>
+    <item>
       <title>v1.3.0</title>
       <pubDate>Wed, 14 Oct 2026 10:50:59 +0000</pubDate>
       <sparkle:version>6</sparkle:version>

@@ -9,6 +9,48 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.5.1</title>
+      <pubDate>Fri, 16 Oct 2026 09:22:32 +0000</pubDate>
+      <sparkle:version>9</sparkle:version>
+      <sparkle:shortVersionString>1.5.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.5.1</h3>
+<h4>新功能</h4>
+<ul>
+<li><strong>3D 轴向平面视图（正交投影）</strong>：立体图可以沿 x、y、z 轴看，得到没有近大远小的 YZ、XZ、XY 平面视图。</li>
+</ul>
+<p>  - 视图菜单里有「沿 X / Y / Z 轴看」和「正交投影」；在画布上按 <code>1</code> <code>2</code> <code>3</code> 切到三个视图，按 <code>P</code> 在透视和正交之间切换。</p>
+<p>  - 切换时坐标盒和缩放不变，不用重新采样；切到平面视图后仍可拖动旋转。投影方式会存进文件，「重置视图」回到透视。</p>
+<ul>
+<li><strong>AI 助手</strong>：<code>set_view</code> 新增 <code>view_along</code>（x / y / z）和 <code>projection</code>（perspective / orthographic）。</li>
+</ul>
+<h4>需要注意</h4>
+<ul>
+<li>分步讲解的相机暂时不记录投影方式，讲解里还不能切平面视图。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.5.1">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.5.1</h3>
+<h4>New</h4>
+<ul>
+<li><strong>Flat axis views for 3D (orthographic projection)</strong>: a 3D graph can be viewed along the x, y or z axis, giving YZ, XZ and XY plane views with no perspective.</li>
+</ul>
+<p>  - The View menu has "View Along X / Y / Z" and "Orthographic Projection". On the canvas, press <code>1</code> <code>2</code> <code>3</code> for the three views and <code>P</code> to switch between perspective and orthographic.</p>
+<p>  - The axis box and zoom stay as they are and nothing is resampled; you can still drag to rotate from a flat view. The projection is saved in the file, and Reset View returns to perspective.</p>
+<ul>
+<li><strong>AI assistants</strong>: <code>set_view</code> gains <code>view_along</code> (x / y / z) and <code>projection</code> (perspective / orthographic).</li>
+</ul>
+<h4>Please note</h4>
+<ul>
+<li>Lesson cameras do not record the projection yet, so a lesson cannot switch to a flat view.</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.5.1">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.5.1/GrapherNG-1.5.1.zip" length="3528439" type="application/octet-stream" sparkle:edSignature="DXval/6QQafFeJrDQ/oambpPOtRXBCslny4Ozy/MOHYTxg/Psmo9/NdL0WcDT2BmA5MrWayQQA/HnSyTkVbdCg==" />
+    </item>
+    <item>
       <title>v1.5.0</title>
       <pubDate>Fri, 16 Oct 2026 07:14:15 +0000</pubDate>
       <sparkle:version>8</sparkle:version>

@@ -9,6 +9,56 @@
     <language>en</language>
     <!-- BEGIN-ITEMS (release.sh inserts new entries here, newest first) -->
     <item>
+      <title>v1.5.0</title>
+      <pubDate>Fri, 16 Oct 2026 07:14:15 +0000</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description xml:lang="zh"><![CDATA[
+<h3>Grapher NG 1.5.0</h3>
+<h4>新功能</h4>
+<ul>
+<li><strong>分步讲解</strong>：把一份图拆成几步，讲推导过程。每一步可以指定显示哪些图层、相机角度、参数值和要播放的参数，配上标题和讲解文字（文字里可以写 TeX 公式）。</li>
+</ul>
+<p>  - 画布底部有讲解卡片：← → / 空格 / PageUp PageDown 翻页，可跳页，Esc 结束；编辑模式下可改标题和原文、记下当前视角和参数、增删挪动步骤。</p>
+<p>  - 换步时相机和参数平滑过渡；讲解只改画面，不改图层开关，结束后自动还原。</p>
+<p>  - 自带公式排版：分式、根号、上下标、积分、求和、可伸缩括号、重音。</p>
+<p>  - 新增示例「曲面面积元 dS」（8 步）。</p>
+<ul>
+<li><strong>空间曲线末端箭头</strong>：可以用来画向量。</li>
+<li><strong>文字格式和 AI 助手</strong>：文字格式新增 <code>step</code> 与 <code>&gt;</code> 讲解行；AI 接入新增 <code>set_lesson</code>、<code>go_to_step</code>，<code>render_image</code> / <code>render_text</code> 支持 <code>step</code>。</li>
+<li>工具栏新增「讲解」按钮，显示菜单新增开始讲解 / 下一步 / 上一步。</li>
+</ul>
+<h4>需要注意</h4>
+<ul>
+<li>在 UniReader 等笔记里的图形块暂时还不能翻页，只显示图层自己的开关。</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.5.0">在 GitHub 上查看这次发布 →</a></p>
+      ]]></description>
+      <description xml:lang="en"><![CDATA[
+<h3>Grapher NG 1.5.0</h3>
+<h4>New</h4>
+<ul>
+<li><strong>Step-by-step lessons</strong>: split one graph into steps to walk through a derivation. Each step sets which layers show, the camera, parameter values and which parameters play, plus a title and explanatory text (TeX formulas allowed).</li>
+</ul>
+<p>  - A lesson card sits at the bottom of the canvas: ← → / Space / PageUp PageDown to turn pages, jump to any step, Esc to finish. In edit mode you can change titles and text, capture the current view and parameters, and add, move or delete steps.</p>
+<p>  - Camera and parameters ease between steps. A lesson only changes what is drawn, never the layer switches, and everything is restored when it ends.</p>
+<p>  - Built-in formula typesetting: fractions, roots, sub/superscripts, integrals, sums, stretchy brackets, accents.</p>
+<p>  - New example "Surface area element dS" (8 steps).</p>
+<ul>
+<li><strong>Arrowheads on space curves</strong>, handy for drawing vectors.</li>
+<li><strong>Text format and AI assistants</strong>: the text format gains <code>step</code> and <code>&gt;</code> lesson lines; new <code>set_lesson</code> and <code>go_to_step</code> tools; <code>render_image</code> / <code>render_text</code> accept <code>step</code>.</li>
+<li>A Lesson button in the toolbar, and Start Lesson / Next Step / Previous Step in the View menu.</li>
+</ul>
+<h4>Please note</h4>
+<ul>
+<li>Graph blocks embedded in notes (such as in UniReader) cannot turn pages yet; they only show each layer's own switch.</li>
+</ul>
+<p><a href="https://github.com/xVanTuring/grapher-ng/releases/tag/v1.5.0">View the release on GitHub →</a></p>
+      ]]></description>
+      <enclosure url="https://github.com/xVanTuring/grapher-ng/releases/download/v1.5.0/GrapherNG-1.5.0.zip" length="3513776" type="application/octet-stream" sparkle:edSignature="HqZuQmhay8114ULRSqI4rP9ZtSUjVJOGTtg/WR6g0PyHB/5FqSb7mvksHW45k4jdsaI9V3fAq0H9iaSIU/38Bg==" />
+    </item>
+    <item>
       <title>v1.4.0</title>
       <pubDate>Thu, 15 Oct 2026 06:32:46 +0000</pubDate>
       <sparkle:version>7</sparkle:version>

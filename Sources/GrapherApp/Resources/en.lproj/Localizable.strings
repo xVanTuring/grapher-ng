@@ -308,5 +308,9 @@
 "Move Step Earlier" = "Move Step Earlier";
 "Move Step Later" = "Move Step Later";
 "Done" = "Done";
+"View Along X (YZ Plane)" = "View Along X (YZ Plane)";
+"View Along Y (XZ Plane)" = "View Along Y (XZ Plane)";
+"View Along Z (XY Plane)" = "View Along Z (XY Plane)";
+"Orthographic Projection" = "Orthographic Projection";
 "Arrow at the end" = "Arrow at the end";
 "Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent." = "Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent.";

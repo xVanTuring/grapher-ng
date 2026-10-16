@@ -331,6 +331,10 @@ final class Viewport3DViewController: NSViewController {
         switch event.charactersIgnoringModifiers?.lowercased() {
         case "f": state.fitToContent()
         case "r", "0": state.resetView()
+        case "1": state.lookAlong(.x)
+        case "2": state.lookAlong(.y)
+        case "3": state.lookAlong(.z)
+        case "p": state.toggleOrthographic()
         case "=", "+": state.zoom(by: 1.25, box: event.modifierFlags.contains(.option))
         case "-": state.zoom(by: 0.8, box: event.modifierFlags.contains(.option))
         default: return false

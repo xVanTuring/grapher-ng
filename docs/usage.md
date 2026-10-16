@@ -91,7 +91,7 @@ Write tools need **Allow AI to modify graphs**:
 | `add_layer` | Insert a graph: `kind`, `formula`, and as needed `secondary_formula`, `tertiary_formula`, `domain`, `domain2`, `domain_formulas`, `domain2_formulas`, `relation`, `extrude`, `color`, `line_width`, `dashed`, `name`. |
 | `update_layer` / `remove_layer` | Change fields of a layer by id (its kind cannot change) or delete it. |
 | `set_parameter` / `remove_parameter` | Create or change a named parameter with a slider range (`name`, `value`, `min`, `max`). |
-| `set_view` | 2D: `center_x`, `center_y`, `scale`. 3D: `center`, `half_extent`, `azimuth`, `elevation` (degrees), `camera_zoom`. Also `fit` and `reset`. |
+| `set_view` | 2D: `center_x`, `center_y`, `scale`. 3D: `center`, `half_extent`, `azimuth`, `elevation` (degrees), `camera_zoom`, `view_along` (`x` / `y` / `z`, flat axis view), `projection` (`perspective` / `orthographic`). Also `fit` and `reset`. |
 | `set_appearance` | `theme` (light/dark), grid, minor grid, axes, tick labels. |
 | `export_png` | Write a PNG file at a given size. |
 | `draw_relation` | Same as `relate`, and adds the helper objects (feet, intersection points, common perpendicular, line of intersection) as new layers. |

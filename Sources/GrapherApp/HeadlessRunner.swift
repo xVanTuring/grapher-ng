@@ -141,6 +141,12 @@ enum HeadlessRunner {
         view.heightPixels = optionalNumber("--height", arguments) ?? 1200
         if let azimuth = optionalNumber("--azimuth", arguments) { view.azimuth = azimuth }
         if let elevation = optionalNumber("--elevation", arguments) { view.elevation = elevation }
+        // `--view-along x|y|z` 切到轴向平面视图（正交）；`--ortho` 只换成正交投影。
+        if let index = arguments.firstIndex(of: "--view-along"), index + 1 < arguments.count,
+           let axis = View3D.AxisView(rawValue: arguments[index + 1]) {
+            view.look(along: axis)
+        }
+        if arguments.contains("--ortho") { view.isOrthographic = true }
 
         let started = Date()
         let built = SceneBuilder3D.build(SceneBuild3DRequest(

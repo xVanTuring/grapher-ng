@@ -89,7 +89,7 @@ curl -s -X POST http://127.0.0.1:8776/mcp \
 | `add_layer` | 添加图形：`kind`、`formula`，按需再填 `secondary_formula`、`tertiary_formula`、`domain`、`domain2`、`relation`、`extrude`、`color`、`line_width`、`dashed`、`name`。 |
 | `update_layer` / `remove_layer` | 按 id 修改图层的字段（图型不能改），或删除。 |
 | `set_parameter` / `remove_parameter` | 新建或修改命名参数及滑块范围（`name`、`value`、`min`、`max`）。 |
-| `set_view` | 平面图：`center_x`、`center_y`、`scale`。立体图：`center`、`half_extent`、`azimuth`、`elevation`（度）、`camera_zoom`。另有 `fit`、`reset`。 |
+| `set_view` | 平面图：`center_x`、`center_y`、`scale`。立体图：`center`、`half_extent`、`azimuth`、`elevation`（度）、`camera_zoom`、`view_along`（`x` / `y` / `z`，轴向平面视图）、`projection`（`perspective` / `orthographic`）。另有 `fit`、`reset`。 |
 | `set_appearance` | `theme`（light / dark）、网格、次网格、坐标轴、刻度数字。 |
 | `export_png` | 按指定尺寸写出 PNG 文件。 |
 | `draw_relation` | 同 `relate`，并把垂足、交点、公垂线、交线这些辅助对象加成新图层。 |

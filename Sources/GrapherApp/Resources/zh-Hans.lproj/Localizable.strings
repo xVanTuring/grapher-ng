@@ -308,5 +308,9 @@
 "Move Step Earlier" = "往前挪";
 "Move Step Later" = "往后挪";
 "Done" = "完成";
+"View Along X (YZ Plane)" = "沿 X 轴看（YZ 平面）";
+"View Along Y (XZ Plane)" = "沿 Y 轴看（XZ 平面）";
+"View Along Z (XY Plane)" = "沿 Z 轴看（XY 平面）";
+"Orthographic Projection" = "正交投影（无透视）";
 "Arrow at the end" = "末端画箭头";
 "Draw an arrowhead where the parameter ends, to show a vector such as a normal or a tangent." = "在参数终点那一头画箭头，用来画法向量、切向量这类向量。";

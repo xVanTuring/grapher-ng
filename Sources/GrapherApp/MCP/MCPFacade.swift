@@ -79,6 +79,7 @@ final class MCPFacade {
                 "azimuthDegrees": view.azimuth * 180 / .pi,
                 "elevationDegrees": view.elevation * 180 / .pi,
                 "cameraZoom": view.cameraZoom,
+                "projection": view.isOrthographic ? "orthographic" : "perspective",
             ]
         } else {
             let viewport = content.viewport
@@ -822,6 +823,8 @@ final class MCPFacade {
         var azimuthDegrees: Double?
         var elevationDegrees: Double?
         var cameraZoom: Double?
+        var viewAlong: View3D.AxisView?
+        var orthographic: Bool?
     }
 
     func setView(of document: GraphDocument, _ edit: ViewEdit) throws {
@@ -846,11 +849,14 @@ final class MCPFacade {
                     view.elevation = Swift.max(-limit, Swift.min(limit, elevation * .pi / 180))
                 }
                 if let zoom = edit.cameraZoom { view.cameraZoom = zoom }
+                if let axis = edit.viewAlong { view.look(along: axis) }
+                if let orthographic = edit.orthographic { view.isOrthographic = orthographic }
             }
             if edit.center3D != nil || edit.halfExtent != nil { state.requestRebuild(interactive: false) }
         } else {
             if edit.center3D != nil || edit.halfExtent != nil || edit.azimuthDegrees != nil
-                || edit.elevationDegrees != nil || edit.cameraZoom != nil {
+                || edit.elevationDegrees != nil || edit.cameraZoom != nil
+                || edit.viewAlong != nil || edit.orthographic != nil {
                 throw MCPToolError("This is a 2D document: use center (x, y) and scale (pixels per unit).")
             }
             if let scale = edit.scale, !(scale > 0) { throw MCPToolError("scale must be positive.") }

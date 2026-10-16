@@ -26,6 +26,18 @@ public struct View3D: Equatable, Sendable, Codable {
     public var elevation: Double
     /// 盒子在屏幕上的放大倍数：1 = 盒子的外接球正好装进未遮挡区的短边。
     public var cameraZoom: Double = 1
+    /// 正交投影（没有近大远小）。三个轴向视图用它，平面视图里平行于画面的长度才能直接量。
+    public var isOrthographic: Bool = false
+
+    /// 三个轴向的平面视图：沿某根轴往原点方向看，另外两根轴正好水平、竖直。
+    public enum AxisView: String, CaseIterable, Sendable {
+        /// 沿 x 轴看（从 +x 一侧）：y 向右、z 向上，即 yz 平面。
+        case x
+        /// 沿 y 轴看（从 -y 一侧）：x 向右、z 向上，即 xz 平面。
+        case y
+        /// 沿 z 轴看（从 +z 一侧俯视）：x 向右、y 向上，即 xy 平面。
+        case z
+    }
 
     /// 画布尺寸（像素）与被浮层盖住的四边（像素）：窗口状态，不进文档，含义同 `Viewport2D`。
     public var widthPixels: Double = 1200
@@ -36,7 +48,7 @@ public struct View3D: Equatable, Sendable, Codable {
     public var insetBottom: Double = 0
 
     private enum CodingKeys: String, CodingKey {
-        case center, halfExtent, azimuth, elevation, cameraZoom
+        case center, halfExtent, azimuth, elevation, cameraZoom, isOrthographic
     }
 
     public init(
@@ -44,16 +56,18 @@ public struct View3D: Equatable, Sendable, Codable {
         halfExtent: Double = 4,
         azimuth: Double = 0.55,
         elevation: Double = 0.45,
-        cameraZoom: Double = 1
+        cameraZoom: Double = 1,
+        isOrthographic: Bool = false
     ) {
         self.center = center
         self.halfExtent = halfExtent
         self.azimuth = azimuth
         self.elevation = elevation
         self.cameraZoom = cameraZoom
+        self.isOrthographic = isOrthographic
     }
 
-    /// `cameraZoom` 是后加的，早先存下的立体图没有它，读成 1。
+    /// `cameraZoom`、`isOrthographic` 是后加的，早先存下的立体图没有它们，读成 1 和 false。
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         center = try container.decode(SIMD3<Double>.self, forKey: .center)
@@ -61,6 +75,7 @@ public struct View3D: Equatable, Sendable, Codable {
         azimuth = try container.decode(Double.self, forKey: .azimuth)
         elevation = try container.decode(Double.self, forKey: .elevation)
         cameraZoom = try container.decodeIfPresent(Double.self, forKey: .cameraZoom) ?? 1
+        isOrthographic = try container.decodeIfPresent(Bool.self, forKey: .isOrthographic) ?? false
     }
 
     /// 默认视角：x 轴朝左下、y 轴朝右、z 轴朝上，课本上画立体图的样子。
@@ -74,6 +89,8 @@ public struct View3D: Equatable, Sendable, Codable {
     /// `cameraZoom` = 1 时，盒子外接球的直径占未遮挡区短边的比例：正好装下，任何角度盒角都不出画面。
     static let fillFraction = 1.0
     public static let elevationLimit = 89.0 * Double.pi / 180
+    /// 正俯视的仰角：只有「沿 z 轴看」这个视图会用到，拖动旋转仍夹在 `elevationLimit` 内。
+    static let topElevation = Double.pi / 2
     public static let halfExtentRange: ClosedRange<Double> = 1e-4...1e6
     public static let cameraZoomRange: ClosedRange<Double> = 0.25...12
     /// 拖动一个点转多少弧度。
@@ -111,12 +128,29 @@ public struct View3D: Equatable, Sendable, Codable {
         return Self.cameraDistance * SIMD3(c * cos(azimuth), c * sin(azimuth), sin(elevation))
     }
 
+    /// 着色器里算光照用的「相机位置」。透视时就是 `eye`；正交时视线处处平行，放到很远的地方，
+    /// 每个像素到相机的方向才一致。
+    public var shadingEye: SIMD3<Double> {
+        isOrthographic ? eye * 1000 : eye
+    }
+
     /// 相机的右、上、朝前三个单位向量（归一化坐标）。
     public var basis: (right: SIMD3<Double>, up: SIMD3<Double>, forward: SIMD3<Double>) {
         let forward = simd_normalize(-eye)
-        let right = simd_normalize(simd_cross(forward, SIMD3(0, 0, 1)))
+        // 等于 normalize(forward × z)，但正俯视时那个叉积为零，所以直接用方位角写。
+        let right = SIMD3(-sin(azimuth), cos(azimuth), 0)
         let up = simd_cross(right, forward)
         return (right, up, forward)
+    }
+
+    /// 切到某根轴的平面视图：正交投影，坐标盒与缩放不动。
+    public mutating func look(along axis: AxisView) {
+        isOrthographic = true
+        switch axis {
+        case .x: azimuth = 0; elevation = 0
+        case .y: azimuth = -Double.pi / 2; elevation = 0
+        case .z: azimuth = -Double.pi / 2; elevation = Self.topElevation
+        }
     }
 
     /// 未遮挡区的中心（像素），盒心投影到这里。
@@ -163,6 +197,17 @@ public struct View3D: Equatable, Sendable, Codable {
         // 盒心不在画布正中而在未遮挡区中心：把投影整体平移过去（在 w 归一化之后生效）。
         let ox = (focusX - widthPixels / 2) / max(widthPixels / 2, 1)
         let oy = -(focusY - heightPixels / 2) / max(heightPixels / 2, 1)
+        if isOrthographic {
+            // 正交：盒心处的比例与透视一致（切换投影时盒子大小不跳），深度线性映射到 0…1。
+            let scale = 1 / Self.cameraDistance
+            let projection = simd_double4x4(columns: (
+                SIMD4(sx * scale, 0, 0, 0),
+                SIMD4(0, sy * scale, 0, 0),
+                SIMD4(0, 0, -1 / (f - n), 0),
+                SIMD4(ox, oy, -n / (f - n), 1)
+            ))
+            return projection * view
+        }
         let projection = simd_double4x4(columns: (
             SIMD4(sx, 0, 0, 0),
             SIMD4(0, sy, 0, 0),

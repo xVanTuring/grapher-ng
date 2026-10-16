@@ -105,6 +105,107 @@ final class View3DTests: XCTestCase {
 
     // MARK: - 交互
 
+    // MARK: - 正交与轴向视图
+
+    /// 屏幕上的位置（像素，左上角原点）。
+    private func screen(_ v: View3D, _ p: SIMD3<Double>) throws -> SIMD2<Double> {
+        let s = try XCTUnwrap(v.project(p))
+        return SIMD2(s.x, s.y)
+    }
+
+    func testAxisViewsLayTheOtherTwoAxesFlat() throws {
+        // depth：朝着观察者的方向（x 从 +x 看、y 从 -y 看、z 从 +z 俯视）。
+        let cases: [(View3D.AxisView, right: SIMD3<Double>, up: SIMD3<Double>, depth: SIMD3<Double>)] = [
+            (.x, SIMD3(0, 1, 0), SIMD3(0, 0, 1), SIMD3(1, 0, 0)),
+            (.y, SIMD3(1, 0, 0), SIMD3(0, 0, 1), SIMD3(0, -1, 0)),
+            (.z, SIMD3(1, 0, 0), SIMD3(0, 1, 0), SIMD3(0, 0, 1)),
+        ]
+        for (axis, right, up, depth) in cases {
+            var v = view()
+            v.look(along: axis)
+            XCTAssertTrue(v.isOrthographic)
+            let origin = try screen(v, .zero)
+            let r = try screen(v, right) - origin
+            let u = try screen(v, up) - origin
+            XCTAssertGreaterThan(r.x, 100, "\(axis)")
+            assertClose(r.y, 0, 1e-6, "\(axis)")
+            assertClose(u.x, 0, 1e-6, "\(axis)")
+            XCTAssertLessThan(u.y, -100, "\(axis)")
+            // 沿视线的方向在屏幕上是一个点，只差深度：靠近相机的一端深度更小。
+            let d = try screen(v, depth) - origin
+            assertClose(d.x, 0, 1e-6, "\(axis)")
+            assertClose(d.y, 0, 1e-6, "\(axis)")
+            let near = try XCTUnwrap(v.project(depth)).z
+            let far = try XCTUnwrap(v.project(-depth)).z
+            XCTAssertLessThan(near, far, "\(axis)")
+        }
+    }
+
+    func testOrthographicHasNoPerspective() throws {
+        var v = view()
+        v.isOrthographic = true
+        // 盒内同一个屏幕位置的前后两点，投影到同一处；透视下则不然。
+        let front = SIMD3(0.5, 0.5, 1.0)
+        let back = front - v.basis.forward * 1.5
+        let a = try screen(v, front), b = try screen(v, back)
+        assertClose(a.x, b.x, 1e-6); assertClose(a.y, b.y, 1e-6)
+        v.isOrthographic = false
+        let c = try screen(v, front), d = try screen(v, back)
+        XCTAssertGreaterThan(simd_length(c - d), 1)
+    }
+
+    func testOrthographicKeepsTheBoxSizeAtTheCentreAndFits() throws {
+        var v = view()
+        // 取与视线垂直、过盒心的一点：它与盒心同深度，两种投影下该一样远。
+        let sideways = v.basis.right
+        let perspective = try screen(v, sideways) - screen(v, .zero)
+        v.isOrthographic = true
+        let ortho = try screen(v, sideways) - screen(v, .zero)
+        assertClose(simd_length(perspective), simd_length(ortho), 1e-6)
+        // 任何角度盒子都在画布里、深度在 0…1 内。
+        for azimuth in stride(from: 0.0, to: 6.2, by: 0.7) {
+            for elevation in [-1.4, -0.4, 0.0, 0.8, 1.55] {
+                v.azimuth = azimuth; v.elevation = elevation
+                for sx in [-1.0, 1.0] { for sy in [-1.0, 1.0] { for sz in [-1.0, 1.0] {
+                    let s = try XCTUnwrap(v.project(SIMD3(sx, sy, sz)))
+                    XCTAssertTrue((0...v.widthPixels).contains(s.x) && (0...v.heightPixels).contains(s.y))
+                    XCTAssertTrue((0...1).contains(s.z))
+                }}}
+            }
+        }
+    }
+
+    func testOrthographicInsetShiftsTheCentreLikePerspective() throws {
+        var v = view()
+        v.insetLeft = 300
+        v.isOrthographic = true
+        let s = try screen(v, .zero)
+        assertClose(s.x, v.focusX, 1e-6)
+        assertClose(s.y, v.focusY, 1e-6)
+    }
+
+    func testPanFollowsThePointerInAxisView() throws {
+        var v = view()
+        v.look(along: .z)
+        let anchor = SIMD3(1.0, 1.0, 0.0)
+        let before = try screen(v, v.normalized(anchor))
+        v.pan(byPixels: SIMD2(30, -20))
+        let after = try screen(v, v.normalized(anchor))
+        assertClose(after.x - before.x, 30, 1e-6)
+        assertClose(after.y - before.y, -20, 1e-6)
+    }
+
+    func testOrthographicFlagIsSavedAndOlderFilesAreStillPerspective() throws {
+        var v = View3D.standard
+        v.isOrthographic = true
+        let data = try JSONEncoder().encode(v)
+        XCTAssertTrue(try JSONDecoder().decode(View3D.self, from: data).isOrthographic)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object.removeValue(forKey: "isOrthographic")
+        let older = try JSONSerialization.data(withJSONObject: object)
+        XCTAssertFalse(try JSONDecoder().decode(View3D.self, from: older).isOrthographic)
+    }
+
     func testOrbitTurnsAndClampsTheElevation() {
         var v = view()
         let azimuth = v.azimuth

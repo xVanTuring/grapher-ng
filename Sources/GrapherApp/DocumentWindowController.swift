@@ -280,6 +280,10 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
 
     @objc func fitToContent(_ sender: Any?) { state.fitToContent() }
     @objc func resetView(_ sender: Any?) { state.resetView() }
+    @objc func lookAlongX(_ sender: Any?) { state.lookAlong(.x) }
+    @objc func lookAlongY(_ sender: Any?) { state.lookAlong(.y) }
+    @objc func lookAlongZ(_ sender: Any?) { state.lookAlong(.z) }
+    @objc func toggleOrthographic(_ sender: Any?) { state.toggleOrthographic() }
     @objc func zoomIn(_ sender: Any?) { state.zoom(by: 1.25) }
     @objc func zoomOut(_ sender: Any?) { state.zoom(by: 0.8) }
 
@@ -306,6 +310,11 @@ final class DocumentWindowController: NSWindowController, NSWindowDelegate, NSTo
             return state.lessonStep.map { $0 + 1 < state.document.lessonSteps.count } ?? false
         case #selector(previousLessonStep(_:)):
             return state.lessonStep.map { $0 > 0 } ?? false
+        case #selector(lookAlongX(_:)), #selector(lookAlongY(_:)), #selector(lookAlongZ(_:)):
+            return state.document.dimension == .space
+        case #selector(toggleOrthographic(_:)):
+            menuItem.state = state.document.view3D.isOrthographic ? .on : .off
+            return state.document.dimension == .space
         case #selector(exportPDFAction(_:)), #selector(exportCSVAction(_:)):
             return state.document.dimension == .plane
         default:

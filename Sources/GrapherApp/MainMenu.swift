@@ -102,6 +102,16 @@ enum MainMenu {
             menu.addItem(item(L("Reset View"), #selector(DocumentWindowController.resetView(_:)), key: "r",
                               modifiers: []))
             menu.addItem(.separator())
+            // 立体图的平面视图（正交投影）：数字键 1 2 3 对应沿 x、y、z 轴看，P 切换透视 / 正交。
+            menu.addItem(item(L("View Along X (YZ Plane)"), #selector(DocumentWindowController.lookAlongX(_:)), key: "1",
+                              modifiers: []))
+            menu.addItem(item(L("View Along Y (XZ Plane)"), #selector(DocumentWindowController.lookAlongY(_:)), key: "2",
+                              modifiers: []))
+            menu.addItem(item(L("View Along Z (XY Plane)"), #selector(DocumentWindowController.lookAlongZ(_:)), key: "3",
+                              modifiers: []))
+            menu.addItem(item(L("Orthographic Projection"), #selector(DocumentWindowController.toggleOrthographic(_:)),
+                              key: "p", modifiers: []))
+            menu.addItem(.separator())
             menu.addItem(item(L("Zoom In"), #selector(DocumentWindowController.zoomIn(_:)), key: "="))
             menu.addItem(item(L("Zoom Out"), #selector(DocumentWindowController.zoomOut(_:)), key: "-"))
             menu.addItem(.separator())

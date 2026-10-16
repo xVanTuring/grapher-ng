@@ -120,7 +120,7 @@ public final class Renderer3D {
     ) {
         guard viewportSize.x > 0, viewportSize.y > 0 else { return }
         let viewProjection = Self.floatMatrix(view.viewProjection())
-        let eye = SIMD4<Float>(SIMD3<Float>(view.eye), 1)
+        let eye = SIMD4<Float>(SIMD3<Float>(view.shadingEye), 1)
         func uniforms(for pass: Pass, lineBoost: Float = 0, tint: SIMD4<Float> = .zero, alphaScale: Float = 1) -> Uniforms3D {
             let (scale, translation) = view.boxTransform(from: pass.source)
             return Uniforms3D(

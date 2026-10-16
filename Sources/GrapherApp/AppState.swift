@@ -793,6 +793,7 @@ final class AppState {
                 view.azimuth = standard.azimuth
                 view.elevation = standard.elevation
                 view.cameraZoom = standard.cameraZoom
+                view.isOrthographic = standard.isOrthographic
             }
             requestRebuild(interactive: false)
             return
@@ -803,6 +804,18 @@ final class AppState {
             viewport.scale = 64
         }
         requestRebuild(interactive: false)
+    }
+
+    /// 立体图的轴向平面视图（正交投影）：只换投影矩阵，不重采。
+    func lookAlong(_ axis: View3D.AxisView) {
+        guard document.dimension == .space else { return }
+        mutateView3D { $0.look(along: axis) }
+    }
+
+    /// 立体图在正交投影与透视投影之间切换。
+    func toggleOrthographic() {
+        guard document.dimension == .space else { return }
+        mutateView3D { $0.isOrthographic.toggle() }
     }
 
     /// 以视口中心为锚缩放：工具栏按钮与 ⌘= / ⌘- 都走这条。锚点代数只写在 `Viewport2D.zoom`
@@ -861,6 +874,7 @@ final class AppState {
                 document.view3D.azimuth = sample.view3D.azimuth
                 document.view3D.elevation = sample.view3D.elevation
                 document.view3D.cameraZoom = sample.view3D.cameraZoom
+                document.view3D.isOrthographic = sample.view3D.isOrthographic
             } else {
                 document.viewport.centerX = sample.viewport.centerX
                 document.viewport.centerY = sample.viewport.centerY

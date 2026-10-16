@@ -463,11 +463,28 @@ enum MCPTools {
                 "azimuth": MCPSchema.number("3D: degrees around the z axis, counter-clockwise from +x"),
                 "elevation": MCPSchema.number("3D: degrees above the xy plane, −89 … 89"),
                 "camera_zoom": MCPSchema.number("3D: enlarge the box on screen, 0.25 … 12"),
+                "view_along": MCPSchema.string(
+                    "3D: flat view along an axis, orthographic (no perspective): x = look along x (yz plane, y right, z up), y = look along y (xz plane, x right, z up), z = look down along z (xy plane, x right, y up). Overrides azimuth / elevation",
+                    enumValues: ["x", "y", "z"]),
+                "projection": MCPSchema.string("3D: perspective or orthographic (no perspective)",
+                                               enumValues: ["perspective", "orthographic"]),
             ]),
             tier: .write
         ) { args in
             let document = try await facade.resolve(try args.optionalUUID("document_id"))
             var edit = MCPFacade.ViewEdit()
+            if let axis = try args.optionalString("view_along") {
+                guard let parsed = View3D.AxisView(rawValue: axis) else {
+                    throw MCPInvalidParams("'view_along' must be x, y or z")
+                }
+                edit.viewAlong = parsed
+            }
+            if let projection = try args.optionalString("projection") {
+                guard projection == "perspective" || projection == "orthographic" else {
+                    throw MCPInvalidParams("'projection' must be perspective or orthographic")
+                }
+                edit.orthographic = projection == "orthographic"
+            }
             edit.fit = try args.optionalBool("fit") ?? false
             edit.reset = try args.optionalBool("reset") ?? false
             let centerX = try args.optionalDouble("center_x")
